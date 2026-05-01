@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+/* Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&display=swap');
+
+/* Base styles */
+html {
+  scroll-behavior: smooth;
+  font-size: 15px;
+}
+
+body {
+  font-family: "Inter", sans-serif;
+  background-color: #FCF9F5;
+  color: #1A1A1A;
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Outfit", sans-serif;
+  letter-spacing: -0.02em; /* 🔥 replaces tracking-tight */
+}
+
+/* Utilities */
+.glass {
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.text-gradient {
+  background: linear-gradient(to right, #F58220, #689F38);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}

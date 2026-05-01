@@ -1,0 +1,157 @@
+﻿ID,Type,SKU,Name,"Short description",Description,"Tax status","In stock?","Backorders allowed?","Weight (kg)","Allow customer reviews?","Sale price","Regular price",Categories,Images,Parent,"Attribute 1 name","Attribute 1 value(s)","Attribute 1 visible","Attribute 1 global","Attribute 2 name","Attribute 2 value(s)","Attribute 2 visible","Attribute 2 global"
+4050,variable,1255512506,"VIP Sehore","<span data-sheets-root=""1"">Made from renowned Sharbati quality wheat, It has larger grains, a golden colour, and a soft texture. And traditionally stone is ground to retain maximum nutrition and softness.</span>",,taxable,1,0,,0,,,"Atta, Atta > Wheat Atta",https://gutmantra.in/wp-content/uploads/2024/11/SS-Product-Image-2.png,,Grind,"Bareek/ Fine, Mota / Coarse, Normal",1,1,Varient,"1 KG, 5 KG",1,1
+4051,variation,,"VIP Sehore - Normal, 1 KG",,,taxable,1,0,,0,88,97,,,1255512506,Grind,Normal,,1,Varient,"1 KG",,1
+4052,variation,,"VIP Sehore - Normal, 5 KG",,,taxable,1,0,,0,440,484,,,1255512506,Grind,Normal,,1,Varient,"5 KG",,1
+4053,variation,,"VIP Sehore - Bareek/ Fine, 1 KG",,,taxable,1,0,,0,88,97,,,1255512506,Grind,"Bareek/ Fine",,1,Varient,"1 KG",,1
+4054,variation,,"VIP Sehore - Bareek/ Fine, 5 KG",,,taxable,1,0,,0,440,484,,,1255512506,Grind,"Bareek/ Fine",,1,Varient,"5 KG",,1
+4055,variation,,"VIP Sehore - Mota / Coarse, 1 KG",,,taxable,1,0,,0,88,97,,,1255512506,Grind,"Mota / Coarse",,1,Varient,"1 KG",,1
+4056,variation,,"VIP Sehore - Mota / Coarse, 5 KG",,,taxable,1,0,,0,440,484,,,1255512506,Grind,"Mota / Coarse",,1,Varient,"5 KG",,1
+4057,variable,1255512507,"Sehore Super","<span data-sheets-root=""1"">Made from whole wheat grains sourced from MP Sehore Region and traditionally stone ground to retain maximum nutrition and softness.</span>",,taxable,1,0,,0,,,"Atta, Atta > Wheat Atta",https://gutmantra.in/wp-content/uploads/2024/11/WhatsApp-Image-2024-07-23-at-14.25.34.jpeg,,Grind,"Bareek/ Fine, Mota / Coarse, Normal",1,1,Varient,"1 KG, 5 KG",1,1
+4058,variation,,"Sehore Super - Normal, 1 KG",,,taxable,1,0,,0,,71,,,1255512507,Grind,Normal,,1,Varient,"1 KG",,1
+4059,variation,,"Sehore Super - Normal, 5 KG",,,taxable,1,0,,0,,355,,,1255512507,Grind,Normal,,1,Varient,"5 KG",,1
+4060,variation,,"Sehore Super - Bareek/ Fine, 1 KG",,,taxable,1,0,,0,,71,,,1255512507,Grind,"Bareek/ Fine",,1,Varient,"1 KG",,1
+4061,variation,,"Sehore Super - Bareek/ Fine, 5 KG",,,taxable,1,0,,0,,355,,,1255512507,Grind,"Bareek/ Fine",,1,Varient,"5 KG",,1
+4062,variation,,"Sehore Super - Mota / Coarse, 1 KG",,,taxable,1,0,,0,,71,,,1255512507,Grind,"Mota / Coarse",,1,Varient,"1 KG",,1
+4063,variation,,"Sehore Super - Mota / Coarse, 5 KG",,,taxable,1,0,,0,,355,,,1255512507,Grind,"Mota / Coarse",,1,Varient,"5 KG",,1
+4064,variable,1255589672,"Sunflower Oil",,,taxable,1,0,,0,,,"Cold Pressed Oils",https://gutmantra.in/wp-content/uploads/2024/11/Oil-Prod-Images-3.png,,Varient,"1 Liter",1,1,,,,
+4065,variation,,"Sunflower Oil - 1 Liter",,,taxable,1,0,,0,360,399,,,1255589672,Varient,"1 Liter",,1,,,,
+4067,variable,1255512508,"Sehore Premium",,"<span data-sheets-root=""1"">Made from whole wheat grains sourced from MP Sehore Region and traditionally stone ground to retain maximum nutrition and softness.</span>",taxable,1,0,,0,,,"Atta, Atta > Wheat Atta",https://gutmantra.in/wp-content/uploads/2024/11/SS-Product-Image-3.png,,Grind,"Bareek/ Fine, Mota / Coarse, Normal",1,1,Varient,"1 KG, 5 KG",1,1
+4068,variation,,"Sehore Premium - Normal, 1 KG",,,taxable,1,0,,0,69,76,,,1255512508,Grind,Normal,,1,Varient,"1 KG",,1
+4069,variation,,"Sehore Premium - Normal, 5 KG",,,taxable,1,0,,0,345,380,,,1255512508,Grind,Normal,,1,Varient,"5 KG",,1
+4070,variation,,"Sehore Premium - Bareek/ Fine, 1 KG",,,taxable,1,0,,0,69,76,,,1255512508,Grind,"Bareek/ Fine",,1,Varient,"1 KG",,1
+4071,variation,,"Sehore Premium - Bareek/ Fine, 5 KG",,,taxable,1,0,,0,345,380,,,1255512508,Grind,"Bareek/ Fine",,1,Varient,"5 KG",,1
+4072,variation,,"Sehore Premium - Mota / Coarse, 1 KG",,,taxable,1,0,,0,69,76,,,1255512508,Grind,"Mota / Coarse",,1,Varient,"1 KG",,1
+4073,variation,,"Sehore Premium - Mota / Coarse, 5 KG",,,taxable,1,0,,0,345,380,,,1255512508,Grind,"Mota / Coarse",,1,Varient,"5 KG",,1
+4074,variable,1255512509,"Lokwan Premium",,"<span data-sheets-root=""1"">Lokwan Wheat is a premium quality variety known for its fine texture and high protein content, it is traditionally stone ground to retain maximum nutrition and softness.</span>",taxable,1,0,,0,,,"Atta, Atta > Wheat Atta",https://gutmantra.in/wp-content/uploads/2024/11/SS-Product-Image-4.png,,Grind,"Bareek/ Fine, Mota / Coarse, Normal",1,1,Varient,"1 KG, 5 KG",1,1
+4075,variation,,"Lokwan Premium - Normal, 1 KG",,,taxable,1,0,,0,68,75,,,1255512509,Grind,Normal,,1,Varient,"1 KG",,1
+4076,variation,,"Lokwan Premium - Normal, 5 KG",,,taxable,1,0,,0,340,374,,,1255512509,Grind,Normal,,1,Varient,"5 KG",,1
+4077,variation,,"Lokwan Premium - Bareek/ Fine, 1 KG",,,taxable,1,0,,0,68,75,,,1255512509,Grind,"Bareek/ Fine",,1,Varient,"1 KG",,1
+4078,variation,,"Lokwan Premium - Bareek/ Fine, 5 KG",,,taxable,1,0,,0,340,374,,,1255512509,Grind,"Bareek/ Fine",,1,Varient,"5 KG",,1
+4079,variation,,"Lokwan Premium - Mota / Coarse, 1 KG",,,taxable,1,0,,0,68,75,,,1255512509,Grind,"Mota / Coarse",,1,Varient,"1 KG",,1
+4080,variation,,"Lokwan Premium - Mota / Coarse, 5 KG",,,taxable,1,0,,0,340,374,,,1255512509,Grind,"Mota / Coarse",,1,Varient,"5 KG",,1
+4081,variable,1255512511,"Kanak - Wheat Multigrain Atta",,,taxable,1,0,,0,,,"Atta, Atta > Healthy Atta, Atta > Multigrain Atta",https://gutmantra.in/wp-content/uploads/2024/11/SS-Product-Image-14.png,,Grind,"Bareek/ Fine, Mota / Coarse, Normal",1,1,Varient,"1 KG, 5 KG, 500 Grms",1,1
+4082,variation,,"Kanak - Wheat Multigrain Atta - Normal, 1 KG",,,taxable,1,0,,0,130,143,,,1255512511,Grind,Normal,,1,Varient,"1 KG",,1
+4083,variation,,"Kanak - Wheat Multigrain Atta - Bareek/ Fine, 1 KG",,,taxable,1,0,,0,130,143,,,1255512511,Grind,"Bareek/ Fine",,1,Varient,"1 KG",,1
+4084,variation,,"Kanak - Wheat Multigrain Atta - Mota / Coarse, 1 KG",,,taxable,1,0,,0,130,143,,,1255512511,Grind,"Mota / Coarse",,1,Varient,"1 KG",,1
+4085,variation,,"Kanak - Wheat Multigrain Atta - Normal, 500 Grms",,,taxable,1,0,,0,65,72,,,1255512511,Grind,Normal,,1,Varient,"500 Grms",,1
+4086,variation,,"Kanak - Wheat Multigrain Atta - Normal, 5 KG",,,taxable,1,0,,0,650,715,,,1255512511,Grind,Normal,,1,Varient,"5 KG",,1
+4087,variation,,"Kanak - Wheat Multigrain Atta - Bareek/ Fine, 500 Grms",,,taxable,1,0,,0,65,72,,,1255512511,Grind,"Bareek/ Fine",,1,Varient,"500 Grms",,1
+4088,variation,,"Kanak - Wheat Multigrain Atta - Bareek/ Fine, 5 KG",,,taxable,1,0,,0,650,715,,,1255512511,Grind,"Bareek/ Fine",,1,Varient,"5 KG",,1
+4089,variation,,"Kanak - Wheat Multigrain Atta - Mota / Coarse, 500 Grms",,,taxable,1,0,,0,65,72,,,1255512511,Grind,"Mota / Coarse",,1,Varient,"500 Grms",,1
+4090,variation,,"Kanak - Wheat Multigrain Atta - Mota / Coarse, 5 KG",,,taxable,1,0,,0,650,715,,,1255512511,Grind,"Mota / Coarse",,1,Varient,"5 KG",,1
+4091,variable,1255512512,"Kanak - Jowar Multigrain Atta ( Sugar-Less )",,,taxable,1,0,,0,,,"Atta, Atta > Healthy Atta",https://gutmantra.in/wp-content/uploads/2024/11/SS-Product-Image-15.png,,Grind,"Bareek/ Fine, Mota / Coarse, Normal",1,1,Varient,"1 KG, 5 KG, 500 Grms",1,1
+4092,variation,,"Kanak - Jowar Multigrain Atta ( Sugar-Less ) - Normal, 500 Grms",,,taxable,1,0,,0,,55,,,1255512512,Grind,Normal,,1,Varient,"500 Grms",,1
+4093,variation,,"Kanak - Jowar Multigrain Atta ( Sugar-Less ) - Normal, 1 KG",,,taxable,1,0,,0,,110,,,1255512512,Grind,Normal,,1,Varient,"1 KG",,1
+4094,variation,,"Kanak - Jowar Multigrain Atta ( Sugar-Less ) - Normal, 5 KG",,,taxable,1,0,,0,,550,,,1255512512,Grind,Normal,,1,Varient,"5 KG",,1
+4095,variation,,"Kanak - Jowar Multigrain Atta ( Sugar-Less ) - Bareek/ Fine, 500 Grms",,,taxable,1,0,,0,,55,,,1255512512,Grind,"Bareek/ Fine",,1,Varient,"500 Grms",,1
+4096,variation,,"Kanak - Jowar Multigrain Atta ( Sugar-Less ) - Bareek/ Fine, 1 KG",,,taxable,1,0,,0,,110,,,1255512512,Grind,"Bareek/ Fine",,1,Varient,"1 KG",,1
+4097,variation,,"Kanak - Jowar Multigrain Atta ( Sugar-Less ) - Bareek/ Fine, 5 KG",,,taxable,1,0,,0,,550,,,1255512512,Grind,"Bareek/ Fine",,1,Varient,"5 KG",,1
+4098,variation,,"Kanak - Jowar Multigrain Atta ( Sugar-Less ) - Mota / Coarse, 500 Grms",,,taxable,1,0,,0,,55,,,1255512512,Grind,"Mota / Coarse",,1,Varient,"500 Grms",,1
+4099,variation,,"Kanak - Jowar Multigrain Atta ( Sugar-Less ) - Mota / Coarse, 1 KG",,,taxable,1,0,,0,,110,,,1255512512,Grind,"Mota / Coarse",,1,Varient,"1 KG",,1
+4100,variation,,"Kanak - Jowar Multigrain Atta ( Sugar-Less ) - Mota / Coarse, 5 KG",,,taxable,1,0,,0,,550,,,1255512512,Grind,"Mota / Coarse",,1,Varient,"5 KG",,1
+4101,variable,1255512513,"Jowar Atta",,,taxable,1,0,,0,,,"Atta, Atta > Millets Atta",https://gutmantra.in/wp-content/uploads/2024/11/SS-Product-Image-6.png,,Grind,"Bareek/ Fine, Mota / Coarse, Normal",1,1,Varient,"1 KG, 5 KG, 500 Grms",1,1
+4102,variation,,"Jowar Atta - Normal, 500 Grms",,,taxable,1,0,,0,45,50,,,1255512513,Grind,Normal,,1,Varient,"500 Grms",,1
+4103,variation,,"Jowar Atta - Normal, 1 KG",,,taxable,1,0,,0,90,99,,,1255512513,Grind,Normal,,1,Varient,"1 KG",,1
+4104,variation,,"Jowar Atta - Normal, 5 KG",,,taxable,1,0,,0,450,495,,,1255512513,Grind,Normal,,1,Varient,"5 KG",,1
+4105,variation,,"Jowar Atta - Bareek/ Fine, 500 Grms",,,taxable,1,0,,0,45,50,,,1255512513,Grind,"Bareek/ Fine",,1,Varient,"500 Grms",,1
+4106,variation,,"Jowar Atta - Bareek/ Fine, 1 KG",,,taxable,1,0,,0,90,99,,,1255512513,Grind,"Bareek/ Fine",,1,Varient,"1 KG",,1
+4107,variation,,"Jowar Atta - Bareek/ Fine, 5 KG",,,taxable,1,0,,0,450,495,,,1255512513,Grind,"Bareek/ Fine",,1,Varient,"5 KG",,1
+4108,variation,,"Jowar Atta - Mota / Coarse, 500 Grms",,,taxable,1,0,,0,45,50,,,1255512513,Grind,"Mota / Coarse",,1,Varient,"500 Grms",,1
+4109,variation,,"Jowar Atta - Mota / Coarse, 1 KG",,,taxable,1,0,,0,90,99,,,1255512513,Grind,"Mota / Coarse",,1,Varient,"1 KG",,1
+4110,variation,,"Jowar Atta - Mota / Coarse, 5 KG",,,taxable,1,0,,0,450,495,,,1255512513,Grind,"Mota / Coarse",,1,Varient,"5 KG",,1
+4111,variable,1255512514,"Bajra Atta",,,taxable,1,0,,0,,,"Atta, Atta > Millets Atta",https://gutmantra.in/wp-content/uploads/2024/11/SS-Product-Image-7.png,,Grind,"Bareek/ Fine, Mota / Coarse, Normal",1,1,Varient,"1 KG, 500 Grms",1,1
+4112,variation,,"Bajra Atta - Normal, 500 Grms",,,taxable,1,0,,0,38,42,,,1255512514,Grind,Normal,,1,Varient,"500 Grms",,1
+4113,variation,,"Bajra Atta - Normal, 1 KG",,,taxable,1,0,,0,75,83,,,1255512514,Grind,Normal,,1,Varient,"1 KG",,1
+4115,variation,,"Bajra Atta - Bareek/ Fine, 500 Grms",,,taxable,1,0,,0,38,42,,,1255512514,Grind,"Bareek/ Fine",,1,Varient,"500 Grms",,1
+4116,variation,,"Bajra Atta - Bareek/ Fine, 1 KG",,,taxable,1,0,,0,75,83,,,1255512514,Grind,"Bareek/ Fine",,1,Varient,"1 KG",,1
+4118,variation,,"Bajra Atta - Mota / Coarse, 500 Grms",,,taxable,1,0,,0,38,42,,,1255512514,Grind,"Mota / Coarse",,1,Varient,"500 Grms",,1
+4119,variation,,"Bajra Atta - Mota / Coarse, 1 KG",,,taxable,1,0,,0,75,83,,,1255512514,Grind,"Mota / Coarse",,1,Varient,"1 KG",,1
+4121,variable,1255512515,"Chana Dal - Besan",,,taxable,1,0,,0,,,"Atta, Atta > Healthy Atta, Atta > Millets Atta, Atta > Wheat Atta",https://gutmantra.in/wp-content/uploads/2024/11/SS-Product-Image-9.png,,Grind,"Bareek/ Fine, Mota / Coarse, Normal",1,1,Varient,"1 KG, 250 Grms, 5 KG, 500 Grms",1,1
+4122,variation,,"Chana Dal - Besan - Normal, 500 Grms",,,taxable,1,0,,0,65,72,,,1255512515,Grind,Normal,,1,Varient,"500 Grms",,1
+4123,"variation, virtual",,"Chana Dal - Besan - Normal, 1 KG",,,taxable,1,0,,0,130,143,,,1255512515,Grind,Normal,,1,Varient,"1 KG",,1
+4124,variation,,"Chana Dal - Besan - Normal, 5 KG",,,taxable,1,0,,0,650,715,,,1255512515,Grind,Normal,,1,Varient,"5 KG",,1
+4125,variation,,"Chana Dal - Besan - Bareek/ Fine, 500 Grms",,,taxable,1,0,,0,65,72,,,1255512515,Grind,"Bareek/ Fine",,1,Varient,"500 Grms",,1
+4126,variation,,"Chana Dal - Besan - Bareek/ Fine, 1 KG",,,taxable,1,0,,0,130,143,,,1255512515,Grind,"Bareek/ Fine",,1,Varient,"1 KG",,1
+4127,variation,,"Chana Dal - Besan - Bareek/ Fine, 5 KG",,,taxable,1,0,,0,650,715,,,1255512515,Grind,"Bareek/ Fine",,1,Varient,"5 KG",,1
+4128,variation,,"Chana Dal - Besan - Mota / Coarse, 500 Grms",,,taxable,1,0,,0,65,72,,,1255512515,Grind,"Mota / Coarse",,1,Varient,"500 Grms",,1
+4129,variation,,"Chana Dal - Besan - Mota / Coarse, 1 KG",,,taxable,1,0,,0,130,143,,,1255512515,Grind,"Mota / Coarse",,1,Varient,"1 KG",,1
+4130,variation,,"Chana Dal - Besan - Mota / Coarse, 5 KG",,,taxable,1,0,,0,650,715,,,1255512515,Grind,"Mota / Coarse",,1,Varient,"5 KG",,1
+4131,variable,1255512516,"Makka / Corn Atta",,,taxable,1,0,,0,,,"Atta, Atta > Millets Atta",https://gutmantra.in/wp-content/uploads/2024/11/SS-Product-Image-8.png,,Grind,"Bareek/ Fine, Mota / Coarse, Normal",1,1,Varient,"1 KG, 500 Grms",1,1
+4132,variation,,"Makka / Corn Atta - Normal, 500 Grms",,,taxable,1,0,,0,35,39,,,1255512516,Grind,Normal,,1,Varient,"500 Grms",,1
+4133,variation,,"Makka / Corn Atta - Normal, 1 KG",,,taxable,1,0,,0,70,77,,,1255512516,Grind,Normal,,1,Varient,"1 KG",,1
+4134,variation,,"Makka / Corn Atta - Bareek/ Fine, 500 Grms",,,taxable,1,0,,0,35,39,,,1255512516,Grind,"Bareek/ Fine",,1,Varient,"500 Grms",,1
+4135,variation,,"Makka / Corn Atta - Bareek/ Fine, 1 KG",,,taxable,1,0,,0,70,77,,,1255512516,Grind,"Bareek/ Fine",,1,Varient,"1 KG",,1
+4136,variation,,"Makka / Corn Atta - Mota / Coarse, 500 Grms",,,taxable,1,0,,0,35,39,,,1255512516,Grind,"Mota / Coarse",,1,Varient,"500 Grms",,1
+4137,variation,,"Makka / Corn Atta - Mota / Coarse, 1 KG",,,taxable,1,0,,0,70,77,,,1255512516,Grind,"Mota / Coarse",,1,Varient,"1 KG",,1
+4138,variable,1255512517,"Ragi / Nachni Atta",,,taxable,1,0,,0,,,"Atta, Atta > Millets Atta",https://gutmantra.in/wp-content/uploads/2024/11/SS-Product-Image-11.png,,Grind,"Bareek/ Fine, Mota / Coarse, Normal",1,1,Varient,"1 KG, 500 Grms",1,1
+4139,variation,,"Ragi / Nachni Atta - Normal, 500 Grms",,,taxable,1,0,,0,45,50,,,1255512517,Grind,Normal,,1,Varient,"500 Grms",,1
+4140,variation,,"Ragi / Nachni Atta - Normal, 1 KG",,,taxable,1,0,,0,90,99,,,1255512517,Grind,Normal,,1,Varient,"1 KG",,1
+4141,variation,,"Ragi / Nachni Atta - Bareek/ Fine, 500 Grms",,,taxable,1,0,,0,45,50,,,1255512517,Grind,"Bareek/ Fine",,1,Varient,"500 Grms",,1
+4142,variation,,"Ragi / Nachni Atta - Bareek/ Fine, 1 KG",,,taxable,1,0,,0,90,99,,,1255512517,Grind,"Bareek/ Fine",,1,Varient,"1 KG",,1
+4143,variation,,"Ragi / Nachni Atta - Mota / Coarse, 500 Grms",,,taxable,1,0,,0,45,50,,,1255512517,Grind,"Mota / Coarse",,1,Varient,"500 Grms",,1
+4144,variation,,"Ragi / Nachni Atta - Mota / Coarse, 1 KG",,,taxable,1,0,,0,90,99,,,1255512517,Grind,"Mota / Coarse",,1,Varient,"1 KG",,1
+4145,variable,1255512518,"Rice Atta",,,taxable,1,0,,0,,,"Atta, Atta > Millets Atta",https://gutmantra.in/wp-content/uploads/2024/11/SS-Product-Image-10.png,,Grind,"Bareek/ Fine, Mota / Coarse, Normal",1,1,Varient,"1 KG, 5 KG, 500 Grms",1,1
+4146,variation,,"Rice Atta - Normal, 500 Grms",,,taxable,1,0,,0,,44,,,1255512518,Grind,Normal,,1,Varient,"500 Grms",,1
+4147,variation,,"Rice Atta - Normal, 5 KG",,,taxable,1,0,,0,400,440,,,1255512518,Grind,Normal,,1,Varient,"5 KG",,1
+4155,variation,,"Chana Dal - Besan - Normal, 250 Grms",,,taxable,1,0,,0,,35,,,1255512515,Grind,Normal,,1,Varient,"250 Grms",,1
+4156,variation,,"Chana Dal - Besan - Bareek/ Fine, 250 Grms",,,taxable,1,0,,0,,35,,,1255512515,Grind,"Bareek/ Fine",,1,Varient,"250 Grms",,1
+4157,variation,,"Chana Dal - Besan - Mota / Coarse, 250 Grms",,,taxable,1,0,,0,,35,,,1255512515,Grind,"Mota / Coarse",,1,Varient,"250 Grms",,1
+4158,variable,10535306,Sattu,,,taxable,1,0,,0,,,"Atta, Atta > Healthy Atta",https://gutmantra.in/wp-content/uploads/2024/11/SS-Product-Image-13.png,,Grind,"Bareek/ Fine, Mota / Coarse, Normal",1,1,Varient,"1 KG, 250 Grms, 500 Grms",1,1
+4159,variation,,"Sattu - Normal, 250 Grms",,,taxable,1,0,,0,,50,,,10535306,Grind,Normal,,1,Varient,"250 Grms",,1
+4160,variation,,"Sattu - Normal, 500 Grms",,,taxable,1,0,,0,,100,,,10535306,Grind,Normal,,1,Varient,"500 Grms",,1
+4161,variation,,"Sattu - Normal, 1 KG",,,taxable,1,0,,0,,200,,,10535306,Grind,Normal,,1,Varient,"1 KG",,1
+4162,variation,,"Sattu - Bareek/ Fine, 250 Grms",,,taxable,1,0,,0,,50,,,10535306,Grind,"Bareek/ Fine",,1,Varient,"250 Grms",,1
+4163,variation,,"Sattu - Bareek/ Fine, 500 Grms",,,taxable,1,0,,0,,100,,,10535306,Grind,"Bareek/ Fine",,1,Varient,"500 Grms",,1
+4164,variation,,"Sattu - Bareek/ Fine, 1 KG",,,taxable,1,0,,0,,200,,,10535306,Grind,"Bareek/ Fine",,1,Varient,"1 KG",,1
+4165,variation,,"Sattu - Mota / Coarse, 250 Grms",,,taxable,1,0,,0,,50,,,10535306,Grind,"Mota / Coarse",,1,Varient,"250 Grms",,1
+4166,variation,,"Sattu - Mota / Coarse, 500 Grms",,,taxable,1,0,,0,,100,,,10535306,Grind,"Mota / Coarse",,1,Varient,"500 Grms",,1
+4167,variation,,"Sattu - Mota / Coarse, 1 KG",,,taxable,1,0,,0,,200,,,10535306,Grind,"Mota / Coarse",,1,Varient,"1 KG",,1
+4168,variable,1255512520,"Khapli Gehu Atta",,,taxable,1,0,,0,,,"Atta, Atta > Healthy Atta, Atta > Wheat Atta",https://gutmantra.in/wp-content/uploads/2024/11/SS-Product-Image-5.png,,Grind,"Bareek/ Fine, Mota / Coarse, Normal",1,1,Varient,"1 KG, 5 KG",1,1
+4169,variation,,"Khapli Gehu Atta - Normal, 5 KG",,,taxable,1,0,,0,,750,,,1255512520,Grind,Normal,,1,Varient,"5 KG",,1
+4171,variation,,"Khapli Gehu Atta - Mota / Coarse, 5 KG",,,taxable,1,0,,0,,750,,,1255512520,Grind,"Mota / Coarse",,1,Varient,"5 KG",,1
+4179,variable,1255589673,"Groundnut Oil",,,taxable,1,0,,0,,,"Cold Pressed Oils",https://gutmantra.in/wp-content/uploads/2024/11/Oil-Prod-Images-2.png,,Varient,"1 Liter",1,1,,,,
+4181,variation,,"Groundnut Oil - 1 Liter",,,taxable,1,0,,0,360,399,,,1255589673,Varient,"1 Liter",,1,,,,
+4182,variable,1255589675,"Musturd Oil",,,taxable,1,0,,0,,,"Cold Pressed Oils",https://gutmantra.in/wp-content/uploads/2024/11/Oil-Prod-Images-5.png,,Varient,"1 Liter, 500 ml",1,1,,,,
+4183,variation,,"Musturd Oil - 500 ml",,,taxable,1,0,,0,,250,,,1255589675,Varient,"500 ml",,1,,,,
+4184,variation,,"Musturd Oil - 1 Liter",,,taxable,1,0,,0,450,495,,,1255589675,Varient,"1 Liter",,1,,,,
+4185,variable,1255589677,"Coconut Oil",,,taxable,1,0,,0,,,"Cold Pressed Oils",https://gutmantra.in/wp-content/uploads/2024/11/Oil-Prod-Images-4.png,,Varient,"1 Liter, 500 ml",1,1,,,,
+4186,variation,,"Coconut Oil - 500 ml",,,taxable,1,0,,0,,300,,,1255589677,Varient,"500 ml",,1,,,,
+4187,variation,,"Coconut Oil - 1 Liter",,,taxable,1,0,,0,660,729,,,1255589677,Varient,"1 Liter",,1,,,,
+4188,variable,1255589678,"Safflower Oil",,,taxable,1,0,,0,,,"Cold Pressed Oils",https://gutmantra.in/wp-content/uploads/2024/11/Oil-Prod-Images.png,,Varient,"1 Liter",1,1,,,,
+4189,variable,1255589680,"Sesame Oil",,,taxable,1,0,,0,,,"Cold Pressed Oils",https://gutmantra.in/wp-content/uploads/2024/11/Oil-Prod-Images-1.png,,Varient,"1 Liter, 500 ml",1,1,,,,
+4191,variation,,"Sesame Oil - 1 Liter",,,taxable,1,0,,0,550,609,,,1255589680,Varient,"1 Liter",,1,,,,
+4192,variable,1270661661,"Red Chili Powder",,,taxable,1,0,,0,,,"Handmade Spices",https://gutmantra.in/wp-content/uploads/2024/11/Red-Chilli-2.png,,Varient,"100 Grms, 50 Grms",1,1,,,,
+4193,variation,,"Red Chili Powder - 100 Grms",,,taxable,1,0,,0,,90,,,1270661661,Varient,"100 Grms",,1,,,,
+4194,variable,1270661662,Turmeric,,,taxable,1,0,,0,,,"Handmade Spices",https://gutmantra.in/wp-content/uploads/2024/11/Turmeric-Powder.png,,Varient,"100 Grms, 50 Grms",1,1,,,,
+4195,variation,,"Turmeric - 100 Grms",,,taxable,1,0,,0,,80,,,1270661662,Varient,"100 Grms",,1,,,,
+4196,variable,1270661663,Dhaniya,,,taxable,1,0,,0,,,"Handmade Spices",https://gutmantra.in/wp-content/uploads/2024/11/Coriander-Powder.png,,Varient,"100 Grms, 50 Grms",1,1,,,,
+4197,variation,,"Dhaniya - 100 Grms",,,taxable,1,0,,0,,80,,,1270661663,Varient,"100 Grms",,1,,,,
+4198,variable,1270661664,"Kala Masala",,,taxable,1,0,,0,,,"Handmade Spices",https://gutmantra.in/wp-content/uploads/2024/11/Copy-of-Oil-Prod-Images.png,,Varient,"100 Grms, 50 Grms",1,1,,,,
+4199,variation,,"Kala Masala - 100 Grms",,,taxable,1,0,,0,,80,,,1270661664,Varient,"100 Grms",,1,,,,
+4200,variable,1270661665,"Kanda Lahsun",,,taxable,1,0,,0,,,"Handmade Spices",https://gutmantra.in/wp-content/uploads/2024/11/Copy-of-Oil-Prod-Images-2.png,,Varient,"100 Grms, 50 Grms",1,1,,,,
+4201,variation,,"Kanda Lahsun - 100 Grms",,,taxable,1,0,,0,,80,,,1270661665,Varient,"100 Grms",,1,,,,
+4202,variable,1270661666,"Garam Masala",,,taxable,1,0,,0,,,"Handmade Spices",https://gutmantra.in/wp-content/uploads/2024/11/Copy-of-Oil-Prod-Images-1.png,,Varient,"100 Grms, 50 Grms",1,1,,,,
+4203,variation,,"Garam Masala - 100 Grms",,,taxable,1,0,,0,,80,,,1270661666,Varient,"100 Grms",,1,,,,
+4259,variation,,"Khapli Gehu Atta - Mota / Coarse, 1 KG",,,taxable,1,0,,0,,150,,,1255512520,Grind,"Mota / Coarse",,1,Varient,"1 KG",,1
+4329,variation,,"Khapli Gehu Atta - Bareek/ Fine, 1 KG",,,taxable,1,0,,0,,150,,,1255512520,Grind,"Bareek/ Fine",,1,Varient,"1 KG",,1
+4330,variation,,"Khapli Gehu Atta - Bareek/ Fine, 5 KG",,,taxable,1,0,,0,,750,,,1255512520,Grind,"Bareek/ Fine",,1,Varient,"5 KG",,1
+4332,variation,,"Khapli Gehu Atta - Normal, 1 KG",,,taxable,1,0,,0,,150,,,1255512520,Grind,Normal,,1,Varient,"1 KG",,1
+4335,variation,,"Rice Atta - Normal, 1 KG",,,taxable,1,0,,0,80,88,,,1255512518,Grind,Normal,,1,Varient,"1 KG",,1
+4338,variation,,"Safflower Oil - 1 Liter",,,taxable,1,0,,0,420,469,,,1255589678,Varient,"1 Liter",,1,,,,
+4488,variation,,"Red Chili Powder - 50 Grms",,,taxable,1,0,,0,,50,,,1270661661,Varient,"50 Grms",,1,,,,
+4489,variation,,"Kala Masala - 50 Grms",,,taxable,1,0,,0,,45,,,1270661664,Varient,"50 Grms",,1,,,,
+4490,variation,,"Turmeric - 50 Grms",,,taxable,1,0,,0,,45,,,1270661662,Varient,"50 Grms",,1,,,,
+4491,variation,,"Dhaniya - 50 Grms",,,taxable,1,0,,0,,45,,,1270661663,Varient,"50 Grms",,1,,,,
+4492,variation,,"Kanda Lahsun - 50 Grms",,,taxable,1,0,,0,,45,,,1270661665,Varient,"50 Grms",,1,,,,
+4493,variation,,"Garam Masala - 50 Grms",,,taxable,1,0,,0,,45,,,1270661666,Varient,"50 Grms",,1,,,,
+4542,variation,,"Sesame Oil - 500 ml",,,taxable,1,0,,0,,320,,,1255589680,Varient,"500 ml",,1,,,,
+4621,variable,1302918216,"Sugarless Multigrain Atta",,,taxable,1,0,,1,,,"Atta > Multigrain Atta","https://gutmantra.in/wp-content/uploads/2026/03/Sugar-Less.png, https://gutmantra.in/wp-content/uploads/2026/03/image-2.png",,Varient,"1 KG",1,1,,,,
+4626,variation,,"Sugarless Multigrain Atta - 1 KG",,,taxable,1,0,,0,190,220,,,1302918216,Varient,"1 KG",,1,,,,
+4627,variable,1302918723,"High Protein Multigrain Atta",,,taxable,1,0,,1,,,"Atta > Multigrain Atta","https://gutmantra.in/wp-content/uploads/2026/03/Power-Grain.png, https://gutmantra.in/wp-content/uploads/2026/03/High-Protein-Multigrain.png",,Varient,"1 KG",1,1,,,,
+4628,variation,,"High Protein Multigrain Atta - 1 KG",,,taxable,1,0,,0,180,200,,,1302918723,Varient,"1 KG",,1,,,,
+4630,variable,1302918208,"Gluten Free Multigrain Atta",,,taxable,1,0,,1,,,"Atta > Multigrain Atta","https://gutmantra.in/wp-content/uploads/2026/03/Gluten-Free-Recipe.png, https://gutmantra.in/wp-content/uploads/2026/03/glutenfree.jpeg",,Varient,"1 KG",1,1,,,,
+4631,variation,,"Gluten Free Multigrain Atta - 1 KG",,,taxable,1,0,,0,150,165,,,1302918208,Varient,"1 KG",,1,,,,
+4632,variable,1302913330,"Lil Champ Multigrain Atta",,,taxable,1,0,,1,,,"Atta > Multigrain Atta","https://gutmantra.in/wp-content/uploads/2026/03/Lil-Champ-from-Google-Drive.png, https://gutmantra.in/wp-content/uploads/2026/03/lilchamp.jpeg",,Varient,"1 KG",1,1,,,,
+4633,variation,,"Lil Champ Multigrain Atta - 1 KG",,,taxable,1,0,,0,180,210,,,1302913330,Varient,"1 KG",,1,,,,
+4634,variable,1302719454,"Weight Control Multigrain Atta",,,taxable,1,0,,1,,,"Atta, Atta > Multigrain Atta","https://gutmantra.in/wp-content/uploads/2026/03/Weight-Balance-1.png, https://gutmantra.in/wp-content/uploads/2026/03/Weight-Control-Multigrain.png",,Varient,"1 KG",1,1,,,,
+4635,variation,,"Weight Control Multigrain Atta - 1 KG",,,taxable,1,0,,0,160,180,,,1302719454,Varient,"1 KG",,1,,,,

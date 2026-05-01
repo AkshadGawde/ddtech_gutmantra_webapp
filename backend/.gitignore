@@ -1,0 +1,77 @@
+# ----------------------------
+# 🔐 ENV & SECRETS
+# ----------------------------
+.env
+.env.local
+.env.*.local
+*.env
+
+# Firebase / service accounts
+firebase-applet-config.json
+service-account*.json
+
+# ----------------------------
+# 📦 NODE MODULES
+# ----------------------------
+node_modules/
+*/node_modules/
+
+# ----------------------------
+# 🧱 BUILD OUTPUT
+# ----------------------------
+dist/
+build/
+.next/
+out/
+coverage/
+
+# ----------------------------
+# 🧾 LOGS
+# ----------------------------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# ----------------------------
+# 🧠 OS FILES
+# ----------------------------
+.DS_Store
+Thumbs.db
+
+# ----------------------------
+# 🧪 TEST / CACHE
+# ----------------------------
+.cache/
+.tmp/
+temp/
+
+# ----------------------------
+# 🧰 TYPESCRIPT
+# ----------------------------
+*.tsbuildinfo
+
+# ----------------------------
+# 🔧 IDE / EDITOR
+# ----------------------------
+.vscode/
+.idea/
+
+# ----------------------------
+# 📊 DATABASE / LOCAL FILES
+# ----------------------------
+*.sqlite
+*.db
+
+# ----------------------------
+# 📁 UPLOADS (if any)
+# ----------------------------
+uploads/
+public/uploads/
+
+# ----------------------------
+# 🧪 MISC
+# ----------------------------
+*.pem
+*.key
