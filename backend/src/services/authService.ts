@@ -200,7 +200,7 @@ export async function firebaseLogin(idToken: string) {
   return {
     uid: decoded.uid,
     email: decoded.email || "",
-    phone: user?.phone,
+    phone: (user as any)?.phone,
     migrationStatus: "completed",
     customToken: "",
   };

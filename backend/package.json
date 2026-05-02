@@ -3,7 +3,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "start": "node server.mjs",
+    "build": "tsc",
+    "start": "node dist/server.js",
     "migrate": "tsx scripts/migrateV2.ts",
     "verify": "tsx scripts/verify.ts",
     "dev": "tsx watch server.ts"
@@ -29,7 +30,8 @@
     "@types/bcrypt": "^6.0.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^25.6.0",
+    "ts-node": "^10.9.2",
     "tsx": "^4.7.0",
-    "typescript": "^5.3.3"
+    "typescript": "^5.9.3"
   }
 }

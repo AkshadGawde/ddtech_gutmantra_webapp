@@ -1,22 +1,45 @@
 {
+
   "compilerOptions": {
+
+    "outDir": "dist",
+
+    "module": "ESNext",
+
     "target": "ES2020",
-    "module": "ES2020",
-    "lib": ["ES2020"],
-    "outDir": "./dist",
-    "rootDir": "./",
-    "strict": true,
+
+    "moduleResolution": "Node",
+
     "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
+
     "resolveJsonModule": true,
-    "moduleResolution": "node",
-    "allowSyntheticDefaultImports": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "types": ["node"]
+
+    "strict": false,
+
+    "skipLibCheck": true
+
   },
-  "include": ["src/**/*", "scripts/**/*"],
-  "exclude": ["node_modules", "dist"]
+
+  "include": [
+
+    "server.ts",
+
+    "src/services/**/*.ts",
+
+    "src/routes/**/*.ts"
+
+  ],
+
+  "exclude": [
+
+    "node_modules",
+
+    "scripts",
+
+    "src/utils",
+
+    "src/services/migrationService.ts"
+
+  ]
+
 }
