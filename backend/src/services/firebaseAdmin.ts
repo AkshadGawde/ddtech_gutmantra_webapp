@@ -21,11 +21,13 @@ export function initializeFirebaseAdmin() {
     );
   }
 
-  const serviceAccount = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-  });
+ admin.initializeApp({
+
+  credential: admin.credential.cert(serviceAccount),
+
+});
 
   initialized = true;
   console.log("✅ Firebase Admin initialized");
