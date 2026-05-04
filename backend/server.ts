@@ -192,26 +192,9 @@ app.post("/sync-orders", async (req, res) => {
 
 });
 
-  // ================= FRONTEND =================
-  const vite = await createViteServer({
-    server: { middlewareMode: true },
-  });
-
-  app.use(vite.middlewares);
-  app.use(express.static(path.join(__dirname, "src")));
-
-  app.get("*", async (req, res) => {
-    if (req.path.startsWith("/api/")) {
-      return res.status(404).json({ error: "API not found" });
-    }
-
-    res.type("html");
-    const html = await vite.transformIndexHtml(
-      req.originalUrl,
-      "<!DOCTYPE html><html></html>"
-    );
-    res.end(html);
-  });
+app.get("/", (req, res) => {
+  res.send("🚀 Backend running");
+});
 
   app.listen(PORT, () => {
     console.log(`🚀 Server running at http://localhost:${PORT}`);
