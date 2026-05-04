@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useNavigate } from "react-router-dom";
 
 import Navbar from "./components/Navbar";
 import CartDrawer from "./components/CartDrawer";
@@ -29,69 +29,82 @@ import { AuthProvider } from "./context/AuthContext";
 
 export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const navigate = useNavigate();
+
+  /* ================= NAVIGATION HANDLER ================= */
+  const handleNavigate = (view: string, params?: any) => {
+    if (view === "category") {
+      navigate(`/${params.category}`);
+    }
+  };
 
   return (
     <AuthProvider>
       <CartProvider>
+
+        {/* NAVBAR */}
         <Navbar onOpenCart={() => setIsCartOpen(true)} />
 
+        {/* ROUTES */}
         <Routes>
-  {/* 🏠 HOME */}
-  <Route
-    path="/"
-    element={
-      <main>
-        <Hero />
-        <CategorySection />
-        <ProductGrid />
-        <BrandStory />
-        <OurProcess />
-        <Testimonials />
-        <SocialReel />
-      </main>
-    }
-  />
 
-  {/* 🛒 CATEGORY ROUTES */}
-  {/* ATTA */}
-  <Route path="/atta" element={<CategoryPage />} />
-  <Route path="/atta/:subcategory" element={<CategoryPage />} />
+          {/* ================= HOME ================= */}
+          <Route
+            path="/"
+            element={
+              <main>
+                <Hero />
+                <CategorySection />
+                <ProductGrid onNavigate={handleNavigate} />
+                <BrandStory />
+                <OurProcess />
+                <Testimonials />
+                <SocialReel />
+              </main>
+            }
+          />
 
-  {/* OILS */}
-  <Route path="/oils" element={<CategoryPage />} />
-  <Route path="/oils/:subcategory" element={<CategoryPage />} />
+          {/* ================= CATEGORY ================= */}
+          <Route path="/atta" element={<CategoryPage />} />
+          <Route path="/atta/:subcategory" element={<CategoryPage />} />
 
-  {/* SPICES */}
-  <Route path="/spices" element={<CategoryPage />} />
-  <Route path="/spices/:subcategory" element={<CategoryPage />} />
+          <Route path="/oils" element={<CategoryPage />} />
+          <Route path="/oils/:subcategory" element={<CategoryPage />} />
 
-  {/* 📄 STATIC PAGES */}
-  <Route path="/our-story" element={<OurStory />} />
-  <Route path="/contact" element={<ContactUs />} />
-  <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-  <Route path="/refund-policy" element={<RefundPolicy />} />
-  <Route path="/profile" element={<UserProfile />} />
+          <Route path="/spices" element={<CategoryPage />} />
+          <Route path="/spices/:subcategory" element={<CategoryPage />} />
 
-  {/* 💳 ORDER FLOW */}
-  <Route path="/checkout" element={<CheckoutPage />} />
-  <Route path="/payment" element={<PaymentPage />} />
-  <Route path="/success" element={<SuccessPage />} />
+          {/* ================= STATIC ================= */}
+          <Route path="/our-story" element={<OurStory />} />
+          <Route path="/contact" element={<ContactUs />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/refund-policy" element={<RefundPolicy />} />
+          <Route path="/profile" element={<UserProfile />} />
 
-  {/* ❌ 404 */}
-  <Route
-    path="*"
-    element={
-      <div className="pt-24 text-center text-xl">
-        404 - Page Not Found
-      </div>
-    }
-  />
-</Routes>
+          {/* ================= ORDER FLOW ================= */}
+          <Route path="/checkout" element={<CheckoutPage />} />
+          <Route path="/payment" element={<PaymentPage />} />
+          <Route path="/success" element={<SuccessPage />} />
 
-        {/* GLOBAL COMPONENTS */}
-        <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+          {/* ================= 404 ================= */}
+          <Route
+            path="*"
+            element={
+              <div className="pt-24 text-center text-xl">
+                404 - Page Not Found
+              </div>
+            }
+          />
+        </Routes>
+
+        {/* GLOBAL UI */}
+        <CartDrawer
+          isOpen={isCartOpen}
+          onClose={() => setIsCartOpen(false)}
+        />
         <SocialFloating />
         <Footer />
+
       </CartProvider>
     </AuthProvider>
   );

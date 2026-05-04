@@ -4,11 +4,13 @@ import { useParams, useLocation } from "react-router-dom";
 import { CATEGORIES } from "../constants";
 import { useCart } from "../context/CartContext";
 import { ShoppingBag, Star } from "lucide-react";
+
 import { getProducts, Product } from "../services/productService";
 import { CATEGORY_MAP } from "../constants/categoryMap";
 
 export default function CategoryPage() {
   const { addToCart } = useCart();
+
   const { subcategory } = useParams();
   const location = useLocation();
 
@@ -19,13 +21,15 @@ export default function CategoryPage() {
 
   const category = CATEGORIES.find((c) => c.slug === categorySlug);
 
+  /* ================= LOAD PRODUCTS ================= */
   useEffect(() => {
     const loadProducts = async () => {
       setLoading(true);
-      try {
-        const data = await getProducts();
 
-        console.log("🔥 DB PRODUCTS:", data);
+      try {
+        const allProducts = await getProducts();
+
+        console.log("🔥 NORMALIZED PRODUCTS:", allProducts);
 
         const config = CATEGORY_MAP[categorySlug];
 
@@ -34,49 +38,30 @@ export default function CategoryPage() {
           return;
         }
 
-        const filtered = data
-  .map((p: any) => {
-    const price =
-      Number(p.price) ||
-      Number(p.sellingPrice) ||
-      Number(p.mrp) ||
-      Number(p.cost) ||
-      Number(p.variants?.[0]?.price) ||
-      0;
+        const filtered = allProducts.filter((p: any) => {
+          const name = p.name.toLowerCase();
+          const raw = (p.rawCategory || "").toLowerCase();
 
-    return {
-      id: p.id,
-      name: p.name || p.title || "",
-      price,
-      image: p.image || p.images?.[0] || "/placeholder.png",
-      category: (p.category || "").toLowerCase(),
-    };
-  })
-  .filter((p: any) => {
-    const name = p.name.toLowerCase();
+          /* ===== MAIN CATEGORY MATCH ===== */
+          const mainMatch =
+            p.category === categorySlug ||
+            config.match.some((word: string) =>
+              name.includes(word) || raw.includes(word)
+            );
 
-    const config = CATEGORY_MAP[categorySlug];
-    if (!config) return false;
+          if (!mainMatch) return false;
 
-    const categoryMatch =
+          /* ===== SUB CATEGORY MATCH ===== */
+          if (subcategory && config.sub?.[subcategory]) {
+            return config.sub[subcategory].some((word: string) =>
+              name.includes(word)
+            );
+          }
 
-  p.category?.includes(categorySlug) ||
+          return true;
+        });
 
-  config.match.some((word: string) => name.includes(word));
-
-    if (!subcategory) return categoryMatch;
-
-    const subWords = config.sub?.[subcategory];
-    if (!subWords) return false;
-
-    const subMatch = subWords.some((word: string) =>
-      name.includes(word)
-    );
-
-    return categoryMatch && subMatch;
-  });
-
-        console.log("🔥 FILTERED:", filtered);
+        console.log("🔥 FILTERED PRODUCTS:", filtered);
 
         setProducts(filtered);
       } catch (err) {
@@ -89,6 +74,7 @@ export default function CategoryPage() {
     loadProducts();
   }, [categorySlug, subcategory]);
 
+  /* ================= UI ================= */
   return (
     <div className="pt-32 pb-24">
       <div className="max-w-7xl mx-auto px-6">
@@ -110,13 +96,15 @@ export default function CategoryPage() {
           </p>
         </div>
 
-        {/* PRODUCTS */}
+        {/* PRODUCTS GRID */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+
           {loading ? (
             <div className="col-span-full text-center py-20 opacity-50">
               Loading products...
             </div>
           ) : products.length > 0 ? (
+
             products.map((product, index) => (
               <motion.div
                 key={product.id}
@@ -125,22 +113,26 @@ export default function CategoryPage() {
                 transition={{ delay: index * 0.05 }}
                 className="group bg-white rounded-2xl p-4 shadow-sm hover:shadow-xl transition"
               >
+                {/* IMAGE */}
                 <div className="aspect-square rounded-xl overflow-hidden mb-4">
                   <img
-                    src={product.image}
+                    src={product.image || "/placeholder.png"}
                     alt={product.name}
                     className="w-full h-full object-cover"
                   />
                 </div>
 
+                {/* NAME */}
                 <h3 className="font-bold text-lg">{product.name}</h3>
 
+                {/* RATING */}
                 <div className="flex items-center gap-1 my-2">
                   {[...Array(5)].map((_, i) => (
                     <Star key={i} size={12} className="fill-yellow-400 text-yellow-400" />
                   ))}
                 </div>
 
+                {/* PRICE + CART */}
                 <div className="flex justify-between items-center mt-4">
                   <span className="font-bold text-primary">
                     ₹{product.price}
@@ -153,7 +145,7 @@ export default function CategoryPage() {
                         name: product.name,
                         price: product.price,
                         quantity: 1,
-                        image: product.image,
+                        image: product.image || "",
                       })
                     }
                     className="w-10 h-10 bg-black text-white rounded-full flex items-center justify-center"
@@ -163,6 +155,7 @@ export default function CategoryPage() {
                 </div>
               </motion.div>
             ))
+
           ) : (
             <div className="col-span-full py-20 text-center">
               <p className="text-xl font-bold opacity-30">
@@ -170,9 +163,9 @@ export default function CategoryPage() {
               </p>
             </div>
           )}
+
         </div>
       </div>
     </div>
-    
   );
 }
