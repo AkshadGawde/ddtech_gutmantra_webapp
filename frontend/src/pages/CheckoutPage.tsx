@@ -1,208 +1,227 @@
 import { motion } from "motion/react";
-import { ArrowLeft, MapPin, Phone, User, Mail, CreditCard, ShieldCheck } from "lucide-react";
+import {
+  ArrowLeft,
+  MapPin,
+  Phone,
+  User,
+  Mail,
+  CreditCard,
+  ShieldCheck,
+} from "lucide-react";
+
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
-import { useState, useEffect } from "react";
-import { db } from "@/lib/firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { nanoid } from "nanoid";
+
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 interface CheckoutPageProps {
-  onBack: () => void;
-  onNext: () => void;
+  onBack?: () => void;
+  onNext?: () => void;
 }
 
 export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
-  const { items, totalAmount } = useCart();
+  const { items, totalAmount, clearCart } = useCart();
   const { user } = useAuth();
+
   const [loading, setLoading] = useState(false);
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
 
+  // 🔥 NEW: PAYMENT MODE
+  const [paymentMode, setPaymentMode] = useState<"COD" | "ONLINE">("COD");
+
+  const navigate = useNavigate();
+
+  const handleBack = () => {
+    onBack ? onBack() : navigate("/");
+  };
+
+  const handleNext = () => {
+    onNext ? onNext() : navigate("/success");
+  };
+
+  /* ================= ORDER FLOW ================= */
   const handleCheckout = async () => {
     if (!user) {
       alert("Please login to proceed");
       return;
     }
+
     if (!address || !phone) {
-      alert("Please fill in all details");
+      alert("Please fill all details");
       return;
     }
 
     setLoading(true);
+
     try {
-      const orderId = nanoid(10).toUpperCase();
-      const orderData = {
-        id: orderId,
-        userId: user.uid,
-        items: items.map(item => ({
-          productId: item.id,
+      // 🔥 CRITICAL: USER MAPPING ID
+      const orderID = `${user.uid}_${Date.now()}`;
+
+      // 🔥 FORMAT FOR PETPOOJA
+      const formattedItems = items.map((item) => {
+        if (!item.petpoojaId) {
+          throw new Error(`Missing Petpooja EID for item: ${item.name}`);
+        }
+        return {
+          id: item.petpoojaId,   // ← EID only, e.g. "V1255595880"
           name: item.name,
-          quantity: item.quantity,
           price: item.price,
-          variant: item.variant || ""
-        })),
-        totalAmount,
-        paymentStatus: "pending",
-        orderStatus: "placed",
-        shippingAddress: address,
+          quantity: item.quantity,
+        };
+      });
+
+      const payload = {
+        orderID,
+        name: user.displayName || "Guest",
         phone,
-        createdAt: serverTimestamp()
+        email: user.email || "",
+        address,
+        items: formattedItems,
+        paymentMode, // 🔥 COD / ONLINE
       };
 
-      await addDoc(collection(db, "orders"), orderData);
-      onNext();
-    } catch (error) {
-      console.error("Order creation failed:", error);
-      alert("Failed to create order. Please try again.");
+      console.log("🚀 Sending Order:", payload);
+
+      const res = await fetch("https://endpoint-rosy.vercel.app/api/create-order", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (!data.success) {
+        throw new Error("Order failed");
+      }
+
+      console.log("✅ Order Sent to Petpooja:", data);
+
+      clearCart();
+      handleNext();
+    } catch (err) {
+      console.error("❌ Checkout Error:", err);
+      const errorMsg = err instanceof Error ? err.message : "Failed to place order";
+      if (errorMsg.includes("Missing Petpooja EID")) {
+        alert("One or more items are missing Petpooja ID. Please contact support.");
+      } else {
+        alert(errorMsg);
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  /* ================= EMPTY CART ================= */
+  if (items.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center pt-32">
+        <div className="text-center">
+          <h1 className="text-4xl font-bold mb-4">Cart is empty</h1>
+          <button onClick={() => navigate("/")}>Go Shop</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-bg-warm pt-32 pb-24 px-6">
+    <div className="min-h-screen pt-32 pb-24 px-6">
       <div className="max-w-7xl mx-auto grid lg:grid-cols-12 gap-12">
-        {/* Left: Form */}
+
+        {/* LEFT */}
         <div className="lg:col-span-7 space-y-10">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-          >
-            <button 
-              onClick={onBack}
-              className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest opacity-40 hover:opacity-100 transition-opacity mb-8"
-            >
-              <ArrowLeft size={16} />
-              Back to Shop
-            </button>
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tighter mb-4">Shipping <span className="text-primary italic font-serif font-normal">Details</span>.</h1>
-            <p className="text-accent/50 font-medium max-w-md">Please enter your delivery information below to proceed with your order.</p>
-          </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="glass p-8 md:p-12 rounded-[2.5rem] space-y-8"
-          >
-            <div className="grid md:grid-cols-2 gap-8">
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest opacity-40 ml-4">Full Name</label>
-                <div className="relative">
-                  <User size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-primary" />
-                  <input 
-                    type="text" 
-                    value={user?.displayName || ""}
-                    readOnly
-                    className="w-full bg-white/50 border border-black/5 rounded-2xl py-4 pl-14 pr-6 text-sm focus:outline-none focus:border-primary transition-all opacity-60"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest opacity-40 ml-4">Phone Number</label>
-                <div className="relative">
-                  <Phone size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-primary" />
-                  <input 
-                    type="tel" 
-                    placeholder="+91 98765 43210" 
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full bg-white/50 border border-black/5 rounded-2xl py-4 pl-14 pr-6 text-sm focus:outline-none focus:border-primary transition-all"
-                  />
-                </div>
-              </div>
-            </div>
+          <button onClick={handleBack}>← Back</button>
 
+          <h1 className="text-5xl font-bold">
+            Checkout
+          </h1>
+
+          {/* FORM */}
+          <div className="space-y-6">
+
+            {/* PHONE */}
+            <input
+              type="tel"
+              placeholder="Phone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full p-4 border rounded-xl"
+            />
+
+            {/* ADDRESS */}
+            <textarea
+              placeholder="Address"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              className="w-full p-4 border rounded-xl"
+            />
+
+            {/* 🔥 PAYMENT MODE */}
             <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest opacity-40 ml-4">Email Address</label>
-              <div className="relative">
-                <Mail size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-primary" />
-                <input 
-                  type="email" 
-                  value={user?.email || ""}
-                  readOnly
-                  className="w-full bg-white/50 border border-black/5 rounded-2xl py-4 pl-14 pr-6 text-sm focus:outline-none focus:border-primary transition-all opacity-60"
-                />
+              <p className="font-bold">Payment Method</p>
+
+              <div className="flex gap-4">
+
+                <button
+                  onClick={() => setPaymentMode("COD")}
+                  className={`px-6 py-3 rounded-xl border ${
+                    paymentMode === "COD"
+                      ? "bg-black text-white"
+                      : ""
+                  }`}
+                >
+                  Cash on Delivery
+                </button>
+
+                <button
+                  onClick={() => setPaymentMode("ONLINE")}
+                  className={`px-6 py-3 rounded-xl border ${
+                    paymentMode === "ONLINE"
+                      ? "bg-black text-white"
+                      : ""
+                  }`}
+                >
+                  Online Payment
+                </button>
+
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest opacity-40 ml-4">Delivery Address</label>
-              <div className="relative">
-                <MapPin size={18} className="absolute left-5 top-4 text-primary" />
-                <textarea 
-                  rows={4}
-                  placeholder="Shop No. 4, Green Park, Baner, Pune, Maharashtra 411045" 
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  className="w-full bg-white/50 border border-black/5 rounded-2xl py-4 pl-14 pr-6 text-sm focus:outline-none focus:border-primary transition-all resize-none"
-                />
-              </div>
-            </div>
-
-            <button 
+            {/* PLACE ORDER */}
+            <button
               onClick={handleCheckout}
               disabled={loading}
-              className="w-full py-5 bg-primary text-white rounded-full font-bold uppercase tracking-widest hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 group disabled:opacity-50"
+              className="w-full py-4 bg-black text-white rounded-xl"
             >
-              {loading ? "Creating Order..." : "Continue to Payment"}
-              <CreditCard size={18} className="group-hover:translate-x-1 transition-transform" />
+              {loading ? "Placing Order..." : "Place Order"}
             </button>
-          </motion.div>
+          </div>
         </div>
 
-        {/* Right: Summary */}
+        {/* RIGHT */}
         <div className="lg:col-span-5">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2 }}
-            className="bg-white rounded-[2.5rem] p-8 md:p-10 shadow-sm border border-black/5 sticky top-32"
-          >
-            <h2 className="text-2xl font-bold tracking-tight mb-8">Order Summary</h2>
-            
-            <div className="space-y-6 mb-8 max-h-[40vh] overflow-y-auto pr-4 custom-scrollbar">
-              {items.map((item) => (
-                <div key={`${item.id}-${item.variant}`} className="flex gap-4">
-                  <div className="w-16 h-16 rounded-xl overflow-hidden bg-black/5 shrink-0">
-                    <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-bold text-sm leading-tight">{item.name}</h3>
-                    <p className="text-[10px] font-bold opacity-30 uppercase tracking-widest mt-1">Qty: {item.quantity}</p>
-                  </div>
-                  <p className="font-bold text-sm">₹{item.price * item.quantity}</p>
-                </div>
-              ))}
+          <div className="border p-6 rounded-xl">
+
+            <h2 className="text-xl font-bold mb-4">Summary</h2>
+
+            {items.map((item) => (
+              <div key={item.id} className="flex justify-between mb-2">
+                <span>{item.name} x {item.quantity}</span>
+                <span>₹{item.price * item.quantity}</span>
+              </div>
+            ))}
+
+            <div className="mt-4 font-bold text-lg">
+              Total: ₹{totalAmount}
             </div>
 
-            <div className="space-y-4 pt-8 border-t border-black/5">
-              <div className="flex justify-between text-sm font-medium opacity-60">
-                <span>Subtotal</span>
-                <span>₹{totalAmount}</span>
-              </div>
-              <div className="flex justify-between text-sm font-medium opacity-60">
-                <span>Delivery</span>
-                <span className="text-secondary">FREE</span>
-              </div>
-              <div className="flex justify-between text-2xl font-bold pt-4">
-                <span>Total</span>
-                <span className="text-primary">₹{totalAmount}</span>
-              </div>
-            </div>
-
-            <div className="mt-10 p-6 bg-secondary/5 rounded-2xl flex items-center gap-4">
-              <div className="w-10 h-10 bg-secondary/20 rounded-full flex items-center justify-center text-secondary">
-                <ShieldCheck size={20} />
-              </div>
-              <div>
-                <p className="text-xs font-bold uppercase tracking-widest opacity-50">Secure Checkout</p>
-                <p className="text-sm font-bold">Your data is protected</p>
-              </div>
-            </div>
-          </motion.div>
+          </div>
         </div>
+
       </div>
     </div>
   );

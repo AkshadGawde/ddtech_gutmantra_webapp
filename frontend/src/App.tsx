@@ -4,6 +4,7 @@ import { Routes, Route, useNavigate } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import CartDrawer from "./components/CartDrawer";
 import SocialFloating from "./components/SocialFloating";
+import AddToCartAnimation from "./components/AddToCartAnimation";
 
 import Hero from "./pages/Hero";
 import OurProcess from "./pages/OurProcess";
@@ -53,13 +54,13 @@ export default function App() {
             path="/"
             element={
               <main>
-                <Hero />
-                <CategorySection />
+                <Hero onNavigate={handleNavigate} />
+                <CategorySection onNavigate={handleNavigate} />
                 <ProductGrid onNavigate={handleNavigate} />
                 <BrandStory />
                 <OurProcess />
                 <Testimonials />
-                <SocialReel />
+                <SocialReel onNavigate={handleNavigate} />
               </main>
             }
           />
@@ -79,7 +80,7 @@ export default function App() {
           <Route path="/contact" element={<ContactUs />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/refund-policy" element={<RefundPolicy />} />
-          <Route path="/profile" element={<UserProfile />} />
+          <Route path="/profile" element={<UserProfile onNavigate={handleNavigate} />} />
 
           {/* ================= ORDER FLOW ================= */}
           <Route path="/checkout" element={<CheckoutPage />} />
@@ -101,8 +102,13 @@ export default function App() {
         <CartDrawer
           isOpen={isCartOpen}
           onClose={() => setIsCartOpen(false)}
+          onCheckout={() => {
+            setIsCartOpen(false);
+            navigate("/checkout");
+          }}
         />
         <SocialFloating />
+        <AddToCartAnimation />
         <Footer />
 
       </CartProvider>

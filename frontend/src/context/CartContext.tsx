@@ -7,6 +7,8 @@ interface CartItem {
   quantity: number;
   image: string;
   variant?: string;
+  petpoojaId?: string;
+  category?: string;
 }
 
 interface CartContextType {

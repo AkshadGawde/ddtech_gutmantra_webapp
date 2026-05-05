@@ -61,9 +61,12 @@ export default function CategoryPage() {
           return true;
         });
 
-        console.log("🔥 FILTERED PRODUCTS:", filtered);
+        // Deduplicate by product ID
+        const uniqueProducts = Array.from(new Map(filtered.map((p: any) => [p.id, p])).values());
 
-        setProducts(filtered);
+        console.log("🔥 FILTERED PRODUCTS:", uniqueProducts);
+
+        setProducts(uniqueProducts);
       } catch (err) {
         console.error("❌ Error fetching products:", err);
       } finally {

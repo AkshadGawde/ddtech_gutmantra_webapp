@@ -3,6 +3,9 @@ import admin from "firebase-admin";
 // ---------- TYPES ----------
 type PetPoojaVariation = {
   variationid?: string;
+  id?: string;
+  eid?: string;
+  EID?: string;
   name?: string;
   groupname?: string;
   price?: string;
@@ -27,7 +30,10 @@ type PetPoojaCategory = {
 };
 
 // ---------- MAIN FUNCTION ----------
-export async function syncMenuToFirestore(db: FirebaseFirestore.Firestore, payload: any) {
+export async function syncMenuToFirestore(
+  db: FirebaseFirestore.Firestore,
+  payload: any
+) {
   if (!payload || !payload.items) {
     throw new Error("Invalid payload received");
   }
@@ -41,7 +47,8 @@ export async function syncMenuToFirestore(db: FirebaseFirestore.Firestore, paylo
 
   categories.forEach((cat) => {
     if (cat.categoryid) {
-      categoryMap[cat.categoryid] = cat.categoryname || "Uncategorized";
+      categoryMap[cat.categoryid] =
+        cat.categoryname || "Uncategorized";
     }
   });
 
@@ -103,30 +110,44 @@ export async function syncMenuToFirestore(db: FirebaseFirestore.Firestore, paylo
               },
             ];
 
+      const mappedVariants = variants.map((v: PetPoojaVariation) => {
+        // 🔥 EID EXTRACTION LOGIC
+        let petpoojaId =
+          v.eid ||
+          v.EID ||
+          (v.id ? `V${v.id}` : null);
+
+        // 🔥 DEBUG LOGS (VERY IMPORTANT)
+        console.log("📦 ITEM:", item.itemname);
+        console.log("🔍 VARIATION RAW:", v);
+        console.log("🎯 EXTRACTED EID:", petpoojaId);
+
+        return {
+          price: parseFloat(v.price || "0"),
+          quantity: v.name || "Standard",
+          grind: null,
+          sku: null,
+          petpoojaId: petpoojaId, // ✅ MAIN FIX
+        };
+      });
+
       batch.set(
         ref,
         {
           name: item.itemname || "",
-
           category:
-            categoryMap[item.item_categoryid || ""] || "Uncategorized",
-
+            categoryMap[item.item_categoryid || ""] ||
+            "Uncategorized",
           description: item.itemdescription || "",
-
           images: item.item_image_url
             ? [item.item_image_url]
             : [],
-
           sku: item.itemid,
 
-          variants: variants.map((v: PetPoojaVariation) => ({
-            price: parseFloat(v.price || "0"),
-            quantity: v.name || "Standard",
-            grind: null,
-            sku: null,
-          })),
+          variants: mappedVariants, // ✅ UPDATED
 
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt:
+            admin.firestore.FieldValue.serverTimestamp(),
         },
         { merge: true }
       );

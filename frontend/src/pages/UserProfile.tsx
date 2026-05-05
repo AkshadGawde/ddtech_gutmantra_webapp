@@ -1,130 +1,248 @@
 import { motion } from "motion/react";
-import { LogOut, Mail, MapPin, Phone, Calendar, Package, Loader, Edit2, Save, X, Plus } from "lucide-react";
+
+import {
+
+  LogOut,
+
+  Mail,
+
+  MapPin,
+
+  Phone,
+
+  Calendar,
+
+  Package,
+
+  Loader,
+
+  Edit2,
+
+  Save
+
+} from "lucide-react";
+
 import { useAuth } from "@/context/AuthContext";
+
 import { useState, useEffect } from "react";
-import { collection, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
+
+import {
+
+  collection,
+
+  query,
+
+  where,
+
+  onSnapshot,
+
+  doc,
+
+  updateDoc,
+
+  orderBy
+
+} from "firebase/firestore";
+
 import { db } from "@/lib/firebase";
 
 interface Order {
-  id: string;
-  date: string;
-  total: number;
-  status: string;
-  items: any[];
-  paymentMethod: string;
-  transactionId?: string;
-}
 
-interface Address {
   id: string;
-  fullName: string;
-  phone: string;
-  street: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  isDefault: boolean;
+
+  orderID: string;
+
+  status: string;
+
+  statusLabel: string;
+
+  items: Array<{ name: string; price: number; quantity: number }>;
+
+  total: number;
+
+  paymentMode: string;
+
+  createdAt: any;
+
+  updatedAt: any;
+
 }
 
 interface UserProfileProps {
+
   onNavigate: (view: any) => void;
+
 }
 
 export default function UserProfile({ onNavigate }: UserProfileProps) {
+
   const { user, userData, logout } = useAuth();
+
   const [orders, setOrders] = useState<Order[]>([]);
+
   const [loading, setLoading] = useState(true);
+
   const [isEditing, setIsEditing] = useState(false);
-  const [addresses, setAddresses] = useState<Address[]>([]);
-  const [showAddressForm, setShowAddressForm] = useState(false);
 
   const [editData, setEditData] = useState({
+
     name: userData?.name || "",
+
     phone: userData?.phone || "",
+
     street: userData?.street || "",
+
     city: userData?.city || "",
+
     state: userData?.state || "",
+
     zipCode: userData?.zipCode || "",
+
   });
 
+  /* ================= REALTIME ORDERS ================= */
+
   useEffect(() => {
-    if (user?.uid) {
-      fetchOrders();
-      loadAddresses();
-    }
+
+    if (!user?.uid) return;
+
+    setLoading(true);
+
+    const q = query(
+
+      collection(db, "orders"),
+
+      where("userId", "==", user.uid),
+
+      orderBy("createdAt", "desc")
+
+    );
+
+    const unsubscribe = onSnapshot(
+
+      q,
+
+      (snapshot) => {
+
+        const ordersData = snapshot.docs.map((doc) => ({
+
+          id: doc.id,
+
+          ...doc.data(),
+
+        })) as Order[];
+
+        setOrders(ordersData);
+
+        setLoading(false);
+
+      },
+
+      (error) => {
+
+        console.error("❌ Realtime error:", error);
+
+        setLoading(false);
+
+      }
+
+    );
+
+    return () => unsubscribe();
+
   }, [user?.uid]);
 
-  useEffect(() => {
-    setEditData({
-      name: userData?.name || "",
-      phone: userData?.phone || "",
-      street: userData?.street || "",
-      city: userData?.city || "",
-      state: userData?.state || "",
-      zipCode: userData?.zipCode || "",
-    });
-  }, [userData]);
+  /* ================= STATUS MAPPING ================= */
 
-  const fetchOrders = async () => {
-    try {
-      const ordersQuery = query(
-        collection(db, "orders"),
-        where("userId", "==", user?.uid)
-      );
-      const snapshot = await getDocs(ordersQuery);
-      const ordersData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      } as Order));
-      setOrders(ordersData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-    } catch (error) {
-      console.error("Error fetching orders:", error);
-    } finally {
-      setLoading(false);
+  const mapStatus = (status: string) => {
+
+    switch (status) {
+
+      case "1":
+
+        return "processing";
+
+      case "10":
+
+        return "completed";
+
+      case "-1":
+
+        return "cancelled";
+
+      case "4":
+
+        return "dispatched";
+
+      case "5":
+
+        return "ready";
+
+      default:
+
+        return "pending";
+
     }
+
   };
 
-  const loadAddresses = async () => {
-    try {
-      if (userData?.addresses) {
-        setAddresses(userData.addresses);
-      }
-    } catch (error) {
-      console.error("Error loading addresses:", error);
-    }
-  };
+  /* ================= PROFILE SAVE ================= */
 
   const handleSaveProfile = async () => {
+
     try {
+
       if (!user?.uid) return;
+
       const userRef = doc(db, "users", user.uid);
+
       await updateDoc(userRef, {
+
         name: editData.name,
+
         phone: editData.phone,
+
         street: editData.street,
+
         city: editData.city,
+
         state: editData.state,
+
         zipCode: editData.zipCode,
+
       });
+
       setIsEditing(false);
+
     } catch (error) {
+
       console.error("Error saving profile:", error);
+
     }
+
   };
 
   const handleLogout = async () => {
+
     await logout();
+
     onNavigate("home");
+
   };
 
   const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n.charAt(0).toUpperCase())
-      .join("")
-      .slice(0, 2);
-  };
 
+    return name
+
+      ?.split(" ")
+
+      .map((n) => n.charAt(0).toUpperCase())
+
+      .join("")
+
+      .slice(0, 2);
+
+  };
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary/5 to-white pt-28 pb-12">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
@@ -432,126 +550,166 @@ export default function UserProfile({ onNavigate }: UserProfileProps) {
         </motion.div>
 
         {/* Order History */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="bg-white rounded-2xl border-2 border-primary/10 p-6 shadow-md"
-        >
-          <h3 className="text-lg font-bold text-primary mb-6 flex items-center gap-2">
-            <Package size={24} />
-            Order History
-          </h3>
+        {/* Order History */}
+<motion.div
+  initial={{ opacity: 0, y: 20 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ delay: 0.5 }}
+  className="bg-white rounded-2xl border-2 border-primary/10 p-6 shadow-md"
+>
+  <h3 className="text-lg font-bold text-primary mb-6 flex items-center gap-2">
+    <Package size={24} />
+    Order History
+  </h3>
 
-          {loading ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader className="animate-spin text-primary" size={40} />
-            </div>
-          ) : orders.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="bg-primary/5 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Package size={40} className="text-primary/30" />
+  {loading ? (
+    <div className="flex items-center justify-center py-16">
+      <Loader className="animate-spin text-primary" size={40} />
+    </div>
+  ) : orders.length === 0 ? (
+    <div className="text-center py-16">
+      <div className="bg-primary/5 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+        <Package size={40} className="text-primary/30" />
+      </div>
+      <p className="text-gray-600 font-bold mb-4 text-lg">No orders yet</p>
+      <p className="text-gray-500 text-sm mb-6">
+        Start shopping to see your orders here
+      </p>
+      <button
+        onClick={() => onNavigate("category", { category: "atta" })}
+        className="px-8 py-3 bg-primary text-white rounded-xl hover:bg-primary/90 transition-all font-bold uppercase text-sm tracking-wider inline-block"
+      >
+        Start Shopping
+      </button>
+    </div>
+  ) : (
+    <div className="space-y-4">
+      {orders.map((order, index) => {
+        const normalizedStatus = mapStatus(order.status || "");
+
+        return (
+          <motion.div
+            key={order.id}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.5 + index * 0.05 }}
+            className="border-2 border-gray-100 rounded-xl p-5 hover:border-primary/30 transition-all"
+          >
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+
+              {/* LEFT */}
+              <div className="flex-1 min-w-[250px]">
+                <div className="flex items-center gap-2 mb-3 flex-wrap">
+                  <p className="text-sm font-bold text-primary">
+                    Order #{order.id.slice(0, 8).toUpperCase()}
+                  </p>
+
+                  {(() => {
+                    const statusLabel = order.statusLabel || normalizedStatus;
+                    const badgeClass = (() => {
+                      switch (order.status) {
+                        case "10":   return "bg-green-100 text-green-700";
+                        case "1":
+                        case "2":    return "bg-blue-100 text-blue-700";
+                        case "4":
+                        case "5":    return "bg-amber-100 text-amber-700";
+                        case "-1":   return "bg-red-100 text-red-700";
+                        default:     return "bg-yellow-100 text-yellow-700";
+                      }
+                    })();
+                    return (
+                      <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${badgeClass}`}>
+                        {statusLabel}
+                      </span>
+                    );
+                  })()}
+                </div>
+
+                <p className="text-xs text-gray-500 mb-3 font-medium">
+                  {order.updatedAt
+                    ? new Date(order.updatedAt.seconds * 1000).toLocaleDateString("en-IN", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                    : "Just now"}
+                </p>
+
+                <div className="text-xs text-gray-600 space-y-1 font-medium">
+                  <p>
+                    <span className="font-bold">Items:</span>{" "}
+                    {order.items?.length || 0}
+                  </p>
+                </div>
               </div>
-              <p className="text-gray-600 font-bold mb-4 text-lg">No orders yet</p>
-              <p className="text-gray-500 text-sm mb-6">
-                Start shopping to see your orders here
-              </p>
-              <button
-                onClick={() => onNavigate("category", { category: "atta" })}
-                className="px-8 py-3 bg-primary text-white rounded-xl hover:bg-primary/90 transition-all font-bold uppercase text-sm tracking-wider inline-block"
-              >
-                Start Shopping
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {orders.map((order, index) => (
-                <motion.div
-                  key={order.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.5 + index * 0.05 }}
-                  className="border-2 border-gray-100 rounded-xl p-5 hover:border-primary/30 transition-all"
-                >
-                  <div className="flex items-start justify-between gap-4 flex-wrap">
-                    <div className="flex-1 min-w-[250px]">
-                      <div className="flex items-center gap-2 mb-3 flex-wrap">
-                        <p className="text-sm font-bold text-primary">
-                          Order #{order.id.slice(0, 8).toUpperCase()}
-                        </p>
-                        <span
-                          className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${
-                            order.status === "completed"
-                              ? "bg-green-100 text-green-700"
-                              : order.status === "pending"
-                              ? "bg-yellow-100 text-yellow-700"
-                              : order.status === "cancelled"
-                              ? "bg-red-100 text-red-700"
-                              : "bg-gray-100 text-gray-700"
-                          }`}
-                        >
-                          {order.status?.charAt(0).toUpperCase() +
-                            order.status?.slice(1)}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-500 mb-3 font-medium">
-                        {new Date(order.date).toLocaleDateString("en-IN", {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
-                      <div className="text-xs text-gray-600 space-y-1 font-medium">
-                        <p>
-                          <span className="font-bold">Items:</span> {order.items?.length || 0}
-                        </p>
-                        <p>
-                          <span className="font-bold">Payment:</span> {order.paymentMethod}
-                        </p>
-                        {order.transactionId && (
-                          <p>
-                            <span className="font-bold">Transaction ID:</span>{" "}
-                            {order.transactionId}
-                          </p>
-                        )}
-                      </div>
-                    </div>
 
-                    <div className="text-right">
-                      <p className="text-xs text-gray-500 font-semibold mb-1 uppercase">
-                        Order Total
-                      </p>
-                      <p className="text-3xl font-bold text-primary">
-                        ₹{order.total?.toFixed(2)}
-                      </p>
-                    </div>
-                  </div>
+              {/* RIGHT */}
+              <div className="text-right flex flex-col items-end gap-3">
+                <p className="text-xs text-gray-500 font-semibold uppercase">
+                  Order Total
+                </p>
+                <p className="text-3xl font-bold text-primary">
+                  ₹{order.total?.toFixed(2)}
+                </p>
+                <p className="text-xs text-gray-400 font-medium">{order.paymentMode || "COD"}</p>
 
-                  {/* Order Items Preview */}
-                  {order.items && order.items.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-gray-200">
-                      <p className="text-xs font-bold text-gray-600 mb-3 uppercase tracking-wider">
-                        Items Ordered:
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {order.items.map((item, idx) => (
-                          <span
-                            key={idx}
-                            className="text-xs bg-primary/10 text-primary px-3 py-1.5 rounded-lg font-semibold"
-                          >
-                            {item.name} × {item.quantity}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </motion.div>
-              ))}
+                {/* CANCEL BUTTON */}
+                {normalizedStatus === "pending" && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await fetch("https://endpoint-rosy.vercel.app/api/cancel-order", {
+                          method: "POST",
+                          headers: {
+                            "Content-Type": "application/json"
+                          },
+                          body: JSON.stringify({
+                            orderID: order.id,
+                            reason: "User cancelled from app"
+                          })
+                        });
+
+                        alert("Order cancellation requested");
+                      } catch (err) {
+                        console.error(err);
+                        alert("Failed to cancel order");
+                      }
+                    }}
+                    className="px-4 py-2 text-xs font-bold uppercase bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition"
+                  >
+                    Cancel Order
+                  </button>
+                )}
+              </div>
+
             </div>
-          )}
-        </motion.div>
+
+            {/* ITEMS */}
+            {order.items && order.items.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <p className="text-xs font-bold text-gray-600 mb-3 uppercase tracking-wider">
+                  Items Ordered:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {order.items.map((item, idx) => (
+                    <span
+                      key={idx}
+                      className="text-xs bg-primary/10 text-primary px-3 py-1.5 rounded-lg font-semibold"
+                    >
+                      {item.name} × {item.quantity}  —  ₹{(item.price * item.quantity).toFixed(0)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </motion.div>
+        );
+      })}
+    </div>
+  )}
+</motion.div>
       </div>
     </div>
   );

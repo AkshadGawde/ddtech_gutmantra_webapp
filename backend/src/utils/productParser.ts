@@ -5,10 +5,17 @@ import { getFirestoreDb } from "../services/firebaseAdmin.js";
 /* -------- TYPES -------- */
 
 interface ProductVariant {
+
   grind?: string | null;
+
   quantity?: string | null;
+
   price: number;
+
   sku?: string | null;
+
+  petpoojaId?: string | null;
+
 }
 
 interface Product {
