@@ -105,31 +105,31 @@ export async function syncMenuToFirestore(
           ? item.variation
           : [
               {
-                price: item.price,
-                name: "Default",
-              },
+
+    price: item.price,
+
+    name: "Default",
+
+    petpoojaId: item.itemid ? `V${item.itemid}` : null,
+
+  },
             ];
 
       const mappedVariants = variants.map((v: PetPoojaVariation) => {
-        // 🔥 EID EXTRACTION LOGIC
-        let petpoojaId =
-          v.eid ||
-          v.EID ||
-          (v.id ? `V${v.id}` : null);
+  let petpoojaId = v.variationid
+    ? `V${v.variationid}`
+    : item.itemid
+    ? `V${item.itemid}` // 🔥 fallback for simple items
+    : null;
 
-        // 🔥 DEBUG LOGS (VERY IMPORTANT)
-        console.log("📦 ITEM:", item.itemname);
-        console.log("🔍 VARIATION RAW:", v);
-        console.log("🎯 EXTRACTED EID:", petpoojaId);
-
-        return {
-          price: parseFloat(v.price || "0"),
-          quantity: v.name || "Standard",
-          grind: null,
-          sku: null,
-          petpoojaId: petpoojaId, // ✅ MAIN FIX
-        };
-      });
+  return {
+    price: parseFloat(v.price || "0"),
+    quantity: v.name || "Standard",
+    grind: null,
+    sku: null,
+    petpoojaId,
+  };
+});
 
       batch.set(
         ref,
