@@ -37,7 +37,7 @@ export const CATEGORIES: Category[] = [
   },
   {
     id: "cat-2",
-    name: "Cold Pressed Oils",
+    name: "Cold Pressed Oil",
     slug: "oils",
     image: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&q=80&w=800",
     description: "Pure, unrefined oils extracted using traditional methods.",

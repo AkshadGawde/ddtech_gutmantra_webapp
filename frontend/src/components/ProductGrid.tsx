@@ -5,7 +5,7 @@ import { CATEGORIES } from "@/constants";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/context/CartContext";
 import { getProducts, Product } from "../services/productService";
-
+import { getCloudinaryImage } from "../utils/cloudinary";
 interface ProductGridProps {
   onNavigate: (view: any, params?: any) => void;
 }
@@ -106,9 +106,9 @@ export default function ProductGrid({ onNavigate }: ProductGridProps) {
 
           {bestSellers.map((product, index) => {
             const image =
-              product.image ||
-              product.images?.[0] ||
-              "/placeholder.png";
+  product.image && product.image.includes("cloudinary")
+    ? product.image
+    : getCloudinaryImage(product.id);
 
             const price =
               Number(product.price) ||
@@ -127,10 +127,20 @@ export default function ProductGrid({ onNavigate }: ProductGridProps) {
                 {/* IMAGE */}
                 <div className="relative aspect-square rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden mb-4 sm:mb-6">
                   <img
-                    src={image}
-                    alt={product.name}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                  />
+
+  src={image}
+
+  alt={product.name}
+
+  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+
+  onError={(e) => {
+
+    (e.currentTarget as HTMLImageElement).src = "/placeholder.png";
+
+  }}
+
+/>
 
                   {/* TAG */}
                   <div className="absolute top-4 left-4 px-3 py-1 bg-primary text-white text-[10px] font-bold uppercase tracking-widest rounded-full">

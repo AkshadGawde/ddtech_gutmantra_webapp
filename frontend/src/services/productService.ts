@@ -7,6 +7,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 
+import { getCloudinaryImage } from "../utils/cloudinary";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "../lib/firebase";
 
@@ -102,24 +103,34 @@ function normalizeCategory(raw: string): "atta" | "oils" | "spices" | "other" {
  * Converts raw Firestore product → clean frontend product
  */
 export function normalizeProduct(p: any): Product {
+
   return {
+
     id: p.id,
 
     name: p.name || p.itemname || "",
 
     price:
+
       Number(p.price) ||
+
       Number(p.sellingPrice) ||
+
       Number(p.mrp) ||
+
       Number(p.variants?.[0]?.price) ||
-      Number(p.variation?.[0]?.price) ||
+
       0,
 
+    // 🔥 MAIN FIX HERE
+
     image:
+
       p.image ||
+
       p.images?.[0] ||
-      p.item_image_url ||
-      "",
+
+      getCloudinaryImage(p.id),
 
     images: p.images || [],
 
@@ -128,17 +139,23 @@ export function normalizeProduct(p: any): Product {
     rawCategory: p.category || p.categoryname || "",
 
     description:
+
       p.description ||
+
       p.itemdescription ||
+
       "",
 
     variants:
+
       p.variants ||
+
       p.variation ||
+
       [],
 
     createdAt: p.createdAt || null,
-    
+
   };
-  
+
 }

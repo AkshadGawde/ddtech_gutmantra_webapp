@@ -221,7 +221,7 @@ export default function AdminPanel() {
               <tr key={product.id} className="hover:bg-bg-warm/50 transition-colors">
                 <td className="p-6">
                   <div className="flex items-center gap-4">
-                    <img src={product.images[0]} className="w-12 h-12 rounded-lg object-cover" />
+                    <img src={product.image || "/placeholder.png"} className="w-12 h-12 rounded-lg object-cover" />
                     <span className="font-bold">{product.name}</span>
                   </div>
                 </td>
