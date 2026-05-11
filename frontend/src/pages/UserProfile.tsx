@@ -660,7 +660,7 @@ export default function UserProfile({ onNavigate }: UserProfileProps) {
                   <button
                     onClick={async () => {
                       try {
-                        await fetch("https://endpoint-rosy.vercel.app/api/cancel-order", {
+                        await fetch("https://api.gutmantra.in/api/cancel-order", {
                           method: "POST",
                           headers: {
                             "Content-Type": "application/json"

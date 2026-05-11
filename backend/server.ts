@@ -42,7 +42,7 @@ const PP_ACCESS_TOKEN = "23a33ca178836da5b3144ab299ef1bc2633e21f6";
 const PP_REST_ID = "107556";
 const PP_CREATE_URL = "https://pponlineordercb.petpooja.com/save_order";
 const PP_CANCEL_URL = "https://pponlineordercb.petpooja.com/update_order_status";
-const PP_CALLBACK_URL = "https://endpoint-rosy.vercel.app/api/webhook";
+const PP_CALLBACK_URL = "https://api.gutmantra.in/api/webhook";
 
 // ================= HELPERS =================
 

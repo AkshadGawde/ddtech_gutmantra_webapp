@@ -84,7 +84,7 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
 
       console.log("🚀 Sending Order:", payload);
 
-      const res = await fetch("https://endpoint-rosy.vercel.app/api/create-order", {
+      const res = await fetch("https://api.gutmantra.in/api/create-order", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
