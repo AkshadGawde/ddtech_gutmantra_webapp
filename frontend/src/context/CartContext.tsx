@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 
 interface CartItem {
   id: string;
+  productId?: string;
   name: string;
   price: number;
   quantity: number;
@@ -9,6 +10,9 @@ interface CartItem {
   variant?: string;
   petpoojaId?: string;
   category?: string;
+  grind?: string;
+  selectedQuantity?: string;
+  sku?: string;
 }
 
 interface CartContextType {

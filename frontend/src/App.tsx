@@ -16,6 +16,7 @@ import RefundPolicy from "./pages/RefundPolicy";
 import CheckoutPage from "./pages/CheckoutPage";
 import PaymentPage from "./pages/PaymentPage";
 import SuccessPage from "./pages/SuccessPage";
+import ProductPage from "./pages/ProductPage";
 import Footer from "./pages/Footer";
 
 import CategorySection from "./components/CategorySection";
@@ -74,6 +75,9 @@ export default function App() {
 
           <Route path="/spices" element={<CategoryPage />} />
           <Route path="/spices/:subcategory" element={<CategoryPage />} />
+
+          {/* ================= PRODUCT PAGE ================= */}
+          <Route path="/product/:id" element={<ProductPage />} />
 
           {/* ================= STATIC ================= */}
           <Route path="/our-story" element={<OurStory />} />

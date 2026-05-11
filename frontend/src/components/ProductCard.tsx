@@ -61,7 +61,8 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ delay: index * 0.1 }}
-        className="group bg-white rounded-[2.5rem] p-5 shadow-sm hover:shadow-xl transition-all duration-500 border border-black/5"
+        onClick={() => navigate(`/product/${product.id}`)}
+        className="group bg-white rounded-[2.5rem] p-5 shadow-sm hover:shadow-xl transition-all duration-500 border border-black/5 cursor-pointer"
       >
         {/* IMAGE */}
         <div className="relative aspect-square rounded-[2rem] overflow-hidden mb-6">

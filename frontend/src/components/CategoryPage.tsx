@@ -3,10 +3,10 @@ import { motion } from "motion/react";
 import { useParams, useLocation } from "react-router-dom";
 import { CATEGORIES } from "../constants";
 import { useCart } from "../context/CartContext";
-import { ShoppingBag, Star } from "lucide-react";
 
 import { getProducts, Product } from "../services/productService";
 import { CATEGORY_MAP } from "../constants/categoryMap";
+import ProductCard from "./ProductCard";
 
 export default function CategoryPage() {
   const { addToCart } = useCart();
@@ -109,54 +109,7 @@ export default function CategoryPage() {
           ) : products.length > 0 ? (
 
             products.map((product, index) => (
-              <motion.div
-                key={product.id}
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="group bg-white rounded-2xl p-4 shadow-sm hover:shadow-xl transition"
-              >
-                {/* IMAGE */}
-                <div className="aspect-square rounded-xl overflow-hidden mb-4">
-                  <img
-                    src={product.image || "/placeholder.png"}
-                    alt={product.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-
-                {/* NAME */}
-                <h3 className="font-bold text-lg">{product.name}</h3>
-
-                {/* RATING */}
-                <div className="flex items-center gap-1 my-2">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} size={12} className="fill-yellow-400 text-yellow-400" />
-                  ))}
-                </div>
-
-                {/* PRICE + CART */}
-                <div className="flex justify-between items-center mt-4">
-                  <span className="font-bold text-primary">
-                    ₹{product.price}
-                  </span>
-
-                  <button
-                    onClick={() =>
-                      addToCart({
-                        id: product.id,
-                        name: product.name,
-                        price: product.price,
-                        quantity: 1,
-                        image: product.image || "",
-                      })
-                    }
-                    className="w-10 h-10 bg-black text-white rounded-full flex items-center justify-center"
-                  >
-                    <ShoppingBag size={16} />
-                  </button>
-                </div>
-              </motion.div>
+              <ProductCard key={product.id} product={product} index={index} />
             ))
 
           ) : (
