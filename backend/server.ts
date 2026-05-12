@@ -159,121 +159,130 @@ async function startServer() {
     );
 
     const payload = {
-      app_key: PP_APP_KEY,
-      app_secret: PP_APP_SECRET,
-      access_token: PP_ACCESS_TOKEN,
+  app_key: PP_APP_KEY,
+  app_secret: PP_APP_SECRET,
+  access_token: PP_ACCESS_TOKEN,
 
-      orderinfo: {
-        OrderInfo: {
-          Restaurant: {
-            details: {
-              restID: PP_REST_ID,
-            },
-          },
-
-          Customer: {
-            details: {
-              name: body.name,
-              phone: body.phone,
-              email: body.email || "",
-              address: body.address || "",
-              latitude: "",
-              longitude: "",
-            },
-          },
-
-          Order: {
-            details: {
-              orderID: orderId,
-
-              preorder_date: "",
-              preorder_time: "",
-
-              service_charge: "0",
-              sc_tax_amount: "0",
-
-              delivery_charges: "0",
-              dc_tax_percentage: "0",
-              dc_tax_amount: "0",
-
-              packing_charges: "0",
-              pc_tax_amount: "0",
-              pc_tax_percentage: "0",
-
-              order_type: "D",
-
-              advanced_order: "N",
-
-              payment_type:
-                body.paymentMode || "COD",
-
-              table_no: "",
-              no_of_persons: "0",
-
-              discount_total: "0",
-              tax_total: "0",
-
-              discount_type: "F",
-
-              total: String(total),
-
-              description: "",
-
-              created_on: new Date()
-                .toISOString()
-                .slice(0, 19)
-                .replace("T", " "),
-
-              enable_delivery: 1,
-
-              callback_url:
-                PP_CALLBACK_URL,
-            },
-          },
-
-          OrderItem: {
-            details: items.map((i) => ({
-              id: i.id,
-
-              name: i.name,
-
-              tax_inclusive: true,
-
-              item_discount: "0",
-
-              price: i.price,
-
-              final_price: i.price,
-
-              quantity: i.quantity,
-
-              description: "",
-
-              variation_name: "",
-
-              variation_id:
-                i.variation_id || "",
-
-              AddonItem: {
-                details: [],
-              },
-            })),
-          },
-
-          Tax: {
-            details: [],
-          },
-
-          Discount: {
-            details: [],
-          },
+  orderinfo: {
+    OrderInfo: {
+      Restaurant: {
+        details: {
+          restID: PP_REST_ID,
         },
-
-        udid: "",
-
-        device_type: "Web",
       },
-    };
+
+      Customer: {
+        details: {
+          name: body.name,
+          phone: body.phone,
+          email: body.email || "",
+          address: body.address || "",
+          latitude: "",
+          longitude: "",
+        },
+      },
+
+      Order: {
+        details: {
+          orderID: orderId,
+
+          preorder_date: "",
+          preorder_time: "",
+
+          service_charge: "0",
+          sc_tax_amount: "0",
+
+          delivery_charges: "0",
+          dc_tax_percentage: "0",
+          dc_tax_amount: "0",
+
+          packing_charges: "0",
+          pc_tax_amount: "0",
+          pc_tax_percentage: "0",
+
+          // IMPORTANT
+          order_type: "H",
+
+          advanced_order: "N",
+
+          payment_type:
+            body.paymentMode || "COD",
+
+          table_no: "",
+          no_of_persons: "0",
+
+          discount_total: "0",
+          tax_total: "0",
+
+          discount_type: "F",
+
+          total: String(total),
+
+          description:
+            "ORDER FROM GUTMANTRA WEBSITE",
+
+          created_on: new Date()
+            .toISOString()
+            .slice(0, 19)
+            .replace("T", " "),
+
+          enable_delivery: 1,
+
+          min_prep_time: 60,
+
+          callback_url:
+            PP_CALLBACK_URL,
+        },
+      },
+
+      OrderItem: {
+        details: items.map((i) => ({
+          // THIS IS CSV "id"
+          id: i.id,
+
+          name: i.name,
+
+          tax_inclusive: true,
+
+          item_discount: "0",
+
+          price: i.price,
+
+          final_price: i.price,
+
+          quantity: i.quantity,
+
+          description: "",
+
+          // IMPORTANT
+          variation_name: i.name,
+
+          // THIS IS variationid
+          variation_id:
+            i.variation_id || "",
+
+          AddonItem: {
+            details: [],
+          },
+        })),
+      },
+
+      Tax: {
+        details: [],
+      },
+
+      Discount: {
+        details: [],
+      },
+
+      // IMPORTANT
+      udid: " ",
+
+      // IMPORTANT
+      device_type: "web",
+    },
+  },
+};
 
     console.log(
       "📦 PAYLOAD →",
