@@ -4,7 +4,13 @@ import dotenv from "dotenv";
 import { initializeFirebaseAdmin, getFirestoreDb } from "./src/services/firebaseAdmin.js";
 import authRoutes from "./src/routes/authRoutes.js";
 import { syncMenuToFirestore } from "./src/services/menuSync.js";
-import { syncOrdersToFirestore } from "./src/services/orderSync.js";
+import {
+
+  syncOrdersToFirestore,
+
+  saveSingleOrderToFirestore,
+
+} from "./src/services/orderSync.js";
 import { FieldValue } from "firebase-admin/firestore";
 
 dotenv.config();
@@ -322,52 +328,33 @@ async function startServer() {
         petpooja_error: ppData,
       });
     }
+    await saveSingleOrderToFirestore({
 
-    await db
-      .collection("orders")
-      .doc(orderId)
-      .set(
-        {
-          orderID: orderId,
+  orderID: orderId,
 
-          petpoojaID:
-            ppData?.clientorderID ||
-            orderId,
+  customer: {
 
-          userId:
-            orderId.split("_")[0],
+    name: body.name,
 
-          status: "pending",
+    phone: body.phone,
 
-          statusLabel:
-            "Order Placed",
+    email: body.email || "",
 
-          items,
+    address: body.address || "",
 
-          total,
+  },
 
-          name: body.name,
+  items,
 
-          phone: body.phone,
+  total,
 
-          email: body.email || "",
+  paymentMode: body.paymentMode || "COD",
 
-          address:
-            body.address || "",
+  petpoojaResponse: ppData,
 
-          paymentMode:
-            body.paymentMode || "COD",
+});
 
-          createdAt:
-            FieldValue.serverTimestamp(),
-
-          updatedAt:
-            FieldValue.serverTimestamp(),
-
-          source: "petpooja",
-        },
-        { merge: true }
-      );
+    
 
     console.log(
       `✅ Firebase order saved: ${orderId}`
