@@ -69,59 +69,34 @@ export async function saveSingleOrderToFirestore(order: any) {
   const db = getFirestoreDb();
 
   await db
-
     .collection("orders")
-
     .doc(order.orderID)
-
     .set(
-
       {
-
         orderID: order.orderID,
-
-        petpoojaID:
-
-          order.petpoojaResponse?.clientOrderID ||
-
-          order.orderID,
-
+        userId: order.userId || String(order.orderID.split("_")[0] || ""),
+        petpoojaID: order.petpoojaResponse?.clientOrderID || order.orderID,
         status: "pending",
-
         statusLabel: "Order Placed",
-
         customer: {
-
           name: order.customer.name,
-
           phone: order.customer.phone,
-
           email: order.customer.email,
-
           address: order.customer.address,
-
         },
-
         items: order.items,
-
-        total: order.total,
-
+        subtotal: order.subtotal,
+        discount: order.discount ?? 0,
+        couponCode: order.couponCode || null,
+        finalAmount: order.finalAmount,
+        total: order.finalAmount,
         paymentMode: order.paymentMode,
-
+        paymentStatus: "PENDING",
         source: "petpooja",
-
-        createdAt:
-
-          admin.firestore.FieldValue.serverTimestamp(),
-
-        updatedAt:
-
-          admin.firestore.FieldValue.serverTimestamp(),
-
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       },
-
       { merge: true }
-
     );
 
 }

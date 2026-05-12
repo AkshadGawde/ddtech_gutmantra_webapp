@@ -28,13 +28,12 @@ export function initializeFirebaseAdmin() {
 
   admin.initializeApp({
     credential:
-      admin.credential.cert(serviceAccount),
+      admin.credential.cert(serviceAccount as admin.ServiceAccount),
   });
 
   initialized = true;
-
   console.log(
-    "✅ Firebase Admin initialized (ENV)"
+    "✅ Firebase Admin initialized"
   );
 }
 

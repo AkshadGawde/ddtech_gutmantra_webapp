@@ -11,6 +11,7 @@ import {
 
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
+import { useCoupon } from "@/hooks/useCoupon";
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -23,6 +24,18 @@ interface CheckoutPageProps {
 export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
   const { items, totalAmount, clearCart } = useCart();
   const { user } = useAuth();
+
+  const {
+    couponCode,
+    setCouponCode,
+    discount,
+    finalAmount,
+    couponApplied,
+    loading: couponLoading,
+    message: couponMessage,
+    applyCoupon,
+    clearCoupon,
+  } = useCoupon({ subtotal: totalAmount, userId: user?.uid });
 
   const [loading, setLoading] = useState(false);
   const [address, setAddress] = useState("");
@@ -60,26 +73,46 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
       const orderID = `${user.uid}_${Date.now()}`;
 
       // 🔥 FORMAT FOR PETPOOJA
-      const formattedItems = items.map((item) => {
-        if (!item.petpoojaId) {
-          throw new Error(`Missing Petpooja EID for item: ${item.name}`);
-        }
-        return {
-          id: item.petpoojaId,   // ← EID only, e.g. "V1255595880"
-          name: item.name,
-          price: item.price,
-          quantity: item.quantity,
-        };
-      });
+      const formattedItems = items.map((item: any) => {
+
+  if (!item.baseId) {
+
+    throw new Error(
+
+      `Missing Petpooja Base ID for item: ${item.name}`
+
+    );
+
+  }
+
+  return {
+
+    base_id: item.baseId,
+
+    variation_id:
+
+      item.petpoojaVariationId || "",
+
+    name: item.name,
+
+    price: item.price,
+
+    quantity: item.quantity,
+
+  };
+
+});
 
       const payload = {
         orderID,
+        userId: user.uid,
         name: user.displayName || "Guest",
         phone,
         email: user.email || "",
         address,
         items: formattedItems,
         paymentMode, // 🔥 COD / ONLINE
+        couponCode: couponApplied ? couponCode : undefined,
       };
 
       console.log("🚀 Sending Order:", payload);
@@ -105,7 +138,7 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
     } catch (err) {
       console.error("❌ Checkout Error:", err);
       const errorMsg = err instanceof Error ? err.message : "Failed to place order";
-      if (errorMsg.includes("Missing Petpooja EID")) {
+      if (errorMsg.includes("Missing Petpooja")) {
         alert("One or more items are missing Petpooja ID. Please contact support.");
       } else {
         alert(errorMsg);
@@ -161,7 +194,40 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
             />
 
             {/* 🔥 PAYMENT MODE */}
-            <div className="space-y-2">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <p className="font-bold">Coupon</p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Enter coupon code"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value)}
+                    className="flex-1 p-4 border rounded-xl"
+                  />
+                  <button
+                    type="button"
+                    onClick={applyCoupon}
+                    disabled={couponLoading}
+                    className="px-6 py-3 rounded-xl border bg-black text-white"
+                  >
+                    {couponLoading ? "Applying..." : "Apply"}
+                  </button>
+                </div>
+                {couponMessage ? (
+                  <p className="text-sm text-gray-700">{couponMessage}</p>
+                ) : null}
+                {couponApplied ? (
+                  <button
+                    type="button"
+                    onClick={clearCoupon}
+                    className="text-sm text-blue-600"
+                  >
+                    Remove coupon
+                  </button>
+                ) : null}
+              </div>
+
               <p className="font-bold">Payment Method</p>
 
               <div className="flex gap-4">
@@ -208,15 +274,29 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
 
             <h2 className="text-xl font-bold mb-4">Summary</h2>
 
-            {items.map((item) => (
-              <div key={item.id} className="flex justify-between mb-2">
+            {items.map((item, index) => (
+              <div
+                key={`${item.id}-${index}`}
+                className="flex justify-between mb-2"
+              >
                 <span>{item.name} x {item.quantity}</span>
                 <span>₹{item.price * item.quantity}</span>
               </div>
             ))}
 
-            <div className="mt-4 font-bold text-lg">
-              Total: ₹{totalAmount}
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span>Subtotal</span>
+                <span>₹{totalAmount}</span>
+              </div>
+              <div className="flex justify-between text-green-600">
+                <span>Coupon Discount</span>
+                <span>-₹{discount.toFixed(2)}</span>
+              </div>
+              <div className="border-t pt-3 font-bold text-lg flex justify-between">
+                <span>Final Amount</span>
+                <span>₹{finalAmount.toFixed(2)}</span>
+              </div>
             </div>
 
           </div>

@@ -3,14 +3,13 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { initializeFirebaseAdmin, getFirestoreDb } from "./src/services/firebaseAdmin.js";
 import authRoutes from "./src/routes/authRoutes.js";
+import couponRoutes from "./src/routes/couponRoutes.js";
 import { syncMenuToFirestore } from "./src/services/menuSync.js";
 import {
-
   syncOrdersToFirestore,
-
   saveSingleOrderToFirestore,
-
 } from "./src/services/orderSync.js";
+import { validateCoupon } from "./src/services/couponService.js";
 import { FieldValue } from "firebase-admin/firestore";
 
 dotenv.config();
@@ -45,7 +44,7 @@ const STATUS_LABELS: Record<string, string> = {
 const PP_APP_KEY = process.env.PETPOOJA_APP_KEY!;
 const PP_APP_SECRET = process.env.PETPOOJA_APP_SECRET!;
 const PP_ACCESS_TOKEN = process.env.PETPOOJA_ACCESS_TOKEN!;
-const PP_REST_ID = "process.env.PETPOOJA_REST_ID!";
+const PP_REST_ID = process.env.PETPOOJA_REST_ID!;
 const PP_CREATE_URL = "https://pponlineordercb.petpooja.com/save_order";
 const PP_CANCEL_URL = "https://pponlineordercb.petpooja.com/update_order_status";
 const PP_CALLBACK_URL = "https://api.gutmantra.in/api/webhook";
@@ -102,6 +101,7 @@ async function startServer() {
   });
 
   app.use("/api/auth", authRoutes);
+  app.use("/api", couponRoutes);
 
   // ================= CREATE ORDER (Petpooja) =================
 
@@ -121,6 +121,11 @@ async function startServer() {
 
     const orderId = String(body.orderID);
 
+    const userId = typeof body.userId === "string" && body.orderID.startsWith(body.userId)
+      ? body.userId.trim()
+      : String(orderId.split("_")[0] || "");
+
+    const couponCode = typeof body.couponCode === "string" ? body.couponCode.trim() : "";
     const items: any[] = [];
 
     for (const item of body.items) {
@@ -158,7 +163,7 @@ async function startServer() {
       JSON.stringify(items, null, 2)
     );
 
-    const total = items.reduce(
+    const subtotal = items.reduce(
       (sum, i) =>
         sum +
         parseFloat(i.price) *
@@ -166,126 +171,171 @@ async function startServer() {
       0
     );
 
+    let discount = 0;
+    let finalAmount = subtotal;
+
+    if (couponCode) {
+      const validation = await validateCoupon(couponCode, subtotal, userId);
+      discount = validation.discount;
+      finalAmount = validation.finalAmount;
+    }
+
     const payload = {
   app_key: PP_APP_KEY,
   app_secret: PP_APP_SECRET,
   access_token: PP_ACCESS_TOKEN,
 
   orderinfo: {
-  OrderInfo: {
-    Restaurant: {
-      details: {
-        restID: PP_REST_ID,
-      },
-    },
-
-    Customer: {
-      details: {
-        name: body.name,
-        phone: body.phone,
-        email: body.email || "",
-        address: body.address || "",
-        latitude: "",
-        longitude: "",
-      },
-    },
-
-    Order: {
-      details: {
-        orderID: orderId,
-
-        preorder_date: "",
-        preorder_time: "",
-
-        service_charge: "0",
-        sc_tax_amount: "0",
-
-        delivery_charges: "0",
-        dc_tax_percentage: "0",
-        dc_tax_amount: "0",
-
-        packing_charges: "0",
-        pc_tax_amount: "0",
-        pc_tax_percentage: "0",
-
-        order_type: "H",
-
-        advanced_order: "N",
-
-        payment_type:
-          body.paymentMode || "COD",
-
-        table_no: "",
-        no_of_persons: "0",
-
-        discount_total: "0",
-        tax_total: "0",
-
-        discount_type: "F",
-
-        total: String(total),
-
-        description:
-          "ORDER FROM GUTMANTRA WEBSITE",
-
-        created_on: new Date()
-          .toISOString()
-          .slice(0, 19)
-          .replace("T", " "),
-
-        enable_delivery: 1,
-
-        min_prep_time: 60,
-
-        callback_url:
-          PP_CALLBACK_URL,
-      },
-    },
-
-    OrderItem: {
-      details: items.map((i) => ({
-        id: i.id,
-
-        name: i.name,
-
-        tax_inclusive: true,
-
-        item_discount: "0",
-
-        price: i.price,
-
-        final_price: i.price,
-
-        quantity: i.quantity,
-
-        description: "",
-
-        variation_name: i.name,
-
-        variation_id:
-          i.variation_id || "",
-
-        AddonItem: {
-          details: [],
+    OrderInfo: {
+      Restaurant: {
+        details: {
+          restID: PP_REST_ID,
+          res_name: "GutMantra",
+          address: body.address || "Mumbai",
+          contact_information: body.phone,
         },
-      })),
+      },
+
+      Customer: {
+        details: {
+          name: body.name,
+          phone: body.phone,
+          email: body.email || "",
+          address: body.address || "",
+          latitude: "",
+          longitude: "",
+        },
+      },
+
+      Order: {
+        details: {
+          orderID: orderId,
+
+          preorder_date: "",
+          preorder_time: "",
+
+          service_charge: "0",
+          sc_tax_amount: "0",
+
+          delivery_charges: "0",
+          dc_tax_percentage: "0",
+          dc_tax_amount: "0",
+
+          dc_gst_details: [
+            {
+              gst_liable: "restaurant",
+              amount: "0",
+            },
+          ],
+
+          packing_charges: "0",
+          pc_tax_amount: "0",
+          pc_tax_percentage: "0",
+
+          pc_gst_details: [
+            {
+              gst_liable: "restaurant",
+              amount: "0",
+            },
+          ],
+
+          order_type: "H",
+
+          advanced_order: "N",
+
+          urgent_order: false,
+          urgent_time: 20,
+
+          payment_type:
+            body.paymentMode || "COD",
+
+          table_no: "",
+          no_of_persons: "0",
+
+          discount_total: String(discount.toFixed(2)),
+
+          tax_total: "0.00",
+
+          discount_type: "F",
+
+          total: String(finalAmount.toFixed(2)),
+
+          collect_cash: String(finalAmount.toFixed(2)),
+
+          otp: "1234",
+
+          description:
+            "ORDER FROM GUTMANTRA WEBSITE",
+
+          created_on: new Date()
+            .toISOString()
+            .slice(0, 19)
+            .replace("T", " "),
+
+          enable_delivery: 1,
+
+          min_prep_time: 60,
+
+          callback_url:
+            PP_CALLBACK_URL,
+        },
+      },
+
+      OrderItem: {
+        details: items.map((i) => ({
+          id: i.id,
+
+          name: i.name,
+
+          tax_inclusive: true,
+
+          gst_liability: "restaurant",
+
+          item_tax: [],
+
+          item_discount: "0",
+
+          price: i.price,
+
+          final_price: i.price,
+
+          quantity: i.quantity,
+
+          description: "",
+
+          variation_name: i.name,
+
+          variation_id:
+            i.variation_id || "",
+
+          AddonItem: {
+            details: [],
+          },
+        })),
+      },
+
+      Tax: {
+        details: [
+          {
+            id: "0",
+            title: "GST",
+            type: "P",
+            price: "0",
+            tax: "0",
+            restaurant_liable_amt: "0",
+          },
+        ],
+      },
+
+      Discount: {
+        details: [],
+      },
     },
 
-    Tax: {
-      details: [],
-    },
+    udid: "",
 
-    Discount: {
-      details: [],
-    },
+    device_type: "Web",
   },
-
-  // ✅ CORRECT PLACE
-  udid: " ",
-
-  // ✅ CORRECT PLACE
-  device_type: "web",
-},
 };
 
     console.log(
@@ -331,30 +381,22 @@ async function startServer() {
       });
     }
     await saveSingleOrderToFirestore({
-
-  orderID: orderId,
-
-  customer: {
-
-    name: body.name,
-
-    phone: body.phone,
-
-    email: body.email || "",
-
-    address: body.address || "",
-
-  },
-
-  items,
-
-  total,
-
-  paymentMode: body.paymentMode || "COD",
-
-  petpoojaResponse: ppData,
-
-});
+      orderID: orderId,
+      userId,
+      customer: {
+        name: body.name,
+        phone: body.phone,
+        email: body.email || "",
+        address: body.address || "",
+      },
+      items,
+      subtotal,
+      discount,
+      couponCode: couponCode || null,
+      finalAmount,
+      paymentMode: body.paymentMode || "COD",
+      petpoojaResponse: ppData,
+    });
 
     
 
