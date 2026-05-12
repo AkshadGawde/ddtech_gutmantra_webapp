@@ -42,13 +42,15 @@ const STATUS_LABELS: Record<string, string> = {
 
 // ================= PETPOOJA CONFIG =================
 
-const PP_APP_KEY = "73nywgsd0ab6hu4qz51ro2kfemt8xcpv";
-const PP_APP_SECRET = "aaef5fe113c373a0a7ac4e8a6413c5b1c46c3a8b";
-const PP_ACCESS_TOKEN = "23a33ca178836da5b3144ab299ef1bc2633e21f6";
-const PP_REST_ID = "nb4xiadc";
+const PP_APP_KEY = process.env.PETPOOJA_APP_KEY!;
+const PP_APP_SECRET = process.env.PETPOOJA_APP_SECRET!;
+const PP_ACCESS_TOKEN = process.env.PETPOOJA_ACCESS_TOKEN!;
+const PP_REST_ID = "process.env.PETPOOJA_REST_ID!";
 const PP_CREATE_URL = "https://pponlineordercb.petpooja.com/save_order";
 const PP_CANCEL_URL = "https://pponlineordercb.petpooja.com/update_order_status";
 const PP_CALLBACK_URL = "https://api.gutmantra.in/api/webhook";
+
+console.log("🔥 USING REST ID:", PP_REST_ID);
 
 // ================= HELPERS =================
 
