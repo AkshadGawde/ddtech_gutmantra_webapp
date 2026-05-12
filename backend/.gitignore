@@ -7,7 +7,7 @@
 *.env
 
 # Firebase / service accounts
-firebase-applet-config.json
+serviceAccountKey.json
 service-account*.json
 
 # ----------------------------
