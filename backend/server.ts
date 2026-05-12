@@ -138,27 +138,50 @@ async function startServer() {
       console.log("🔥 FINAL ITEMS →", JSON.stringify(items, null, 2));
 
       const payload = {
-        app_key: PP_APP_KEY,
-        app_secret: PP_APP_SECRET,
-        access_token: PP_ACCESS_TOKEN,
-        restID: PP_REST_ID,
-        device_type: "Android",
-        callback_url: PP_CALLBACK_URL,
-        OrderInfo: {
-          Customer: {
-            name: body.name,
-            phone: body.phone,
-            email: body.email || "",
-            address: body.address || "",
-          },
-          Order: {
-            orderID: orderId,
-            preorder_date: "",
-          },
-          OrderItem: items,
-        },
-        payment_mode: body.paymentMode || "COD",
-      };
+
+  app_key: PP_APP_KEY,
+
+  app_secret: PP_APP_SECRET,
+
+  access_token: PP_ACCESS_TOKEN,
+
+  restid: PP_REST_ID,
+
+  device_type: "Android",
+
+  callback_url: PP_CALLBACK_URL,
+
+  order_type: "D",
+
+  OrderInfo: {
+
+    Customer: {
+
+      name: body.name,
+
+      phone: body.phone,
+
+      email: body.email || "",
+
+      address: body.address || "",
+
+    },
+
+    Order: {
+
+      orderID: orderId,
+
+      preorder_date: "",
+
+    },
+
+    OrderItem: items,
+
+  },
+
+  payment_mode: body.paymentMode || "COD",
+
+};
 
       console.log("📦 PAYLOAD →", JSON.stringify(payload, null, 2));
 
