@@ -98,200 +98,291 @@ async function startServer() {
   // ================= CREATE ORDER (Petpooja) =================
 
   app.post("/api/create-order", async (req: Request, res: Response) => {
-    try {
-      const body = req.body;
+  try {
+    const body = req.body;
 
-      const required = ["orderID", "name", "phone", "items"];
-      for (const f of required) {
-        if (!body[f]) {
-          return res.status(400).json({ error: `${f} missing` });
-        }
+    const required = ["orderID", "name", "phone", "items"];
+
+    for (const f of required) {
+      if (!body[f]) {
+        return res.status(400).json({
+          error: `${f} missing`,
+        });
       }
+    }
 
-      const orderId: string = String(body.orderID);
+    const orderId = String(body.orderID);
 
-      // 🔥 STRICT EID VALIDATION — no SKU fallback
-      const items: any[] = [];
-      for (const item of body.items) {
-        const eid = item.id;
+    const items: any[] = [];
 
-        if (!eid || !String(eid).startsWith("V")) {
-          console.log(`❌ Invalid EID for item ${item.name}: ${eid}`);
-          return res.status(400).json({
-            error: `Invalid Petpooja EID for item '${item.name}' — got '${eid}'. Must start with 'V'.`,
-          });
-        }
+    for (const item of body.items) {
+      const baseId = item.base_id || item.sku;
+      const variationId = item.variation_id || item.petpoojaId;
 
-        items.push({
-          id: String(eid),
-          name: item.name,
-          price: String(item.price),       // Petpooja expects string
-          quantity: String(item.quantity), // Petpooja expects string
-          tax_inclusive: 1,
+      if (!baseId) {
+        return res.status(400).json({
+          error: `Missing base_id/sku for item '${item.name}'`,
         });
       }
 
-      if (!items.length) {
-        return res.status(400).json({ error: "No valid items to send" });
-      }
+      items.push({
+        id: String(baseId),
+        variation_id: variationId
+          ? String(variationId).replace("V", "")
+          : "",
 
-      console.log("🔥 FINAL ITEMS →", JSON.stringify(items, null, 2));
+        name: item.name,
+        price: String(item.price),
+        quantity: String(item.quantity),
 
-      const payload = {
-  app_key: PP_APP_KEY,
-  app_secret: PP_APP_SECRET,
-  access_token: PP_ACCESS_TOKEN,
+        tax_inclusive: true,
+      });
+    }
 
-  orderinfo: {
-    OrderInfo: {
-      Restaurant: {
-        details: {
-          restID: PP_REST_ID,
-        },
-      },
+    if (!items.length) {
+      return res.status(400).json({
+        error: "No valid items",
+      });
+    }
 
-      Customer: {
-        details: {
-          name: body.name,
-          phone: body.phone,
-          email: body.email || "",
-          address: body.address || "",
-          latitude: "",
-          longitude: "",
-        },
-      },
+    console.log(
+      "🔥 FINAL ITEMS →",
+      JSON.stringify(items, null, 2)
+    );
 
-      Order: {
-        details: {
-          orderID: orderId,
-          preorder_date: "",
-          preorder_time: "",
-          service_charge: "0",
-          sc_tax_amount: "0",
-          delivery_charges: "0",
-          dc_tax_percentage: "0",
-          dc_tax_amount: "0",
-          packing_charges: "0",
-          pc_tax_amount: "0",
-          pc_tax_percentage: "0",
-          order_type: "D",
-          advanced_order: "N",
-          payment_type: body.paymentMode || "COD",
-          table_no: "",
-          no_of_persons: "0",
-          discount_total: "0",
-          tax_total: "0",
-          discount_type: "F",
-          total: String(
-            items.reduce(
-              (sum, i) =>
-                sum + parseFloat(i.price) * parseInt(i.quantity),
-              0
-            )
-          ),
-          description: "",
-          created_on: new Date()
-            .toISOString()
-            .slice(0, 19)
-            .replace("T", " "),
-          enable_delivery: 1,
-          callback_url: PP_CALLBACK_URL,
-        },
-      },
+    const total = items.reduce(
+      (sum, i) =>
+        sum +
+        parseFloat(i.price) *
+          parseInt(i.quantity),
+      0
+    );
 
-      OrderItem: {
-        details: items.map((i) => ({
-          id: i.id.replace("V", ""),
-          name: i.name,
-          price: i.price,
-          final_price: i.price,
-          quantity: i.quantity,
-          tax_inclusive: true,
-          item_discount: "0",
-          description: "",
-          variation_name: "",
-          variation_id: "",
-          AddonItem: {
+    const payload = {
+      app_key: PP_APP_KEY,
+      app_secret: PP_APP_SECRET,
+      access_token: PP_ACCESS_TOKEN,
+
+      orderinfo: {
+        OrderInfo: {
+          Restaurant: {
+            details: {
+              restID: PP_REST_ID,
+            },
+          },
+
+          Customer: {
+            details: {
+              name: body.name,
+              phone: body.phone,
+              email: body.email || "",
+              address: body.address || "",
+              latitude: "",
+              longitude: "",
+            },
+          },
+
+          Order: {
+            details: {
+              orderID: orderId,
+
+              preorder_date: "",
+              preorder_time: "",
+
+              service_charge: "0",
+              sc_tax_amount: "0",
+
+              delivery_charges: "0",
+              dc_tax_percentage: "0",
+              dc_tax_amount: "0",
+
+              packing_charges: "0",
+              pc_tax_amount: "0",
+              pc_tax_percentage: "0",
+
+              order_type: "D",
+
+              advanced_order: "N",
+
+              payment_type:
+                body.paymentMode || "COD",
+
+              table_no: "",
+              no_of_persons: "0",
+
+              discount_total: "0",
+              tax_total: "0",
+
+              discount_type: "F",
+
+              total: String(total),
+
+              description: "",
+
+              created_on: new Date()
+                .toISOString()
+                .slice(0, 19)
+                .replace("T", " "),
+
+              enable_delivery: 1,
+
+              callback_url:
+                PP_CALLBACK_URL,
+            },
+          },
+
+          OrderItem: {
+            details: items.map((i) => ({
+              id: i.id,
+
+              name: i.name,
+
+              tax_inclusive: true,
+
+              item_discount: "0",
+
+              price: i.price,
+
+              final_price: i.price,
+
+              quantity: i.quantity,
+
+              description: "",
+
+              variation_name: "",
+
+              variation_id:
+                i.variation_id || "",
+
+              AddonItem: {
+                details: [],
+              },
+            })),
+          },
+
+          Tax: {
             details: [],
           },
-        })),
+
+          Discount: {
+            details: [],
+          },
+        },
+
+        udid: "",
+
+        device_type: "Web",
       },
+    };
 
-      Tax: {
-        details: [],
-      },
+    console.log(
+      "📦 PAYLOAD →",
+      JSON.stringify(payload, null, 2)
+    );
 
-      Discount: {
-        details: [],
-      },
-    },
-
-    udid: "",
-    device_type: "Web",
-  },
-};
-
-      console.log("📦 PAYLOAD →", JSON.stringify(payload, null, 2));
-
-      const ppRes = await fetch(PP_CREATE_URL, {
+    const ppRes = await fetch(
+      PP_CREATE_URL,
+      {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+
         body: JSON.stringify(payload),
+      }
+    );
+
+    let ppData: any;
+
+    try {
+      ppData = await ppRes.json();
+    } catch {
+      ppData = {
+        raw: await ppRes.text(),
+      };
+    }
+
+    console.log("📡 STATUS:", ppRes.status);
+
+    console.log("📡 RESPONSE:", ppData);
+
+    if (
+      ppRes.status !== 200 ||
+      ppData?.success !== "1"
+    ) {
+      return res.status(400).json({
+        success: false,
+        petpooja_error: ppData,
       });
+    }
 
-      let ppData: any;
-      try {
-        ppData = await ppRes.json();
-      } catch {
-        ppData = { raw: await ppRes.text() };
-      }
-
-      console.log("📡 STATUS:", ppRes.status);
-      console.log("📡 RESPONSE:", ppData);
-
-      // ❌ HARD FAIL if Petpooja rejects
-      if (ppRes.status !== 200 || ppData?.success !== "1") {
-        return res.status(400).json({
-          success: false,
-          petpooja_error: ppData,
-        });
-      }
-
-      // ✅ SAVE TO FIREBASE
-      const total = items.reduce(
-        (sum, i) => sum + parseFloat(i.price) * parseInt(i.quantity),
-        0
-      );
-
-      await db.collection("orders").doc(orderId).set(
+    await db
+      .collection("orders")
+      .doc(orderId)
+      .set(
         {
           orderID: orderId,
-          petpoojaID: ppData?.clientorderID || orderId,
-          userId: orderId.split("_")[0],
+
+          petpoojaID:
+            ppData?.clientorderID ||
+            orderId,
+
+          userId:
+            orderId.split("_")[0],
+
           status: "pending",
-          statusLabel: "Order Placed",
+
+          statusLabel:
+            "Order Placed",
+
           items,
+
           total,
+
           name: body.name,
+
           phone: body.phone,
+
           email: body.email || "",
-          address: body.address || "",
-          paymentMode: body.paymentMode || "COD",
-          createdAt: FieldValue.serverTimestamp(),
-          updatedAt: FieldValue.serverTimestamp(),
+
+          address:
+            body.address || "",
+
+          paymentMode:
+            body.paymentMode || "COD",
+
+          createdAt:
+            FieldValue.serverTimestamp(),
+
+          updatedAt:
+            FieldValue.serverTimestamp(),
+
           source: "petpooja",
         },
         { merge: true }
       );
 
-      console.log(`✅ Firebase order saved: ${orderId}`);
+    console.log(
+      `✅ Firebase order saved: ${orderId}`
+    );
 
-      return res.json({ success: true, petpooja: ppData });
-    } catch (err) {
-      console.error("❌ create-order error:", err);
-      return res.status(500).json({ error: String(err) });
-    }
-  });
+    return res.json({
+      success: true,
+      petpooja: ppData,
+    });
+  } catch (err) {
+    console.error(
+      "❌ create-order error:",
+      err
+    );
+
+    return res.status(500).json({
+      error: String(err),
+    });
+  }
+});
 
   // ================= CANCEL ORDER (Petpooja) =================
 
