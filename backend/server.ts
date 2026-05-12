@@ -138,49 +138,97 @@ async function startServer() {
       console.log("🔥 FINAL ITEMS →", JSON.stringify(items, null, 2));
 
       const payload = {
-
   app_key: PP_APP_KEY,
-
   app_secret: PP_APP_SECRET,
-
   access_token: PP_ACCESS_TOKEN,
 
-  restid: PP_REST_ID,
+  orderinfo: {
+    OrderInfo: {
+      Restaurant: {
+        details: {
+          restID: PP_REST_ID,
+        },
+      },
 
-  device_type: "Android",
+      Customer: {
+        details: {
+          name: body.name,
+          phone: body.phone,
+          email: body.email || "",
+          address: body.address || "",
+          latitude: "",
+          longitude: "",
+        },
+      },
 
-  callback_url: PP_CALLBACK_URL,
+      Order: {
+        details: {
+          orderID: orderId,
+          preorder_date: "",
+          preorder_time: "",
+          service_charge: "0",
+          sc_tax_amount: "0",
+          delivery_charges: "0",
+          dc_tax_percentage: "0",
+          dc_tax_amount: "0",
+          packing_charges: "0",
+          pc_tax_amount: "0",
+          pc_tax_percentage: "0",
+          order_type: "D",
+          advanced_order: "N",
+          payment_type: body.paymentMode || "COD",
+          table_no: "",
+          no_of_persons: "0",
+          discount_total: "0",
+          tax_total: "0",
+          discount_type: "F",
+          total: String(
+            items.reduce(
+              (sum, i) =>
+                sum + parseFloat(i.price) * parseInt(i.quantity),
+              0
+            )
+          ),
+          description: "",
+          created_on: new Date()
+            .toISOString()
+            .slice(0, 19)
+            .replace("T", " "),
+          enable_delivery: 1,
+          callback_url: PP_CALLBACK_URL,
+        },
+      },
 
-  order_type: "D",
+      OrderItem: {
+        details: items.map((i) => ({
+          id: i.id.replace("V", ""),
+          name: i.name,
+          price: i.price,
+          final_price: i.price,
+          quantity: i.quantity,
+          tax_inclusive: true,
+          item_discount: "0",
+          description: "",
+          variation_name: "",
+          variation_id: "",
+          AddonItem: {
+            details: [],
+          },
+        })),
+      },
 
-  OrderInfo: {
+      Tax: {
+        details: [],
+      },
 
-    Customer: {
-
-      name: body.name,
-
-      phone: body.phone,
-
-      email: body.email || "",
-
-      address: body.address || "",
-
+      Discount: {
+        details: [],
+      },
     },
 
-    Order: {
-
-      orderID: orderId,
-
-      preorder_date: "",
-
-    },
-
-    OrderItem: items,
-
+    udid: "",
+    device_type: "Web",
   },
-
-  payment_mode: body.paymentMode || "COD",
-
 };
 
       console.log("📦 PAYLOAD →", JSON.stringify(payload, null, 2));
