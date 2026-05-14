@@ -13,7 +13,7 @@ interface ValidateCouponRequest {
   userId: string;
 }
 
-const API_BASE = "http://api.gutmantra.in/api";
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000/api";
 
 export async function validateCoupon(
   couponCode: string,
@@ -44,8 +44,12 @@ export async function validateCoupon(
     throw new Error(message);
   }
 
-  if (!data?.success) {
-    throw new Error(data?.message || "Coupon validation failed");
+  if (!data || typeof data !== "object") {
+    throw new Error("Coupon validation returned invalid data");
+  }
+
+  if (!data.success) {
+    throw new Error(data.message || "Coupon validation failed");
   }
 
   return data as CouponValidationResponse;

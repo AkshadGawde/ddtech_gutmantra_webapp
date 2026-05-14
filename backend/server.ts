@@ -4,21 +4,23 @@ import dotenv from "dotenv";
 import { initializeFirebaseAdmin, getFirestoreDb } from "./src/services/firebaseAdmin.js";
 import authRoutes from "./src/routes/authRoutes.js";
 import couponRoutes from "./src/routes/couponRoutes.js";
+import deliveryRoutes from "./src/routes/deliveryRoutes.js";
 import { syncMenuToFirestore } from "./src/services/menuSync.js";
 import {
   syncOrdersToFirestore,
   saveSingleOrderToFirestore,
 } from "./src/services/orderSync.js";
 import { validateCoupon } from "./src/services/couponService.js";
+import { geocodeAddress, getDeliveryResult } from "./src/services/deliveryService.js";
 import { FieldValue } from "firebase-admin/firestore";
 
 dotenv.config();
 
-// ================= WOOCOMMERCE CONFIG =================
+// ─── WooCommerce ──────────────────────────────────────────────────────────────
 
 const WC_BASE_URL = "https://gutmantra.in";
-const WC_CONSUMER_KEY = "ck_4dfb44306941ede97fb309dc441abfa42c3fdc87";
-const WC_CONSUMER_SECRET = "cs_d2808f39b2879c7a4a18d30db43c77dd036a61e7";
+const WC_CONSUMER_KEY = process.env.WC_CONSUMER_KEY!;
+const WC_CONSUMER_SECRET = process.env.WC_CONSUMER_SECRET!;
 const WC_AUTH = Buffer.from(`${WC_CONSUMER_KEY}:${WC_CONSUMER_SECRET}`).toString("base64");
 
 const WC_STATUS_MAPPING: Record<string, string> = {
@@ -39,7 +41,7 @@ const STATUS_LABELS: Record<string, string> = {
   "-1": "Cancelled",
 };
 
-// ================= PETPOOJA CONFIG =================
+// ─── Petpooja ─────────────────────────────────────────────────────────────────
 
 const PP_APP_KEY = process.env.PETPOOJA_APP_KEY!;
 const PP_APP_SECRET = process.env.PETPOOJA_APP_SECRET!;
@@ -51,7 +53,7 @@ const PP_CALLBACK_URL = "https://api.gutmantra.in/api/webhook";
 
 console.log("🔥 USING REST ID:", PP_REST_ID);
 
-// ================= HELPERS =================
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function cleanData(obj: any): any {
   return JSON.parse(
@@ -80,7 +82,7 @@ async function updateWcOrderStatus(orderId: string, status: string) {
   }
 }
 
-// ================= SERVER =================
+// ─── Server ───────────────────────────────────────────────────────────────────
 
 async function startServer() {
   const app = express();
@@ -94,7 +96,7 @@ async function startServer() {
   initializeFirebaseAdmin();
   const db = getFirestoreDb();
 
-  // ================= HEALTH =================
+  // ── Health ──────────────────────────────────────────────────────────────────
 
   app.get("/api/health", (_req: Request, res: Response) => {
     res.json({ status: "ok" });
@@ -102,325 +104,241 @@ async function startServer() {
 
   app.use("/api/auth", authRoutes);
   app.use("/api", couponRoutes);
+  app.use("/api", deliveryRoutes);
 
-  // ================= CREATE ORDER (Petpooja) =================
+  // ── Create Order ────────────────────────────────────────────────────────────
 
   app.post("/api/create-order", async (req: Request, res: Response) => {
-  try {
-    const body = req.body;
-
-    const required = ["orderID", "name", "phone", "items"];
-
-    for (const f of required) {
-      if (!body[f]) {
-        return res.status(400).json({
-          error: `${f} missing`,
-        });
-      }
-    }
-
-    const orderId = String(body.orderID);
-
-    const userId = typeof body.userId === "string" && body.orderID.startsWith(body.userId)
-      ? body.userId.trim()
-      : String(orderId.split("_")[0] || "");
-
-    const couponCode = typeof body.couponCode === "string" ? body.couponCode.trim() : "";
-    const items: any[] = [];
-
-    for (const item of body.items) {
-      const baseId = item.base_id || item.sku;
-      const variationId = item.variation_id || item.petpoojaId;
-
-      if (!baseId) {
-        return res.status(400).json({
-          error: `Missing base_id/sku for item '${item.name}'`,
-        });
-      }
-
-      items.push({
-        id: String(baseId),
-        variation_id: variationId
-          ? String(variationId).replace("V", "")
-          : "",
-
-        name: item.name,
-        price: String(item.price),
-        quantity: String(item.quantity),
-
-        tax_inclusive: true,
-      });
-    }
-
-    if (!items.length) {
-      return res.status(400).json({
-        error: "No valid items",
-      });
-    }
-
-    console.log(
-      "🔥 FINAL ITEMS →",
-      JSON.stringify(items, null, 2)
-    );
-
-    const subtotal = items.reduce(
-      (sum, i) =>
-        sum +
-        parseFloat(i.price) *
-          parseInt(i.quantity),
-      0
-    );
-
-    let discount = 0;
-    let finalAmount = subtotal;
-
-    if (couponCode) {
-      const validation = await validateCoupon(couponCode, subtotal, userId);
-      discount = validation.discount;
-      finalAmount = validation.finalAmount;
-    }
-
-    const payload = {
-  app_key: PP_APP_KEY,
-  app_secret: PP_APP_SECRET,
-  access_token: PP_ACCESS_TOKEN,
-
-  orderinfo: {
-    OrderInfo: {
-      Restaurant: {
-        details: {
-          restID: PP_REST_ID,
-          res_name: "GutMantra",
-          address: body.address || "Mumbai",
-          contact_information: body.phone,
-        },
-      },
-
-      Customer: {
-        details: {
-          name: body.name,
-          phone: body.phone,
-          email: body.email || "",
-          address: body.address || "",
-          latitude: "",
-          longitude: "",
-        },
-      },
-
-      Order: {
-        details: {
-          orderID: orderId,
-
-          preorder_date: "",
-          preorder_time: "",
-
-          service_charge: "0",
-          sc_tax_amount: "0",
-
-          delivery_charges: "0",
-          dc_tax_percentage: "0",
-          dc_tax_amount: "0",
-
-          dc_gst_details: [
-            {
-              gst_liable: "restaurant",
-              amount: "0",
-            },
-          ],
-
-          packing_charges: "0",
-          pc_tax_amount: "0",
-          pc_tax_percentage: "0",
-
-          pc_gst_details: [
-            {
-              gst_liable: "restaurant",
-              amount: "0",
-            },
-          ],
-
-          order_type: "H",
-
-          advanced_order: "N",
-
-          urgent_order: false,
-          urgent_time: 20,
-
-          payment_type:
-            body.paymentMode || "COD",
-
-          table_no: "",
-          no_of_persons: "0",
-
-          discount_total: String(discount.toFixed(2)),
-
-          tax_total: "0.00",
-
-          discount_type: "F",
-
-          total: String(finalAmount.toFixed(2)),
-
-          collect_cash: String(finalAmount.toFixed(2)),
-
-          otp: "1234",
-
-          description:
-            "ORDER FROM GUTMANTRA WEBSITE",
-
-          created_on: new Date()
-            .toISOString()
-            .slice(0, 19)
-            .replace("T", " "),
-
-          enable_delivery: 1,
-
-          min_prep_time: 60,
-
-          callback_url:
-            PP_CALLBACK_URL,
-        },
-      },
-
-      OrderItem: {
-        details: items.map((i) => ({
-          id: i.id,
-
-          name: i.name,
-
-          tax_inclusive: true,
-
-          gst_liability: "restaurant",
-
-          item_tax: [],
-
-          item_discount: "0",
-
-          price: i.price,
-
-          final_price: i.price,
-
-          quantity: i.quantity,
-
-          description: "",
-
-          variation_name: i.name,
-
-          variation_id:
-            i.variation_id || "",
-
-          AddonItem: {
-            details: [],
-          },
-        })),
-      },
-
-      Tax: {
-        details: [
-          {
-            id: "0",
-            title: "GST",
-            type: "P",
-            price: "0",
-            tax: "0",
-            restaurant_liable_amt: "0",
-          },
-        ],
-      },
-
-      Discount: {
-        details: [],
-      },
-    },
-
-    udid: "",
-
-    device_type: "Web",
-  },
-};
-
-    console.log(
-      "📦 PAYLOAD →",
-      JSON.stringify(payload, null, 2)
-    );
-
-    const ppRes = await fetch(
-      PP_CREATE_URL,
-      {
-        method: "POST",
-
-        headers: {
-          "Content-Type":
-            "application/json",
-        },
-
-        body: JSON.stringify(payload),
-      }
-    );
-
-    let ppData: any;
-
     try {
-      ppData = await ppRes.json();
-    } catch {
-      ppData = {
-        raw: await ppRes.text(),
+      const body = req.body;
+
+      // Validate required fields
+      for (const field of ["orderID", "shippingAddress", "items"]) {
+        if (!body[field]) {
+          return res.status(400).json({ success: false, error: `${field} missing` });
+        }
+      }
+
+      const orderId = String(body.orderID);
+      const userId =
+        typeof body.userId === "string" && body.orderID.startsWith(body.userId)
+          ? body.userId.trim()
+          : String(orderId.split("_")[0] || "");
+
+      const shippingAddress = body.shippingAddress;
+
+      if (!shippingAddress.fullAddress) {
+        return res.status(400).json({
+          success: false,
+          message: "Full address is required",
+        });
+      }
+
+      // Re-geocode the address to validate coordinates
+      const geocodeResult = await geocodeAddress(shippingAddress.streetAddress, shippingAddress.apartment, shippingAddress.city, shippingAddress.state, shippingAddress.pinCode, shippingAddress.country);
+
+      if (!geocodeResult.isDeliverable) {
+        return res.status(400).json({
+          success: false,
+          message: geocodeResult.message,
+        });
+      }
+
+      const latitude = geocodeResult.latitude;
+      const longitude = geocodeResult.longitude;
+      const deliveryCharge = geocodeResult.deliveryCharge;
+      const deliveryDistanceKm = geocodeResult.distanceKm;
+
+      // Build Petpooja items
+      const items: any[] = [];
+
+      for (const item of body.items) {
+        const baseId = item.base_id || item.sku;
+        const variationId = item.variation_id || item.petpoojaId;
+
+        if (!baseId) {
+          return res.status(400).json({
+            success: false,
+            error: `Missing base_id/sku for item '${item.name}'`,
+          });
+        }
+
+        items.push({
+          id: String(baseId),
+          variation_id: variationId ? String(variationId).replace("V", "") : "",
+          name: item.name,
+          price: String(item.price),
+          quantity: String(item.quantity),
+          tax_inclusive: true,
+        });
+      }
+
+      if (!items.length) {
+        return res.status(400).json({ success: false, error: "No valid items" });
+      }
+
+      console.log("🔥 FINAL ITEMS →", JSON.stringify(items, null, 2));
+
+      // Calculate totals
+      const subtotal = items.reduce(
+        (sum, i) => sum + parseFloat(i.price) * parseInt(i.quantity),
+        0
+      );
+
+      let discount = 0;
+      let finalAmount = subtotal;
+      const couponCode = body.couponCode;
+
+      if (couponCode) {
+        const validation = await validateCoupon(couponCode, subtotal, userId);
+        discount = validation.discount;
+        finalAmount = validation.finalAmount;
+      }
+
+      finalAmount = Math.max(0, subtotal - discount + deliveryCharge);
+
+      // Build Petpooja payload
+      const payload = {
+        app_key: PP_APP_KEY,
+        app_secret: PP_APP_SECRET,
+        access_token: PP_ACCESS_TOKEN,
+
+        orderinfo: {
+          OrderInfo: {
+            Restaurant: {
+              details: {
+                restID: PP_REST_ID,
+                res_name: "GutMantra",
+                address: body.address || "Mumbai",
+                contact_information: body.phone,
+              },
+            },
+
+            Customer: {
+              details: {
+                name: `${shippingAddress.firstName} ${shippingAddress.lastName}`,
+                phone: shippingAddress.phone,
+                email: shippingAddress.email,
+                address: shippingAddress.fullAddress,
+                latitude: String(latitude),
+                longitude: String(longitude),
+              },
+            },
+
+            Order: {
+              details: {
+                orderID: orderId,
+
+                preorder_date: "",
+                preorder_time: "",
+
+                service_charge: "0",
+                sc_tax_amount: "0",
+
+                delivery_charges: String(deliveryCharge.toFixed(2)),
+                dc_tax_percentage: "0",
+                dc_tax_amount: "0",
+
+                dc_gst_details: [{ gst_liable: "restaurant", amount: "0" }],
+
+                packing_charges: "0",
+                pc_tax_amount: "0",
+                pc_tax_percentage: "0",
+
+                pc_gst_details: [{ gst_liable: "restaurant", amount: "0" }],
+
+                order_type: "H",
+
+                advanced_order: "N",
+
+                urgent_order: false,
+                urgent_time: 20,
+
+                payment_type: body.paymentMode || "COD",
+
+                table_no: "",
+                no_of_persons: "0",
+
+                discount_total: String(discount.toFixed(2)),
+
+                tax_total: "0.00",
+
+                discount_type: "F",
+
+                total: String(finalAmount.toFixed(2)),
+
+                collect_cash: String(finalAmount.toFixed(2)),
+
+                otp: "1234",
+
+                description: "",
+              },
+            },
+
+            Items: items,
+          },
+        },
+
+        callback_url: PP_CALLBACK_URL,
+
+        udid: "",
+
+        device_type: "Web",
       };
-    }
 
-    console.log("📡 STATUS:", ppRes.status);
+      console.log("📦 PAYLOAD →", JSON.stringify(payload, null, 2));
 
-    console.log("📡 RESPONSE:", ppData);
-
-    if (
-      ppRes.status !== 200 ||
-      ppData?.success !== "1"
-    ) {
-      return res.status(400).json({
-        success: false,
-        petpooja_error: ppData,
+      const ppRes = await fetch(PP_CREATE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
+
+      let ppData: any;
+      try {
+        ppData = await ppRes.json();
+      } catch {
+        ppData = { raw: await ppRes.text() };
+      }
+
+      console.log("📡 STATUS:", ppRes.status);
+      console.log("📡 RESPONSE:", ppData);
+
+      if (ppRes.status !== 200 || ppData?.success !== "1") {
+        return res.status(400).json({
+          success: false,
+          petpooja_error: ppData,
+        });
+      }
+
+      await saveSingleOrderToFirestore({
+        orderID: orderId,
+        userId,
+        shippingAddress,
+        items,
+        subtotal,
+        discount,
+        couponCode: couponCode || null,
+        finalAmount,
+        deliveryLatitude: latitude,
+        deliveryLongitude: longitude,
+        deliveryDistanceKm,
+        deliveryCharge,
+        isDeliverable: geocodeResult.isDeliverable,
+        paymentMode: body.paymentMode || "COD",
+        petpoojaResponse: ppData,
+      });
+
+      console.log(`✅ Firebase order saved: ${orderId}`);
+
+      return res.json({ success: true, petpooja: ppData });
+    } catch (err) {
+      console.error("❌ create-order error:", err);
+      return res.status(500).json({ success: false, error: String(err) });
     }
-    await saveSingleOrderToFirestore({
-      orderID: orderId,
-      userId,
-      customer: {
-        name: body.name,
-        phone: body.phone,
-        email: body.email || "",
-        address: body.address || "",
-      },
-      items,
-      subtotal,
-      discount,
-      couponCode: couponCode || null,
-      finalAmount,
-      paymentMode: body.paymentMode || "COD",
-      petpoojaResponse: ppData,
-    });
+  });
 
-    
-
-    console.log(
-      `✅ Firebase order saved: ${orderId}`
-    );
-
-    return res.json({
-      success: true,
-      petpooja: ppData,
-    });
-  } catch (err) {
-    console.error(
-      "❌ create-order error:",
-      err
-    );
-
-    return res.status(500).json({
-      error: String(err),
-    });
-  }
-});
-
-  // ================= CANCEL ORDER (Petpooja) =================
+  // ── Cancel Order ────────────────────────────────────────────────────────────
 
   app.post("/api/cancel-order", async (req: Request, res: Response) => {
     try {
@@ -450,7 +368,6 @@ async function startServer() {
       const ppData = await ppRes.json();
       console.log("🚫 CANCEL RESPONSE:", ppData);
 
-      // ✅ Update Firebase
       await db.collection("orders").doc(orderId).set(
         {
           status: "-1",
@@ -469,7 +386,7 @@ async function startServer() {
     }
   });
 
-  // ================= WEBHOOK (Petpooja → Firebase + WooCommerce) =================
+  // ── Webhook (Petpooja → Firebase + WooCommerce) ─────────────────────────────
 
   app.post("/api/webhook", async (req: Request, res: Response) => {
     try {
@@ -484,7 +401,6 @@ async function startServer() {
       const status = String(data.status || "");
       const label = STATUS_LABELS[status] || status;
 
-      // --- Sync menu/orders if this is a menu push webhook ---
       if (Array.isArray(data.items) && data.items.length > 0) {
         await syncMenuToFirestore(db, data);
         console.log("✅ Menu synced");
@@ -495,7 +411,6 @@ async function startServer() {
         console.log("✅ Orders synced");
       }
 
-      // --- Update WooCommerce ---
       if (orderId && status) {
         if (SKIP_STATUSES.includes(status)) {
           console.log(`⏭️ Skipping WooCommerce update for order ${orderId} (status ${status})`);
@@ -509,7 +424,6 @@ async function startServer() {
         }
       }
 
-      // --- Update Firebase ---
       if (orderId) {
         const userId = orderId.includes("_") ? orderId.split("_")[0] : "guest";
 
@@ -541,7 +455,7 @@ async function startServer() {
     }
   });
 
-  // ================= MANUAL MENU SYNC =================
+  // ── Manual menu sync ────────────────────────────────────────────────────────
 
   app.post("/sync-menu", async (_req: Request, res: Response) => {
     try {
@@ -572,7 +486,7 @@ async function startServer() {
     }
   });
 
-  // ================= MANUAL ORDER SYNC =================
+  // ── Manual order sync ───────────────────────────────────────────────────────
 
   app.post("/sync-orders", async (_req: Request, res: Response) => {
     try {
@@ -603,7 +517,7 @@ async function startServer() {
     }
   });
 
-  // ================= GET WEBHOOK DATA =================
+  // ── Webhook data ────────────────────────────────────────────────────────────
 
   app.get("/api/webhook-data", async (_req: Request, res: Response) => {
     try {
@@ -616,7 +530,7 @@ async function startServer() {
     }
   });
 
-  // ================= ROOT =================
+  // ── Root ────────────────────────────────────────────────────────────────────
 
   app.get("/", (_req: Request, res: Response) => {
     res.send("🚀 Backend running");
