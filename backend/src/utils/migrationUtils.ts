@@ -41,7 +41,11 @@ export async function productExists(wordpressProductId: string): Promise<boolean
   return !query.empty;
 }
 
-export async function orderExists(wordpressOrderId: string): Promise<boolean> {
+export async function orderExists(wordpressOrderId?: string): Promise<boolean> {
+  if (!wordpressOrderId) {
+    return false;
+  }
+
   const db = getFirestoreDb();
   const query = await db
     .collection("orders")
@@ -57,8 +61,19 @@ export interface FirestoreUser {
   petpoojaCustomerId?: string;
   legacyPasswordHash: string;
   migrationStatus: "pending" | "completed" | "failed";
-  createdAt: FieldValue;
-  updatedAt: FieldValue;
+  address?: {
+    firstName?: string;
+    lastName?: string;
+    streetAddress?: string;
+    apartment?: string;
+    city?: string;
+    state?: string;
+    pinCode?: string;
+    country?: string;
+    fullAddress?: string;
+  };
+  createdAt?: FieldValue;
+  updatedAt?: FieldValue;
 }
 
 export async function createUser(user: FirestoreUser): Promise<string> {
