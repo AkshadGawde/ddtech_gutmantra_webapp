@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import {
@@ -9,10 +9,13 @@ import {
   Tag,
   Loader2,
 } from "lucide-react";
+import { doc, updateDoc } from "firebase/firestore";
 
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import { useCoupon } from "../hooks/useCoupon";
+import { db } from "../lib/firebase";
+import { formatAddress } from "../utils/userHelpers";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -51,14 +54,18 @@ interface CheckoutPageProps {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const API_BASE = "http://localhost:5000/api";
+const API_BASE = "https://api.gutmantra.in/api";
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
   const navigate = useNavigate();
   const { items, totalAmount, clearCart } = useCart();
-  const { user } = useAuth();
+  const { user, userData, refreshUserData } = useAuth();
+
+  const [addressHydrated, setAddressHydrated] = useState(false);
+  const [addressVerified, setAddressVerified] = useState(false);
+  const [saveAddressLoading, setSaveAddressLoading] = useState(false);
 
   const {
     couponCode,
@@ -97,6 +104,12 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
     longitude: 0,
   });
 
+  // ─── Derived totals (declared at component scope, above all handlers) ──────
+
+  const deliveryCharge = deliveryResult?.deliveryCharge ?? 0;
+  const subtotal = totalAmount;
+  const totalWithDelivery = subtotal - discount + deliveryCharge;
+
   // ─── Pre-fill from Firebase auth ───────────────────────────────────────────
 
   useEffect(() => {
@@ -110,6 +123,43 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
       }));
     }
   }, [user]);
+
+  useEffect(() => {
+    if (!user || addressHydrated || !userData?.address) {
+      return;
+    }
+
+    const address = userData.address;
+    const hasAddress = Boolean(
+      address.streetAddress ||
+        address.city ||
+        address.state ||
+        address.pinCode ||
+        address.fullAddress ||
+        address.firstName ||
+        address.lastName
+    );
+
+    if (!hasAddress) {
+      return;
+    }
+
+    setShippingAddress((prev) => ({
+      ...prev,
+      firstName: prev.firstName || address.firstName || "",
+      lastName: prev.lastName || address.lastName || "",
+      streetAddress: prev.streetAddress || address.streetAddress || "",
+      apartment: prev.apartment || address.apartment || "",
+      city: prev.city || address.city || "",
+      state: prev.state || address.state || "",
+      pinCode: prev.pinCode || address.pinCode || "",
+      country: prev.country || address.country || "India",
+      fullAddress: prev.fullAddress || address.fullAddress || "",
+    }));
+
+    setAddressHydrated(true);
+    setAddressVerified(false);
+  }, [user, userData, addressHydrated]);
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
 
@@ -204,15 +254,12 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
 
     const data = await response.json();
 
-    // Fix: success = whether the API call succeeded, NOT whether delivery is available.
-    // Backend returns { success: true/false } separately from { isDeliverable: true/false }.
     return {
       success: data.success ?? false,
       distanceKm: data.distanceKm ?? 0,
       deliveryCharge: data.deliveryCharge ?? 0,
       isDeliverable: data.isDeliverable ?? false,
       message: data.message ?? "Delivery validation failed",
-      // Carry coords so handleCheckout can read from validated result directly
       latitude,
       longitude,
     };
@@ -221,8 +268,9 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
   // ─── Address geocode + delivery check (text path) ─────────────────────────
 
   /**
-   * Called on PIN code blur. Geocodes the typed address, then validates
-   * the resulting coordinates against the delivery radius.
+   * Called on PIN code blur or "Verify Address" button click.
+   * Geocodes the typed address, then validates the resulting coordinates
+   * against the delivery radius.
    *
    * Returns the validated DeliveryResult (or null on failure) so the
    * caller can use it directly without another state read.
@@ -260,7 +308,6 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
           deliveryCharge: 0,
           isDeliverable: false,
           message: data.message || "Could not resolve address. Please check and retry.",
-          // No coords available when geocoding fails
         };
         setDeliveryResult(result);
         return result;
@@ -276,7 +323,6 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
       }));
 
       const result: DeliveryResult = {
-        // Fix: data.success reflects API success; data.isDeliverable reflects delivery availability.
         success: data.success,
         distanceKm: data.distanceKm,
         deliveryCharge: data.deliveryCharge,
@@ -288,6 +334,7 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
       };
 
       setDeliveryResult(result);
+      setAddressVerified(result.isDeliverable);
       return result;
     } catch (error) {
       console.error("❌ Geocode error:", error);
@@ -299,20 +346,63 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
         message: "Failed to validate address. Check your connection and retry.",
       };
       setDeliveryResult(result);
+      setAddressVerified(false);
       return result;
     } finally {
       setDeliveryLoading(false);
     }
   };
 
+  // ─── Save address ──────────────────────────────────────────────────────────
+
+  const handleSaveAddress = async () => {
+    if (!user?.uid || !addressVerified) return;
+
+    setSaveAddressLoading(true);
+    try {
+      const firstName = shippingAddress.firstName.trim().split(" ")[0] || "";
+      const lastName =
+        shippingAddress.lastName.trim().split(" ").slice(1).join(" ") || "";
+      const addressPayload = {
+        firstName,
+        lastName,
+        streetAddress: shippingAddress.streetAddress,
+        apartment: shippingAddress.apartment,
+        city: shippingAddress.city,
+        state: shippingAddress.state,
+        pinCode: shippingAddress.pinCode,
+        country: shippingAddress.country,
+        fullAddress:
+          shippingAddress.fullAddress || formatAddress(shippingAddress),
+      };
+
+      await updateDoc(doc(db, "users", user.uid), {
+        phone: shippingAddress.phone,
+        updatedAt: new Date(),
+        address: addressPayload,
+      });
+
+      await refreshUserData();
+      alert("Verified address saved to your profile.");
+    } catch (error) {
+      console.error("❌ Save address failed:", error);
+      alert("Could not save address. Please try again.");
+    } finally {
+      setSaveAddressLoading(false);
+    }
+  };
+
   // ─── Checkout ──────────────────────────────────────────────────────────────
 
   /**
-   * Fixed flow:
+   * Flow:
    * 1. Validate form fields
    * 2. If no delivery result yet, geocode now and wait for it
    * 3. Check deliverability
-   * 4. Submit order — passing lat/lng so backend skips a second geocode
+   * 4. Call create-order (stores order as payment_pending)
+   * 5a. ONLINE: call create-online-order → build hidden form → submit to BillDesk
+   *     (do NOT clearCart or navigate — wait for payment callback)
+   * 5b. COD: clearCart() → navigate("/success")
    */
   const handleCheckout = async () => {
     if (!user) {
@@ -366,7 +456,7 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
         quantity: item.quantity,
       }));
 
-      // Fix: read coordinates from `validated` (the returned DeliveryResult),
+      // Read coordinates from `validated` (the returned DeliveryResult),
       // NOT from shippingAddress state. React state updates are async — by the
       // time this runs, setShippingAddress from geocodeAndValidate may not have
       // settled yet, causing stale/zero coordinates in the payload.
@@ -403,23 +493,62 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
       }
 
       console.log("✅ Order placed:", data);
+
+      // ── ONLINE PAYMENT FLOW ──────────────────────────────────────────────
+      if (paymentMode === "ONLINE") {
+        const paymentResponse = await fetch(`${API_BASE}/create-online-order`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            orderId: data.orderId,
+            amount: totalWithDelivery,
+            customerEmail: shippingAddress.email,
+            customerPhone: shippingAddress.phone,
+          }),
+        });
+
+        const paymentData = await paymentResponse.json();
+
+        if (!paymentData.success) {
+          throw new Error(
+            paymentData.message || "Payment initialization failed"
+          );
+        }
+
+        console.log("🚀 Redirecting to BillDesk:", paymentData);
+
+        // Build auto-submit hidden form and redirect to BillDesk.
+        // DO NOT clearCart() here — cart must persist until the payment
+        // callback/verification confirms success. Failed payments preserve the cart.
+        const form = document.createElement("form");
+        form.method = "POST";
+        form.action = paymentData.paymentUrl;
+
+        Object.entries(paymentData.payload).forEach(([key, value]) => {
+          const input = document.createElement("input");
+          input.type = "hidden";
+          input.name = key;
+          input.value = String(value);
+          form.appendChild(input);
+        });
+
+        document.body.appendChild(form);
+        form.submit();
+
+        // Return early — do not proceed to COD flow.
+        return;
+      }
+
+      // ── COD FLOW ────────────────────────────────────────────────────────
       clearCart();
       onNext ? onNext() : navigate("/success");
-    } catch (error) {
+    } catch (error: any) {
       console.error("❌ Checkout error:", error);
-      alert(error instanceof Error ? error.message : "Checkout failed");
+      alert(error.message || "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
   };
-
-  // ─── Derived values ────────────────────────────────────────────────────────
-
-  const subtotal = totalAmount;
-  const deliveryCharge = deliveryResult?.deliveryCharge ?? 0;
-  const totalWithDelivery = finalAmount + deliveryCharge;
-
-  const isDeliveryLoading = deliveryLoading || gpsLoading;
 
   // ─── Empty cart ────────────────────────────────────────────────────────────
 
@@ -475,18 +604,20 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
                   type="text"
                   placeholder="First Name *"
                   value={shippingAddress.firstName}
-                  onChange={(e) =>
-                    setShippingAddress((prev) => ({ ...prev, firstName: e.target.value }))
-                  }
+                  onChange={(e) => {
+                    setShippingAddress((prev) => ({ ...prev, firstName: e.target.value }));
+                    setAddressVerified(false);
+                  }}
                   className="w-full px-4 py-3 border rounded-xl"
                 />
                 <input
                   type="text"
                   placeholder="Last Name *"
                   value={shippingAddress.lastName}
-                  onChange={(e) =>
-                    setShippingAddress((prev) => ({ ...prev, lastName: e.target.value }))
-                  }
+                  onChange={(e) => {
+                    setShippingAddress((prev) => ({ ...prev, lastName: e.target.value }));
+                    setAddressVerified(false);
+                  }}
                   className="w-full px-4 py-3 border rounded-xl"
                 />
               </div>
@@ -498,8 +629,8 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
                   value={shippingAddress.streetAddress}
                   onChange={(e) => {
                     setShippingAddress((prev) => ({ ...prev, streetAddress: e.target.value }));
-                    // Reset delivery result when address changes
                     setDeliveryResult(null);
+                    setAddressVerified(false);
                   }}
                   className="w-full px-4 py-3 border rounded-xl"
                 />
@@ -510,9 +641,11 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
                   type="text"
                   placeholder="Apartment / Landmark"
                   value={shippingAddress.apartment}
-                  onChange={(e) =>
-                    setShippingAddress((prev) => ({ ...prev, apartment: e.target.value }))
-                  }
+                  onChange={(e) => {
+                    setShippingAddress((prev) => ({ ...prev, apartment: e.target.value }));
+                    setDeliveryResult(null);
+                    setAddressVerified(false);
+                  }}
                   className="w-full px-4 py-3 border rounded-xl"
                 />
               </div>
@@ -525,6 +658,7 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
                   onChange={(e) => {
                     setShippingAddress((prev) => ({ ...prev, city: e.target.value }));
                     setDeliveryResult(null);
+                    setAddressVerified(false);
                   }}
                   className="w-full px-4 py-3 border rounded-xl"
                 />
@@ -535,6 +669,7 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
                   onChange={(e) => {
                     setShippingAddress((prev) => ({ ...prev, state: e.target.value }));
                     setDeliveryResult(null);
+                    setAddressVerified(false);
                   }}
                   className="w-full px-4 py-3 border rounded-xl"
                 />
@@ -545,6 +680,7 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
                   onChange={(e) => {
                     setShippingAddress((prev) => ({ ...prev, pinCode: e.target.value }));
                     setDeliveryResult(null);
+                    setAddressVerified(false);
                   }}
                   className="w-full px-4 py-3 border rounded-xl"
                 />
@@ -572,7 +708,7 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
               </div>
 
               {/* Verify Address button */}
-              <div className="mt-6">
+              <div className="mt-6 space-y-4">
                 <button
                   type="button"
                   onClick={() => geocodeAndValidate()}
@@ -586,8 +722,25 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
                   )}
                   {deliveryLoading ? "Validating..." : "Verify Address"}
                 </button>
-                <p className="text-xs text-gray-500 mt-2">
-                  Click to validate your address and check delivery availability
+
+                {addressVerified && (
+                  <button
+                    type="button"
+                    onClick={handleSaveAddress}
+                    disabled={saveAddressLoading}
+                    className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-emerald-600 text-white rounded-xl font-medium text-sm hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {saveAddressLoading ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      "Save Verified Address"
+                    )}
+                  </button>
+                )}
+
+                <p className="text-xs text-gray-500">
+                  Click to validate your address and check delivery availability.
+                  {addressVerified && " Your verified address can be saved to your profile."}
                 </p>
               </div>
 
@@ -613,10 +766,10 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
             </div>
 
             {/* Delivery status panel */}
-            {(isDeliveryLoading || deliveryResult) && (
+            {(deliveryLoading || deliveryResult) && (
               <div
                 className={`p-6 rounded-2xl border transition-all ${
-                  isDeliveryLoading
+                  deliveryLoading
                     ? "bg-gray-50 border-gray-200"
                     : deliveryResult?.isDeliverable
                     ? "bg-green-50 border-green-200"
@@ -624,7 +777,7 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
                 }`}
               >
                 <div className="flex items-center gap-3 mb-3">
-                  {isDeliveryLoading ? (
+                  {deliveryLoading ? (
                     <Loader2 size={24} className="text-gray-500 animate-spin" />
                   ) : (
                     <Truck
@@ -637,7 +790,7 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
                   <h3 className="font-semibold">Delivery Information</h3>
                 </div>
 
-                {isDeliveryLoading ? (
+                {deliveryLoading ? (
                   <p className="text-gray-600">Checking delivery availability...</p>
                 ) : deliveryResult ? (
                   <div className="space-y-2 text-sm">
@@ -790,24 +943,24 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
               {/* CTA */}
               <button
                 onClick={handleCheckout}
-                disabled={loading || isDeliveryLoading}
+                disabled={loading || deliveryLoading}
                 className="w-full mt-8 bg-black text-white py-4 rounded-2xl font-semibold disabled:bg-gray-400 disabled:cursor-not-allowed hover:bg-gray-800 transition-colors"
               >
                 {loading
                   ? "Placing Order..."
-                  : isDeliveryLoading
+                  : deliveryLoading
                   ? "Validating Address..."
                   : "Place Order"}
               </button>
 
               {/* Delivery warning — shown as text, NOT as a disabled button */}
-              {!isDeliveryLoading && deliveryResult && !deliveryResult.isDeliverable && (
+              {!deliveryLoading && deliveryResult && !deliveryResult.isDeliverable && (
                 <p className="text-red-600 text-sm mt-4 text-center">
                   {deliveryResult.message}
                 </p>
               )}
 
-              {!isDeliveryLoading && !deliveryResult && (
+              {!deliveryLoading && !deliveryResult && (
                 <p className="text-gray-400 text-xs mt-4 text-center">
                   Enter your PIN code or use GPS to check delivery availability
                 </p>

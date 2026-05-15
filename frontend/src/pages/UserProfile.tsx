@@ -1,30 +1,24 @@
 import { motion } from "motion/react";
 
 import {
-
   LogOut,
-
   Mail,
-
   MapPin,
-
   Phone,
-
   Calendar,
-
   Package,
-
   Loader,
-
   Edit2,
-
-  Save
-
+  Save,
 } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import {
+  formatAddress,
+  getDisplayName,
+  getUserInitials,
+} from "@/utils/userHelpers";
 
 import {
 
@@ -85,20 +79,38 @@ export default function UserProfile({ onNavigate }: UserProfileProps) {
   const [isEditing, setIsEditing] = useState(false);
 
   const [editData, setEditData] = useState({
-
-    name: userData?.name || "",
-
-    phone: userData?.phone || "",
-
-    street: userData?.street || "",
-
-    city: userData?.city || "",
-
-    state: userData?.state || "",
-
-    zipCode: userData?.zipCode || "",
-
+    name: "",
+    phone: "",
+    streetAddress: "",
+    apartment: "",
+    city: "",
+    state: "",
+    pinCode: "",
+    country: "India",
   });
+
+  useEffect(() => {
+    if (!userData || isEditing) return;
+
+    setEditData({
+      name: getDisplayName(userData, user),
+      phone: userData.phone || "",
+      streetAddress: userData.address?.streetAddress || "",
+      apartment: userData.address?.apartment || "",
+      city: userData.address?.city || "",
+      state: userData.address?.state || "",
+      pinCode: userData.address?.pinCode || "",
+      country: userData.address?.country || "India",
+    });
+  }, [userData, user, isEditing]);
+
+  const displayName = getDisplayName(userData ?? undefined, user);
+  const addressLines = useMemo(() => {
+    const formatted = formatAddress(userData?.address);
+    return formatted ? formatted.split("\n") : [];
+  }, [userData?.address]);
+
+  const hasAddress = addressLines.length > 0;
 
   /* ================= REALTIME ORDERS ================= */
 
@@ -152,6 +164,21 @@ export default function UserProfile({ onNavigate }: UserProfileProps) {
 
   }, [user?.uid]);
 
+  useEffect(() => {
+    if (!userData || isEditing) return;
+
+    setEditData({
+      name: getDisplayName(userData, user),
+      phone: userData.phone || "",
+      streetAddress: userData.address?.streetAddress || "",
+      apartment: userData.address?.apartment || "",
+      city: userData.address?.city || "",
+      state: userData.address?.state || "",
+      pinCode: userData.address?.pinCode || "",
+      country: userData.address?.country || "India",
+    });
+  }, [userData, user, isEditing]);
+
   /* ================= STATUS MAPPING ================= */
 
   const mapStatus = (status: string) => {
@@ -189,27 +216,40 @@ export default function UserProfile({ onNavigate }: UserProfileProps) {
   /* ================= PROFILE SAVE ================= */
 
   const handleSaveProfile = async () => {
-
     try {
-
       if (!user?.uid) return;
 
-      const userRef = doc(db, "users", user.uid);
-
-      await updateDoc(userRef, {
-
-        name: editData.name,
-
-        phone: editData.phone,
-
-        street: editData.street,
-
+      const firstName = editData.name.trim().split(" ")[0] || "";
+      const lastName = editData.name.trim().split(" ").slice(1).join(" ") || "";
+      const fullAddress = formatAddress({
+        streetAddress: editData.streetAddress,
+        apartment: editData.apartment,
         city: editData.city,
-
         state: editData.state,
+        pinCode: editData.pinCode,
+        country: editData.country,
+      });
 
-        zipCode: editData.zipCode,
-
+      const userRef = doc(db, "users", user.uid);
+      await updateDoc(userRef, {
+        name: editData.name,
+        phone: editData.phone,
+        street: editData.streetAddress,
+        city: editData.city,
+        state: editData.state,
+        zipCode: editData.pinCode,
+        updatedAt: new Date(),
+        address: {
+          firstName,
+          lastName,
+          streetAddress: editData.streetAddress,
+          apartment: editData.apartment,
+          city: editData.city,
+          state: editData.state,
+          pinCode: editData.pinCode,
+          country: editData.country,
+          fullAddress,
+        },
       });
 
       setIsEditing(false);
@@ -230,19 +270,7 @@ export default function UserProfile({ onNavigate }: UserProfileProps) {
 
   };
 
-  const getInitials = (name: string) => {
-
-    return name
-
-      ?.split(" ")
-
-      .map((n) => n.charAt(0).toUpperCase())
-
-      .join("")
-
-      .slice(0, 2);
-
-  };
+  const getInitials = (name: string) => getUserInitials(name);
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary/5 to-white pt-28 pb-12">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
@@ -271,7 +299,7 @@ export default function UserProfile({ onNavigate }: UserProfileProps) {
                       <div className="relative">
                         <img
                           src={userData.profileImage}
-                          alt={userData?.name}
+                          alt={displayName}
                           className="w-28 h-28 rounded-2xl border-4 border-primary/20 object-cover shadow-md"
                         />
                         <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-green-400 rounded-full border-4 border-white" />
@@ -279,7 +307,7 @@ export default function UserProfile({ onNavigate }: UserProfileProps) {
                     ) : (
                       <div className="relative">
                         <div className="w-28 h-28 rounded-2xl bg-gradient-to-br from-primary to-secondary text-white flex items-center justify-center text-5xl font-bold shadow-md border-4 border-primary/20">
-                          {getInitials(userData?.name || "")}
+                          {getInitials(displayName)}
                         </div>
                         <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-green-400 rounded-full border-4 border-white" />
                       </div>
@@ -289,7 +317,7 @@ export default function UserProfile({ onNavigate }: UserProfileProps) {
                   {/* User Info */}
                   <div className="text-center mb-6">
                     <h2 className="text-2xl font-bold text-gray-900 mb-1">
-                      {userData?.name}
+                      {displayName}
                     </h2>
                     <p className="text-sm font-semibold text-primary uppercase tracking-wider">
                       {userData?.role === "admin" ? "Admin Member" : "Premium Member"}
@@ -503,16 +531,25 @@ export default function UserProfile({ onNavigate }: UserProfileProps) {
                   </div>
                 ) : (
                   <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <div className="space-y-2">
-                      <p className="font-bold text-gray-900">{userData?.name}</p>
-                      <p className="text-sm text-gray-700">{userData?.phone}</p>
-                      <p className="text-sm text-gray-700">{userData?.street}</p>
-                      <p className="text-sm text-gray-700">
-                        {userData?.city}, {userData?.state} {userData?.zipCode}
-                      </p>
-                    </div>
-                    {!(userData?.street) && (
-                      <p className="text-xs text-gray-500 italic mt-4">No address added yet. Click Edit Info to add one.</p>
+                    {hasAddress ? (
+                      <div className="space-y-2">
+                        <p className="font-bold text-gray-900">{displayName}</p>
+                        {userData?.phone && (
+                          <p className="text-sm text-gray-700">{userData.phone}</p>
+                        )}
+                        {addressLines.map((line, index) => (
+                          <p key={index} className="text-sm text-gray-700">
+                            {line}
+                          </p>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="font-bold text-gray-900">{displayName}</p>
+                        <p className="text-xs text-gray-500 italic mt-4">
+                          No address added yet. Click Edit Info to add one.
+                        </p>
+                      </div>
                     )}
                   </div>
                 )}

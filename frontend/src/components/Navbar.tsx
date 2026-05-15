@@ -18,6 +18,7 @@ import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
+import { getDisplayName, getUserInitials } from "../utils/userHelpers";
 import { CATEGORIES } from "@/constants";
 import LoginModal from "./LoginModal";
 import SearchBar from "./SearchBox";
@@ -36,7 +37,7 @@ export default function Navbar({ onOpenCart }: NavbarProps) {
   const location = useLocation();
 
   const { totalItems } = useCart();
-  const { user, logout, isAdmin } = useAuth();
+  const { user, userData, logout, isAdmin } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -190,9 +191,11 @@ export default function Navbar({ onOpenCart }: NavbarProps) {
               )}
             >
               {user?.photoURL ? (
-                <img src={user.photoURL} alt={user.displayName || ""} className="w-6 h-6 rounded-full" />
+                <img src={user.photoURL} alt={user?.displayName || ""} className="w-6 h-6 rounded-full" />
               ) : (
-                <User size={22} />
+                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                  {getUserInitials(getDisplayName(userData, user))}
+                </div>
               )}
             </button>
 
@@ -205,7 +208,7 @@ export default function Navbar({ onOpenCart }: NavbarProps) {
                   className="absolute right-0 top-full mt-2 bg-white shadow-2xl rounded-2xl w-56 p-2 border border-black/5 flex flex-col gap-1 z-[60]"
                 >
                   <div className="px-4 py-3 border-b border-black/5 mb-1">
-                    <p className="text-xs font-bold text-accent truncate">{user?.displayName}</p>
+                    <p className="text-xs font-bold text-accent truncate">{getDisplayName(userData, user)}</p>
                     <p className="text-[10px] text-accent/40 truncate">{user?.email}</p>
                   </div>
                   
@@ -353,11 +356,13 @@ export default function Navbar({ onOpenCart }: NavbarProps) {
                       {user.photoURL ? (
                         <img src={user.photoURL} alt={user.displayName || ""} />
                       ) : (
-                        <User size={24} className="text-primary" />
+                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-lg font-bold text-primary">
+                          {getUserInitials(getDisplayName(userData, user))}
+                        </div>
                       )}
                     </div>
                     <div className="flex-1">
-                      <p className="font-bold text-sm tracking-tight">{user.displayName}</p>
+                      <p className="font-bold text-sm tracking-tight">{getDisplayName(userData, user)}</p>
                       <button 
                         onClick={logout} 
                         className="text-[10px] font-bold uppercase tracking-widest text-red-500 hover:underline"

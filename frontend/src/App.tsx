@@ -14,7 +14,7 @@ import ContactUs from "./pages/ContactUs";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import RefundPolicy from "./pages/RefundPolicy";
 import CheckoutPage from "./pages/CheckoutPage";
-import PaymentPage from "./pages/PaymentPage";
+import PaymentProcessing from "./pages/PaymentProcessing";
 import SuccessPage from "./pages/SuccessPage";
 import ProductPage from "./pages/ProductPage";
 import Footer from "./pages/Footer";
@@ -31,10 +31,14 @@ import { AuthProvider } from "./context/AuthContext";
 
 export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
+
   const navigate = useNavigate();
 
   /* ================= NAVIGATION HANDLER ================= */
-  const handleNavigate = (view: string, params?: any) => {
+  const handleNavigate = (
+    view: string,
+    params?: any
+  ) => {
     if (view === "category") {
       navigate(`/${params.category}`);
     }
@@ -43,53 +47,153 @@ export default function App() {
   return (
     <AuthProvider>
       <CartProvider>
-
         {/* NAVBAR */}
-        <Navbar onOpenCart={() => setIsCartOpen(true)} />
+        <Navbar
+          onOpenCart={() =>
+            setIsCartOpen(true)
+          }
+        />
 
         {/* ROUTES */}
         <Routes>
-
           {/* ================= HOME ================= */}
           <Route
             path="/"
             element={
               <main>
-                <Hero onNavigate={handleNavigate} />
-                <CategorySection onNavigate={handleNavigate} />
-                <ProductGrid onNavigate={handleNavigate} />
+                <Hero
+                  onNavigate={
+                    handleNavigate
+                  }
+                />
+
+                <CategorySection
+                  onNavigate={
+                    handleNavigate
+                  }
+                />
+
+                <ProductGrid
+                  onNavigate={
+                    handleNavigate
+                  }
+                />
+
                 <BrandStory />
+
                 <OurProcess />
+
                 <Testimonials />
-                <SocialReel onNavigate={handleNavigate} />
+
+                <SocialReel
+                  onNavigate={
+                    handleNavigate
+                  }
+                />
               </main>
             }
           />
 
           {/* ================= CATEGORY ================= */}
-          <Route path="/atta" element={<CategoryPage />} />
-          <Route path="/atta/:subcategory" element={<CategoryPage />} />
+          <Route
+            path="/atta"
+            element={<CategoryPage />}
+          />
 
-          <Route path="/oils" element={<CategoryPage />} />
-          <Route path="/oils/:subcategory" element={<CategoryPage />} />
+          <Route
+            path="/atta/:subcategory"
+            element={<CategoryPage />}
+          />
 
-          <Route path="/spices" element={<CategoryPage />} />
-          <Route path="/spices/:subcategory" element={<CategoryPage />} />
+          <Route
+            path="/oils"
+            element={<CategoryPage />}
+          />
+
+          <Route
+            path="/oils/:subcategory"
+            element={<CategoryPage />}
+          />
+
+          <Route
+            path="/spices"
+            element={<CategoryPage />}
+          />
+
+          <Route
+            path="/spices/:subcategory"
+            element={<CategoryPage />}
+          />
 
           {/* ================= PRODUCT PAGE ================= */}
-          <Route path="/product/:id" element={<ProductPage />} />
+          <Route
+            path="/product/:id"
+            element={<ProductPage />}
+          />
 
           {/* ================= STATIC ================= */}
-          <Route path="/our-story" element={<OurStory />} />
-          <Route path="/contact" element={<ContactUs />} />
-          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-          <Route path="/refund-policy" element={<RefundPolicy />} />
-          <Route path="/profile" element={<UserProfile onNavigate={handleNavigate} />} />
+          <Route
+            path="/our-story"
+            element={<OurStory />}
+          />
+
+          <Route
+            path="/contact"
+            element={<ContactUs />}
+          />
+
+          <Route
+            path="/privacy-policy"
+            element={<PrivacyPolicy />}
+          />
+
+          <Route
+            path="/refund-policy"
+            element={<RefundPolicy />}
+          />
+
+          <Route
+            path="/profile"
+            element={
+              <UserProfile
+                onNavigate={
+                  handleNavigate
+                }
+              />
+            }
+          />
 
           {/* ================= ORDER FLOW ================= */}
-          <Route path="/checkout" element={<CheckoutPage />} />
-          <Route path="/payment" element={<PaymentPage />} />
-          <Route path="/success" element={<SuccessPage />} />
+          <Route
+            path="/checkout"
+            element={<CheckoutPage />}
+          />
+
+          
+
+<Route
+
+  path="/payment-processing"
+
+  element={<PaymentProcessing />}
+
+/>
+
+<Route
+
+  path="/success"
+
+  element={
+
+    <SuccessPage
+
+      onHome={() => navigate("/")}
+
+    />
+
+  }
+
+/>
 
           {/* ================= 404 ================= */}
           <Route
@@ -105,16 +209,21 @@ export default function App() {
         {/* GLOBAL UI */}
         <CartDrawer
           isOpen={isCartOpen}
-          onClose={() => setIsCartOpen(false)}
+          onClose={() =>
+            setIsCartOpen(false)
+          }
           onCheckout={() => {
             setIsCartOpen(false);
+
             navigate("/checkout");
           }}
         />
-        <SocialFloating />
-        <AddToCartAnimation />
-        <Footer />
 
+        <SocialFloating />
+
+        <AddToCartAnimation />
+
+        <Footer />
       </CartProvider>
     </AuthProvider>
   );

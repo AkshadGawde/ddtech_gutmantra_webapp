@@ -9,51 +9,73 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db, googleProvider } from "../lib/firebase";
+import {
+  FirestoreUserDocument,
+  normalizeFirestoreUserDoc,
+} from "../utils/userHelpers";
 
 interface AuthContextType {
   user: FirebaseUser | null;
-  userData: any | null;
+  userData: FirestoreUserDocument | null;
   loading: boolean;
   isAdmin: boolean;
   login: () => Promise<void>;
   loginWithEmail: (email: string, password: string) => Promise<void>;
   signupWithEmail: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUserData: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<FirebaseUser | null>(null);
-  const [userData, setUserData] = useState<any | null>(null);
+  const [userData, setUserData] = useState<FirestoreUserDocument | null>(null);
   const [loading, setLoading] = useState(true);
 
   const isAdmin = userData?.role === "admin" || user?.email?.toLowerCase() === import.meta.env.VITE_ADMIN_EMAIL?.toLowerCase();
 
+  const refreshUserData = async () => {
+    if (!user) return;
+
+    const userRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userRef);
+
+    if (userSnap.exists()) {
+      setUserData(normalizeFirestoreUserDoc(userSnap.data(), user));
+    }
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
-      
+
       if (firebaseUser) {
         // Fetch or create user document in Firestore
         const userRef = doc(db, "users", firebaseUser.uid);
         const userSnap = await getDoc(userRef);
-        
+
         if (userSnap.exists()) {
-          setUserData(userSnap.data());
+          setUserData(normalizeFirestoreUserDoc(userSnap.data(), firebaseUser));
         } else {
-          const newUserData = {
-            uid: firebaseUser.uid,
-            name: firebaseUser.displayName || "User",
-            email: firebaseUser.email,
-            profileImage: firebaseUser.photoURL,
+          const newUserData: FirestoreUserDocument = {
+            email: firebaseUser.email ?? "",
+            phone: firebaseUser.phoneNumber ?? "",
+            wordpressUserId: "",
+            name: firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "User",
+            profileImage: firebaseUser.photoURL ?? "",
             role: firebaseUser.email === import.meta.env.VITE_ADMIN_EMAIL ? "admin" : "user",
-            phone: "",
-            street: "",
-            city: "",
-            state: "",
-            zipCode: "",
-            addresses: [],
+            address: {
+              firstName: firebaseUser.displayName?.split(" ")[0] || "",
+              lastName: firebaseUser.displayName?.split(" ").slice(1).join(" ") || "",
+              streetAddress: "",
+              apartment: "",
+              city: "",
+              state: "",
+              pinCode: "",
+              country: "India",
+              fullAddress: "",
+            },
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
           };
@@ -63,7 +85,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         setUserData(null);
       }
-      
+
       setLoading(false);
     });
 
@@ -113,6 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         city: "",
         state: "",
         zipCode: "",
+        address: {},
         addresses: [],
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -133,7 +156,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, userData, loading, isAdmin, login, loginWithEmail, signupWithEmail, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        userData,
+        loading,
+        isAdmin,
+        login,
+        loginWithEmail,
+        signupWithEmail,
+        logout,
+        refreshUserData,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
