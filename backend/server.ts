@@ -14,6 +14,9 @@ import { validateCoupon } from "./src/services/couponService.js";
 import { geocodeAddress, getDeliveryResult } from "./src/services/deliveryService.js";
 import { FieldValue } from "firebase-admin/firestore";
 
+import paymentRoutes from "./src/routes/paymentRoutes.js";
+import orderStatusRoutes from "./routes/orderStatusRoutes";
+
 dotenv.config();
 
 // ─── WooCommerce ──────────────────────────────────────────────────────────────
@@ -529,6 +532,10 @@ async function startServer() {
       return res.status(500).json({ error: String(err) });
     }
   });
+
+  // ── BillDesk ────────────────────────────────────────────────────────────────────
+  app.use("/api", paymentRoutes);
+  app.use("/api", orderStatusRoutes);
 
   // ── Root ────────────────────────────────────────────────────────────────────
 
