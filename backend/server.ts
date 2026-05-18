@@ -142,6 +142,8 @@ async function startServer() {
     const body = req.body;
 
     console.log("📦 FRONTEND BODY", JSON.stringify(body, null, 2));
+    console.log("📦 FRONTEND ITEMS", JSON.stringify(body.items, null, 2));
+    console.log("📦 FRONTEND SHIPPING ADDRESS", JSON.stringify(body.shippingAddress, null, 2));
     console.log("📦 BODY RECEIVED:", JSON.stringify(body, null, 2));
 
     // ───────────────── VALIDATION ─────────────────

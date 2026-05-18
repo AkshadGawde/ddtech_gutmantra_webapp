@@ -494,9 +494,16 @@ console.log(
   "🚀 FINAL CHECKOUT PAYLOAD",
   JSON.stringify(payload, null, 2)
 );
+console.log(
+  "🚀 FINAL CHECKOUT ITEMS",
+  JSON.stringify(formattedItems, null, 2)
+);
 
       console.log("💳 PAYMENT MODE", paymentMode);
-      console.log("🚀 Sending order:", payload);
+      console.log(
+        "🚀 Sending order",
+        JSON.stringify(payload, null, 2)
+      );
 
       const response = await fetch(`${API_BASE}/create-order`, {
         method: "POST",
