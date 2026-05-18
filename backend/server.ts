@@ -137,309 +137,368 @@ async function startServer() {
   // ── Create Order ────────────────────────────────────────────────────────────
 
   app.post("/api/create-order", async (req: Request, res: Response) => {
-    try {
-      const body = req.body;
-console.log("📦 BODY RECEIVED", req.body);
-      // Validate required fields
-      for (const field of ["orderID", "shippingAddress", "items"]) {
-        if (!body[field]) {
-          return res.status(400).json({ success: false, error: `${field} missing` });
-        }
-      }
+  try {
+    const body = req.body;
 
-      const orderId = String(body.orderID);
-      const userId =
-        typeof body.userId === "string" && body.orderID.startsWith(body.userId)
-          ? body.userId.trim()
-          : String(orderId.split("_")[0] || "");
+    console.log("📦 BODY RECEIVED:", JSON.stringify(body, null, 2));
 
-      const shippingAddress = body.shippingAddress;
+    // ───────────────── VALIDATION ─────────────────
 
-      if (!shippingAddress.fullAddress) {
+    for (const field of ["orderID", "shippingAddress", "items"]) {
+      if (!body[field]) {
         return res.status(400).json({
           success: false,
-          message: "Full address is required",
+          error: `${field} missing`,
+        });
+      }
+    }
+
+    const orderId = String(body.orderID);
+
+    const userId =
+      typeof body.userId === "string" &&
+      body.orderID.startsWith(body.userId)
+        ? body.userId.trim()
+        : String(orderId.split("_")[0] || "");
+
+    const shippingAddress = body.shippingAddress;
+
+    if (!shippingAddress.fullAddress) {
+      return res.status(400).json({
+        success: false,
+        message: "Full address is required",
+      });
+    }
+
+    // ───────────────── DELIVERY CHECK ─────────────────
+
+    const geocodeResult = await geocodeAddress(
+      shippingAddress.streetAddress,
+      shippingAddress.apartment,
+      shippingAddress.city,
+      shippingAddress.state,
+      shippingAddress.pinCode,
+      shippingAddress.country
+    );
+
+    if (!geocodeResult.isDeliverable) {
+      return res.status(400).json({
+        success: false,
+        message: geocodeResult.message,
+      });
+    }
+
+    const latitude = geocodeResult.latitude;
+    const longitude = geocodeResult.longitude;
+    const deliveryCharge = geocodeResult.deliveryCharge;
+    const deliveryDistanceKm = geocodeResult.distanceKm;
+
+    // ───────────────── BUILD ITEMS ─────────────────
+
+    const items: any[] = [];
+
+    for (const item of body.items) {
+      const baseId = item.base_id || item.sku;
+
+      const variationId =
+        item.variation_id &&
+        item.variation_id !== item.base_id
+          ? item.variation_id
+          : "";
+
+      if (!baseId) {
+        return res.status(400).json({
+          success: false,
+          error: `Missing base_id/sku for item '${item.name}'`,
         });
       }
 
-      // Re-geocode the address to validate coordinates
-      const geocodeResult = await geocodeAddress(shippingAddress.streetAddress, shippingAddress.apartment, shippingAddress.city, shippingAddress.state, shippingAddress.pinCode, shippingAddress.country);
+      items.push({
+        id: String(baseId),
 
-      if (!geocodeResult.isDeliverable) {
-        return res.status(400).json({
-          success: false,
-          message: geocodeResult.message,
-        });
-      }
+        variation_id: variationId || "",
 
-      const latitude = geocodeResult.latitude;
-      const longitude = geocodeResult.longitude;
-      const deliveryCharge = geocodeResult.deliveryCharge;
-      const deliveryDistanceKm = geocodeResult.distanceKm;
+        name: item.name,
 
-      // Build Petpooja items
-      const items: any[] = [];
+        price: String(item.price),
 
-      for (const item of body.items) {
-        const baseId = item.base_id || item.sku;
-const variationId =
+        quantity: String(item.quantity),
 
-  item.variation_id &&
+        tax_inclusive: true,
 
-  item.variation_id !== item.base_id
+        gst_liability: "restaurant",
 
-    ? item.variation_id
+        item_tax: [],
 
-    : "";
+        item_discount: "0",
 
-        if (!baseId) {
-          return res.status(400).json({
-            success: false,
-            error: `Missing base_id/sku for item '${item.name}'`,
-          });
-        }
+        final_price: String(item.price),
 
-        items.push({
+        description: "",
 
-  id: String(baseId),
+        variation_name: "",
 
-  name: item.name,
+        AddonItem: {
+          details: [],
+        },
+      });
+    }
 
-  tax_inclusive: true,
+    if (!items.length) {
+      return res.status(400).json({
+        success: false,
+        error: "No valid items",
+      });
+    }
 
-  gst_liability: "restaurant",
+    console.log("🔥 FINAL ITEMS:", JSON.stringify(items, null, 2));
 
-  item_tax: [],
+    // ───────────────── TOTALS ─────────────────
 
-  item_discount: "0",
+    const subtotal = items.reduce(
+      (sum, i) =>
+        sum + parseFloat(i.price) * parseInt(i.quantity),
+      0
+    );
 
-  price: String(item.price),
+    let discount = 0;
 
-  final_price: String(item.price),
+    const couponCode = body.couponCode;
 
-  quantity: String(item.quantity),
-
-  description: "",
-
-  variation_name: "",
-
-  variation_id: variationId || "",
-
-  AddonItem: {
-
-    details: [],
-
-  },
-
-});
-      }
-
-      if (!items.length) {
-        return res.status(400).json({ success: false, error: "No valid items" });
-      }
-
-      console.log("🔥 FINAL ITEMS →", JSON.stringify(items, null, 2));
-
-      // Calculate totals
-      const subtotal = items.reduce(
-        (sum, i) => sum + parseFloat(i.price) * parseInt(i.quantity),
-        0
+    if (couponCode) {
+      const validation = await validateCoupon(
+        couponCode,
+        subtotal,
+        userId
       );
 
-      let discount = 0;
-      let finalAmount = subtotal;
-      const couponCode = body.couponCode;
-
-      if (couponCode) {
-        const validation = await validateCoupon(couponCode, subtotal, userId);
-        discount = validation.discount;
-        finalAmount = validation.finalAmount;
-      }
-
-      finalAmount = Math.max(0, subtotal - discount + deliveryCharge);
-
-      // Build Petpooja payload
-      const payload = {
-  app_key: PP_APP_KEY,
-  app_secret: PP_APP_SECRET,
-  access_token: PP_ACCESS_TOKEN,
-
-  orderinfo: {
-    OrderInfo: {
-      Restaurant: {
-        details: {
-          restID: PP_REST_ID,
-          res_name: "GutMantra",
-          address: body.address || "Pune",
-        },
-      },
-
-      Customer: {
-        details: {
-          name: `${shippingAddress.firstName} ${shippingAddress.lastName}`,
-          phone: shippingAddress.phone,
-          email: shippingAddress.email,
-          address: shippingAddress.fullAddress,
-          latitude: String(latitude),
-          longitude: String(longitude),
-        },
-      },
-
-      Order: {
-        details: {
-          orderID: orderId,
-
-          preorder_date: "",
-          preorder_time: "",
-
-          service_charge: "0",
-          sc_tax_amount: "0",
-
-          delivery_charges: String(
-            deliveryCharge.toFixed(2)
-          ),
-
-          dc_tax_percentage: "0",
-          dc_tax_amount: "0",
-
-          dc_gst_details: [
-            {
-              gst_liable: "restaurant",
-              amount: "0",
-            },
-          ],
-
-          packing_charges: "0",
-
-          pc_tax_amount: "0",
-
-          pc_tax_percentage: "0",
-
-          pc_gst_details: [
-            {
-              gst_liable: "restaurant",
-              amount: "0",
-            },
-          ],
-
-          order_type: "D",
-
-          advanced_order: "N",
-
-          urgent_order: false,
-
-          urgent_time: 20,
-
-          payment_type:
-            body.paymentMode || "COD",
-
-          table_no: "",
-
-          no_of_persons: "0",
-
-          discount_total: String(
-            discount.toFixed(2)
-          ),
-
-          tax_total: "0.00",
-
-          discount_type: "F",
-
-          total: String(
-            finalAmount.toFixed(2)
-          ),
-
-          description: "",
-
-          created_on: new Date()
-            .toISOString()
-            .slice(0, 19)
-            .replace("T", " "),
-
-          enable_delivery: 1,
-
-          min_prep_time: 20,
-
-          callback_url: PP_CALLBACK_URL,
-
-          collect_cash: String(
-            finalAmount.toFixed(2)
-          ),
-
-          otp: "1234",
-        },
-      },
-
-      OrderItem: {
-        details: items,
-      },
-
-      Tax: {
-        details: [],
-      },
-
-      Discount: {
-        details: [],
-      },
-    },
-
-    udid: "",
-
-    device_type: "Web",
-  },
-};
-
-      console.log("📦 PAYLOAD →", JSON.stringify(payload, null, 2));
-
-      const ppRes = await fetch(PP_CREATE_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      let ppData: any;
-      try {
-        ppData = await ppRes.json();
-      } catch {
-        ppData = { raw: await ppRes.text() };
-      }
-
-      console.log("📡 STATUS:", ppRes.status);
-      console.log("📡 RESPONSE:", ppData);
-
-      if (ppRes.status !== 200 || ppData?.success !== "1") {
-        return res.status(400).json({
-          success: false,
-          petpooja_error: ppData,
-        });
-      }
-
-      await saveSingleOrderToFirestore({
-        orderID: orderId,
-        userId,
-        shippingAddress,
-        items,
-        subtotal,
-        discount,
-        couponCode: couponCode || null,
-        finalAmount,
-        deliveryLatitude: latitude,
-        deliveryLongitude: longitude,
-        deliveryDistanceKm,
-        deliveryCharge,
-        isDeliverable: geocodeResult.isDeliverable,
-        paymentMode: body.paymentMode || "COD",
-        petpoojaResponse: ppData,
-      });
-
-      console.log(`✅ Firebase order saved: ${orderId}`);
-
-      return res.json({ success: true, petpooja: ppData });
-    } catch (err) {
-      console.error("❌ create-order error:", err);
-      return res.status(500).json({ success: false, error: String(err) });
+      discount = validation.discount;
     }
-  });
+
+    const finalAmount = Math.max(
+      0,
+      subtotal - discount + deliveryCharge
+    );
+
+    // ───────────────── PAYLOAD ─────────────────
+
+    const payload = {
+      app_key: PP_APP_KEY,
+
+      app_secret: PP_APP_SECRET,
+
+      access_token: PP_ACCESS_TOKEN,
+
+      orderinfo: {
+        OrderInfo: {
+          Restaurant: {
+            details: {
+              restID: PP_REST_ID,
+
+              res_name: "GutMantra",
+
+              address: "Pune",
+            },
+          },
+
+          Customer: {
+            details: {
+              name: `${shippingAddress.firstName} ${shippingAddress.lastName}`,
+
+              phone: shippingAddress.phone,
+
+              email: shippingAddress.email,
+
+              address: shippingAddress.fullAddress,
+
+              latitude: String(latitude),
+
+              longitude: String(longitude),
+            },
+          },
+
+          Order: {
+            details: {
+              orderID: orderId,
+
+              preorder_date: "",
+
+              preorder_time: "",
+
+              service_charge: "0",
+
+              sc_tax_amount: "0",
+
+              delivery_charges: String(
+                deliveryCharge.toFixed(2)
+              ),
+
+              dc_tax_percentage: "0",
+
+              dc_tax_amount: "0",
+
+              dc_gst_details: [
+                {
+                  gst_liable: "restaurant",
+                  amount: "0",
+                },
+              ],
+
+              packing_charges: "0",
+
+              pc_tax_amount: "0",
+
+              pc_tax_percentage: "0",
+
+              pc_gst_details: [
+                {
+                  gst_liable: "restaurant",
+                  amount: "0",
+                },
+              ],
+
+              order_type: "D",
+
+              advanced_order: "N",
+
+              urgent_order: false,
+
+              urgent_time: 20,
+
+              payment_type:
+                body.paymentMode || "COD",
+
+              table_no: "",
+
+              no_of_persons: "0",
+
+              discount_total: String(
+                discount.toFixed(2)
+              ),
+
+              tax_total: "0.00",
+
+              discount_type: "F",
+
+              total: String(
+                finalAmount.toFixed(2)
+              ),
+
+              collect_cash: String(
+                finalAmount.toFixed(2)
+              ),
+
+              otp: "1234",
+
+              description: "",
+            },
+          },
+
+          Items: items,
+        },
+
+        callback_url: PP_CALLBACK_URL,
+
+        udid: "",
+
+        device_type: "Web",
+      },
+    };
+
+    console.log(
+      "📦 FINAL PAYLOAD:",
+      JSON.stringify(payload, null, 2)
+    );
+
+    // ───────────────── PETPOOJA API ─────────────────
+
+    const ppRes = await fetch(PP_CREATE_URL, {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json",
+      },
+
+      body: JSON.stringify(payload),
+    });
+
+    let ppData: any;
+
+    try {
+      ppData = await ppRes.json();
+    } catch {
+      ppData = {
+        raw: await ppRes.text(),
+      };
+    }
+
+    console.log("📡 STATUS:", ppRes.status);
+
+    console.log("📡 RESPONSE:", ppData);
+
+    if (
+      ppRes.status !== 200 ||
+      ppData?.success !== "1"
+    ) {
+      return res.status(400).json({
+        success: false,
+        petpooja_error: ppData,
+      });
+    }
+
+    // ───────────────── SAVE FIREBASE ─────────────────
+
+    await saveSingleOrderToFirestore({
+      orderID: orderId,
+
+      userId,
+
+      shippingAddress,
+
+      items,
+
+      subtotal,
+
+      discount,
+
+      couponCode: couponCode || null,
+
+      finalAmount,
+
+      deliveryLatitude: latitude,
+
+      deliveryLongitude: longitude,
+
+      deliveryDistanceKm,
+
+      deliveryCharge,
+
+      isDeliverable:
+        geocodeResult.isDeliverable,
+
+      paymentMode:
+        body.paymentMode || "COD",
+
+      petpoojaResponse: ppData,
+    });
+
+    console.log(
+      `✅ Firebase order saved: ${orderId}`
+    );
+
+    return res.json({
+      success: true,
+      petpooja: ppData,
+    });
+  } catch (err) {
+    console.error("❌ create-order error:", err);
+
+    return res.status(500).json({
+      success: false,
+      error: String(err),
+    });
+  }
+});
 
   // ── Cancel Order ────────────────────────────────────────────────────────────
 
