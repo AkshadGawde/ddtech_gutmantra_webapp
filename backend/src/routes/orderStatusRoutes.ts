@@ -1,5 +1,5 @@
 import express from "express";
-import { getFirestoreDb } from "../services/firebaseAdmin";
+import { getFirestoreDb } from "../services/firebaseAdmin.js";
 
 const router = express.Router();
 
