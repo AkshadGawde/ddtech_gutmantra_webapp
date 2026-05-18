@@ -1,5 +1,5 @@
 import admin from "firebase-admin";
-import { getFirestoreDb } from "./firebaseAdmin";
+import { getFirestoreDb } from "./firebaseAdmin.js";
 
 /* -------------------------------------------------------------------------- */
 /*                            BULK ORDER SYNC                                 */
