@@ -133,6 +133,7 @@ async function startServer() {
   app.use("/api/auth", authRoutes);
   app.use("/api", couponRoutes);
   app.use("/api", deliveryRoutes);
+  app.use("/api", paymentRoutes);
 
   // ── Create Order ────────────────────────────────────────────────────────────
 
@@ -140,8 +141,8 @@ async function startServer() {
   try {
     const body = req.body;
 
+    console.log("📦 FRONTEND BODY", JSON.stringify(body, null, 2));
     console.log("📦 BODY RECEIVED:", JSON.stringify(body, null, 2));
-    console.log("📦 FRONTEND BODY:", JSON.stringify(body, null, 2));
 
     // ───────────────── VALIDATION ─────────────────
 
@@ -283,6 +284,19 @@ async function startServer() {
 
     // ───────────────── PAYLOAD ─────────────────
 
+    console.log("📦 PAYMENT_TYPE for Petpooja", body.paymentMode || "COD");
+
+    const paymentType =
+      body.paymentMode === "ONLINE" ? "ONLINE" : "COD";
+
+    const collectCash =
+      body.paymentMode === "ONLINE"
+        ? "0"
+        : String(finalAmount.toFixed(2));
+
+    console.log("📦 PAYMENT_TYPE for Petpooja", paymentType);
+    console.log("📦 COLLECT_CASH for Petpooja", collectCash);
+
     const payload = {
       app_key: PP_APP_KEY,
 
@@ -372,8 +386,7 @@ async function startServer() {
 
               urgent_time: 20,
 
-              payment_type:
-                body.paymentMode || "COD",
+              payment_type: paymentType,
 
               table_no: "",
 
@@ -391,9 +404,7 @@ async function startServer() {
                 finalAmount.toFixed(2)
               ),
 
-              collect_cash: String(
-                finalAmount.toFixed(2)
-              ),
+              collect_cash: collectCash,
 
               otp: "1234",
 

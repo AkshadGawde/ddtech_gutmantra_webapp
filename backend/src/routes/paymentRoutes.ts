@@ -20,6 +20,8 @@ router.post("/create-online-order", async (req, res) => {
       customerPhone,
     } = req.body;
 
+    console.log("💰 CREATE ONLINE ORDER BODY", req.body);
+
     if (!orderId || !amount) {
       return res.status(400).json({
         success: false,
@@ -39,20 +41,18 @@ router.post("/create-online-order", async (req, res) => {
         customerEmail,
         customerPhone,
       });
-console.log("📥 create-online-order body:", req.body);
-    return res.json({
+
+    console.log("📦 BILLDESK PAYLOAD", billdeskPayload);
+
+    const responseData = {
       success: true,
-
-
-      /**
-       * UAT URL
-       * Replace with production later
-       */
-      paymentUrl:
-        "https://pguat.billdesk.io/payments/ve1_2/orders/create",
-
+      paymentUrl: "https://pguat.billdesk.io/payments/ve1_2/orders/create",
       payload: billdeskPayload,
-    });
+    };
+
+    console.log("📡 BILLDESK RESPONSE", responseData);
+
+    return res.json(responseData);
   } catch (error) {
     console.error(
       "❌ Payment initialization failed:",

@@ -490,8 +490,12 @@ const payload = {
   items: formattedItems,
 };
 
-console.log("🚀 FINAL CHECKOUT PAYLOAD", payload);
+console.log(
+  "🚀 FINAL CHECKOUT PAYLOAD",
+  JSON.stringify(payload, null, 2)
+);
 
+      console.log("💳 PAYMENT MODE", paymentMode);
       console.log("🚀 Sending order:", payload);
 
       const response = await fetch(`${API_BASE}/create-order`, {
@@ -511,23 +515,33 @@ console.log("🚀 FINAL CHECKOUT PAYLOAD", payload);
 
       // ── ONLINE PAYMENT FLOW ──────────────────────────────────────────────
       if (paymentMode === "ONLINE") {
+        const onlinePayload = {
+          orderId: data.orderId,
+          amount: totalWithDelivery,
+          customerEmail: shippingAddress.email,
+          customerPhone: shippingAddress.phone,
+        };
+
+        console.log("🚀 ONLINE PAYMENT PAYLOAD", onlinePayload);
+
         const paymentResponse = await fetch(`${API_BASE}/create-online-order`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            orderId: data.orderId,
-            amount: totalWithDelivery,
-            customerEmail: shippingAddress.email,
-            customerPhone: shippingAddress.phone,
-          }),
+          body: JSON.stringify(onlinePayload),
         });
 
         const paymentData = await paymentResponse.json();
+
+        console.log("📡 ONLINE PAYMENT RESPONSE", paymentData);
 
         if (!paymentData.success) {
           throw new Error(
             paymentData.message || "Payment initialization failed"
           );
+        }
+
+        if (!paymentData.paymentUrl || !paymentData.payload) {
+          throw new Error("Invalid payment initialization response");
         }
 
         console.log("🚀 Redirecting to BillDesk:", paymentData);
