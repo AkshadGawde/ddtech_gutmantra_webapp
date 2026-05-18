@@ -15,7 +15,7 @@ import { geocodeAddress, getDeliveryResult } from "./src/services/deliveryServic
 import { FieldValue } from "firebase-admin/firestore";
 
 import paymentRoutes from "./src/routes/paymentRoutes.js";
-import orderStatusRoutes from "./routes/orderStatusRoutes";
+import orderStatusRoutes from "./src/routes/orderStatusRoutes";
 
 dotenv.config();
 
