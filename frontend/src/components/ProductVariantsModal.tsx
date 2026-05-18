@@ -61,7 +61,6 @@ const handleAddToCart = (e: React.MouseEvent) => {
   const baseId =
     selectedVariant?.sku ||
     (product as any).sku ||
-    (selectedVariant as any)?.petpoojaId ||
     "";
 
   // Real variation ID only if valid
@@ -70,8 +69,8 @@ const handleAddToCart = (e: React.MouseEvent) => {
     : "";
 
   if (!baseId) {
-    console.error("❌ Missing base_id/sku");
-    alert("Product SKU missing");
+    console.error("❌ Missing base_id/sku for selected variant", selectedVariant, product);
+    alert("Product SKU missing. Please select a valid variant.");
     return;
   }
 

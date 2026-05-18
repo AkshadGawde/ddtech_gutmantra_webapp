@@ -37,6 +37,12 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
       ? String(minVariant.petpoojaId).replace(/^V/, "")
       : "";
 
+    if (!baseId) {
+      console.error("❌ Quick add missing base_id / sku for product", product);
+      alert("Product SKU is missing. Please select a variant.");
+      return;
+    }
+
     addToCart({
       id: `${product.id}${variantName ? `-${variantName}` : ""}`,
       name: `${product.name}${variantName ? ` (${variantName})` : ""}`,

@@ -449,33 +449,17 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
       const orderID = `${user.uid}_${Date.now()}`;
 
       const formattedItems = items.map((item: any) => ({
-
-  base_id: item.base_id || item.sku || "",
-
-  variation_id:
-
-    item.variation_id ||
-
-    (item.petpoojaId
-
-      ? String(item.petpoojaId).replace("V", "")
-
-      : ""),
-
-  name: item.name,
-
-  price: item.price,
-
-  quantity: item.quantity,
-
-}));
+        base_id: item.base_id || item.sku,
+        variation_id: item.variation_id || item.petpoojaId || "",
+        name: item.name,
+        price: String(item.price),
+        quantity: String(item.quantity),
+      }));
 
       // Read coordinates from `validated` (the returned DeliveryResult),
       // NOT from shippingAddress state. React state updates are async — by the
       // time this runs, setShippingAddress from geocodeAndValidate may not have
-      // settled yet, causing stale/zero coordinates in the payload.
-      const resolvedLat = validated.latitude!;
-      const resolvedLng = validated.longitude!;
+      // settled yet.
 
       const fullAddress = buildFullAddress(shippingAddress);
 
@@ -488,32 +472,25 @@ if (!fullAddress) {
 }
 
 const payload = {
-
   orderID,
-
-  userId: user.uid,
-
-  shippingAddress: {
-
-    ...shippingAddress,
-
-    fullAddress,
-
-    latitude: resolvedLat,
-
-    longitude: resolvedLng,
-
-  },
-
-  items: formattedItems,
-
   paymentMode,
-
-  couponCode: couponApplied ? couponCode : undefined,
-
+  shippingAddress: {
+    firstName: shippingAddress.firstName,
+    lastName: shippingAddress.lastName,
+    phone: shippingAddress.phone,
+    email: shippingAddress.email,
+    streetAddress: shippingAddress.streetAddress,
+    apartment: shippingAddress.apartment,
+    city: shippingAddress.city,
+    state: shippingAddress.state,
+    pinCode: shippingAddress.pinCode,
+    country: shippingAddress.country,
+    fullAddress,
+  },
+  items: formattedItems,
 };
 
-console.log("🚀 FINAL PAYLOAD", payload);
+console.log("🚀 FINAL CHECKOUT PAYLOAD", payload);
 
       console.log("🚀 Sending order:", payload);
 
@@ -524,6 +501,7 @@ console.log("🚀 FINAL PAYLOAD", payload);
       });
 
       const data = await response.json();
+      console.log("📡 RESPONSE", data);
 
       if (!data.success) {
         throw new Error(data.message || "Order failed");
