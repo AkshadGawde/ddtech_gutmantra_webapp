@@ -357,7 +357,13 @@ async function startServer() {
                 },
               ],
 
-              order_type: "D",
+              order_type: "H",
+
+              created_on: new Date().toISOString().replace("T", " ").split(".")[0],
+
+              enable_delivery: 1,
+
+              min_prep_time: 20,
 
               advanced_order: "N",
 
@@ -395,10 +401,16 @@ async function startServer() {
           },
 
           OrderItem: {
+            details: items,
+          },
 
-  details: items,
+          Tax: {
+            details: [],
+          },
 
-},
+          Discount: {
+            details: [],
+          },
         },
 
         callback_url: PP_CALLBACK_URL,

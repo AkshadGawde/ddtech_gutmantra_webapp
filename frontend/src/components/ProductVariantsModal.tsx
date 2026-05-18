@@ -60,15 +60,14 @@ const handleAddToCart = (e: React.MouseEvent) => {
   // Base item ID (required by Petpooja)
   const baseId =
     selectedVariant?.sku ||
-    (selectedVariant as any)?.sku || 
+    (product as any).sku ||
+    (selectedVariant as any)?.petpoojaId ||
     "";
 
   // Real variation ID only if valid
-  const variationId =
-    selectedVariant?.petpoojaId &&
-    selectedVariant.petpoojaId.startsWith("V")
-      ? selectedVariant.petpoojaId.replace("V", "")
-      : "";
+  const variationId = selectedVariant?.petpoojaId
+    ? String(selectedVariant.petpoojaId).replace(/^V/, "")
+    : "";
 
   if (!baseId) {
     console.error("❌ Missing base_id/sku");

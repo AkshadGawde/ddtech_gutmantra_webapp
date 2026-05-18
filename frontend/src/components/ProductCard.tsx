@@ -32,6 +32,11 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
       console.warn("⚠️ petpoojaId missing for variant:", minVariant);
     }
 
+    const baseId = minVariant?.sku || (product as any).sku || "";
+    const variationId = minVariant?.petpoojaId
+      ? String(minVariant.petpoojaId).replace(/^V/, "")
+      : "";
+
     addToCart({
       id: `${product.id}${variantName ? `-${variantName}` : ""}`,
       name: `${product.name}${variantName ? ` (${variantName})` : ""}`,
@@ -40,9 +45,10 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
       image: product.image || "",
       variant: variantName,
       petpoojaId: minVariant?.petpoojaId,
+      base_id: baseId,
+      variation_id: variationId,
+      sku: baseId,
       category: product.category,
-      sku: (product as any).sku,
-      
     });
 
     // Trigger animation
