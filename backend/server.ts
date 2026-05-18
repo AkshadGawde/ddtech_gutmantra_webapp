@@ -394,7 +394,11 @@ async function startServer() {
             },
           },
 
-          Items: items,
+          OrderItem: {
+
+  details: items,
+
+},
         },
 
         callback_url: PP_CALLBACK_URL,
