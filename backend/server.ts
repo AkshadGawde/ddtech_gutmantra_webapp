@@ -91,7 +91,28 @@ async function startServer() {
   const app = express();
   const PORT = process.env.PORT || 5000;
 
-  app.use(cors());
+  cors({
+
+    origin: [
+
+      "http://localhost:5173",
+
+      "https://ddtech-gutmantra-webb.vercel.app",
+
+      "https://gutmantra.in",
+
+      "https://www.gutmantra.in",
+
+    ],
+
+    credentials: true,
+
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+
+    allowedHeaders: ["Content-Type", "Authorization"],
+
+  });
+
   app.use(express.json({ limit: "10mb" }));
   app.use(express.urlencoded({ extended: true }));
 
