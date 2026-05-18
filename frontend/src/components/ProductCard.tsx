@@ -28,6 +28,10 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
     const price = minVariant ? Number(minVariant.price) : product.price;
     const variantName = minVariant ? (minVariant.weight || minVariant.name || "") : "";
     
+    // 🧪 DEBUG: Log input state
+    console.log("🧪 MIN_VARIANT (ProductCard)", minVariant);
+    console.log("🧪 PRODUCT (ProductCard)", product);
+    
     if (!minVariant?.petpoojaId) {
       console.warn("⚠️ petpoojaId missing for variant:", minVariant);
     }
@@ -37,13 +41,15 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
       ? String(minVariant.petpoojaId).replace(/^V/, "")
       : "";
 
+    console.log("🧪 COMPUTED: baseId=", baseId, "variationId=", variationId);
+
     if (!baseId) {
       console.error("❌ Quick add missing base_id / sku for product", product);
       alert("Product SKU is missing. Please select a variant.");
       return;
     }
 
-    addToCart({
+    const cartItem = {
       id: `${product.id}${variantName ? `-${variantName}` : ""}`,
       name: `${product.name}${variantName ? ` (${variantName})` : ""}`,
       price: price,
@@ -55,7 +61,10 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
       variation_id: variationId,
       sku: baseId,
       category: product.category,
-    });
+    };
+
+    console.log("✅ CART_ITEM (ProductCard)", cartItem);
+    addToCart(cartItem);
 
     // Trigger animation
     if ((window as any).triggerAddToCartAnimation) {

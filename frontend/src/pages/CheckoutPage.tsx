@@ -449,8 +449,13 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
       const orderID = `${user.uid}_${Date.now()}`;
 
       const formattedItems = items.map((item: any) => ({
-        base_id: item.base_id || item.sku,
-        variation_id: item.variation_id || item.petpoojaId || "",
+        base_id:
+          item.base_id ||
+          item.sku ||
+          (item.petpoojaId ? String(item.petpoojaId).replace(/^V/, "") : ""),
+        variation_id:
+          item.variation_id ||
+          (item.petpoojaId ? String(item.petpoojaId).replace(/^V/, "") : ""),
         name: item.name,
         price: String(item.price),
         quantity: String(item.quantity),
@@ -499,6 +504,15 @@ console.log(
   JSON.stringify(formattedItems, null, 2)
 );
 
+      // 🔴 CRITICAL: Verify NO null base_id in payload
+      const nullBaseIds = formattedItems.filter((item: any) => !item.base_id);
+      if (nullBaseIds.length > 0) {
+        console.error("🔴 CRITICAL: Items with null/empty base_id:", nullBaseIds);
+        throw new Error(`Invalid items in cart: ${nullBaseIds.map((i: any) => i.name).join(", ")} missing SKU`);
+      } else {
+        console.log("✅ All items have valid base_id");
+      }
+
       console.log("💳 PAYMENT MODE", paymentMode);
       console.log(
         "🚀 Sending order",
@@ -522,59 +536,52 @@ console.log(
 
       // ── ONLINE PAYMENT FLOW ──────────────────────────────────────────────
       if (paymentMode === "ONLINE") {
-        const onlinePayload = {
-          orderId: data.orderId,
-          amount: totalWithDelivery,
-          customerEmail: shippingAddress.email,
-          customerPhone: shippingAddress.phone,
-        };
+  const onlinePayload = {
+    orderId: orderID,
+    amount: totalWithDelivery,
+    customerEmail: shippingAddress.email,
+    customerPhone: shippingAddress.phone,
+  };
 
-        console.log("🚀 ONLINE PAYMENT PAYLOAD", onlinePayload);
+  console.log("🚀 ONLINE PAYMENT PAYLOAD", onlinePayload);
 
-        const paymentResponse = await fetch(`${API_BASE}/create-online-order`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(onlinePayload),
-        });
+  const paymentResponse = await fetch(`${API_BASE}/create-online-order`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(onlinePayload),
+  });
 
-        const paymentData = await paymentResponse.json();
+  const paymentData = await paymentResponse.json();
 
-        console.log("📡 ONLINE PAYMENT RESPONSE", paymentData);
+  console.log("📡 ONLINE PAYMENT RESPONSE", paymentData);
 
-        if (!paymentData.success) {
-          throw new Error(
-            paymentData.message || "Payment initialization failed"
-          );
-        }
+  if (!paymentData.success) {
+    throw new Error(
+      paymentData.message || "Payment initialization failed"
+    );
+  }
 
-        if (!paymentData.paymentUrl || !paymentData.payload) {
-          throw new Error("Invalid payment initialization response");
-        }
+  if (!paymentData.paymentUrl || !paymentData.payload) {
+    throw new Error("Invalid payment initialization response");
+  }
 
-        console.log("🚀 Redirecting to BillDesk:", paymentData);
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.action = paymentData.paymentUrl;
 
-        // Build auto-submit hidden form and redirect to BillDesk.
-        // DO NOT clearCart() here — cart must persist until the payment
-        // callback/verification confirms success. Failed payments preserve the cart.
-        const form = document.createElement("form");
-        form.method = "POST";
-        form.action = paymentData.paymentUrl;
+  Object.entries(paymentData.payload).forEach(([key, value]) => {
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = key;
+    input.value = String(value);
+    form.appendChild(input);
+  });
 
-        Object.entries(paymentData.payload).forEach(([key, value]) => {
-          const input = document.createElement("input");
-          input.type = "hidden";
-          input.name = key;
-          input.value = String(value);
-          form.appendChild(input);
-        });
+  document.body.appendChild(form);
+  form.submit();
 
-        document.body.appendChild(form);
-        form.submit();
-
-        // Return early — do not proceed to COD flow.
-        return;
-      }
-
+  return;
+}
       // ── COD FLOW ────────────────────────────────────────────────────────
       clearCart();
       onNext ? onNext() : navigate("/success");

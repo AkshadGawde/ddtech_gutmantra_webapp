@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 import { ArrowRight, Leaf, ShieldCheck, Sparkles } from "lucide-react";
-
+import { NavLink } from "react-router-dom";
 interface HeroProps {
   onNavigate: (view: any, params?: any) => void;
 }
@@ -40,9 +40,18 @@ export default function Hero({ onNavigate }: HeroProps) {
               Explore Shop
               <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
             </button>
-            <button className="px-8 py-4 bg-white text-accent border border-black/10 rounded-full font-bold uppercase tracking-widest hover:bg-black/5 transition-all text-xs">
-              Our Story
-            </button>
+            
+            <NavLink
+
+  to="/our-story"
+
+  className="px-8 py-4 bg-white text-accent border border-black/10 rounded-full font-bold uppercase tracking-widest hover:bg-black/5 transition-all text-xs inline-flex items-center justify-center"
+
+>
+
+  Our Story
+
+</NavLink>
           </div>
 
           <div className="mt-10 grid grid-cols-3 gap-8 border-t border-black/5 pt-8">

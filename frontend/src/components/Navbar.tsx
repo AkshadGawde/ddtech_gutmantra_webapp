@@ -81,18 +81,23 @@ export default function Navbar({ onOpenCart }: NavbarProps) {
       <div className="max-w-7xl mx-auto flex items-center justify-between">
 
         {/* LOGO */}
-        <div
-          className="flex items-center gap-2 cursor-pointer"
-          onClick={() => navigate("/")}
-        >
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white">
-            <Leaf size={18} />
-          </div>
-          <span className="font-bold">GutMantra</span>
-        </div>
+        <div className="flex items-center gap-3">
+
+  <img
+
+    src="https://res.cloudinary.com/dk7ynv44a/image/upload/v1779118947/GUT-MANTRA-LOGO-transfer-background.png"
+
+    alt="GutMantra"
+
+    className="h-12 w-auto object-contain"
+
+  />
+
+
+</div>
 
         {/* DESKTOP NAV */}
-        <div className="hidden md:flex items-center gap-6 text-xs uppercase">
+        <div className="hidden md:flex items-center gap-6 text-s uppercase">
 
           <NavLink to="/" className="hover:text-primary">
             Home

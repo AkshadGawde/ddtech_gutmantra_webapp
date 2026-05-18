@@ -107,6 +107,27 @@ export default function ProductPage() {
       return;
     }
 
+    // 🧪 DEBUG: Log input state
+    console.log("🧪 SELECTED_VARIANT (ProductPage)", selectedVariant);
+    console.log("🧪 PRODUCT (ProductPage)", product);
+
+    const baseId =
+      selectedVariant.sku ||
+      (product as any).sku ||
+      "";
+
+    const variationId = selectedVariant.petpoojaId
+      ? String(selectedVariant.petpoojaId).replace(/^V/, "")
+      : "";
+
+    console.log("🧪 COMPUTED: baseId=", baseId, "variationId=", variationId);
+
+    if (!baseId) {
+      console.error("❌ Missing base_id/sku for selected variant", selectedVariant, product);
+      alert("Product SKU missing. Please select a valid variant.");
+      return;
+    }
+
     if (!selectedVariant.petpoojaId) {
       console.warn("⚠️ petpoojaId missing for variant:", selectedVariant);
     }
@@ -119,13 +140,16 @@ export default function ProductPage() {
       quantity: selectedQuantity,
       image: product.image || "",
       variant: `${selectedVariant.grind || ""} - ${selectedVariant.quantity || ""}`.trim(),
+      base_id: baseId,
+      variation_id: variationId,
       petpoojaId: selectedVariant.petpoojaId,
       category: product.category,
       grind: selectedVariant.grind,
       selectedQuantity: selectedVariant.quantity,
-      sku: selectedVariant.sku,
+      sku: baseId,
     };
 
+    console.log("✅ CART_ITEM (ProductPage)", cartItem);
     addToCart(cartItem);
     setSelectedQuantity(1);
 

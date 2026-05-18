@@ -51,15 +51,15 @@ export default function Footer() {
             <ul className="flex flex-col gap-6 text-sm font-medium text-white/60">
               <li className="flex items-start gap-4">
                 <MapPin size={20} className="text-secondary shrink-0" />
-                <span>Shop No. 4, Green Park, <br />Baner, Pune, Maharashtra 411045</span>
+                <span>Shop No. 8, Pride World City, <br />Charholi Budruk, Pimpri-Chinchwad, Maharashtra 412105</span>
               </li>
               <li className="flex items-center gap-4">
                 <Phone size={20} className="text-secondary shrink-0" />
-                <span>+91 98765 43210</span>
+                <span>+91 90281 07111</span>
               </li>
               <li className="flex items-center gap-4">
                 <Mail size={20} className="text-secondary shrink-0" />
-                <span>hello@gutmantra.in</span>
+                <span>support@gutmantra.in</span>
               </li>
             </ul>
           </div>
