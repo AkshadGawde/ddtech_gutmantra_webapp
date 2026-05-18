@@ -1,8 +1,8 @@
 import express from "express";
 import {
   generateBillDeskPayload,
-} from "../services/billdeskServices";
-import { getFirestoreDb } from "../services/firebaseAdmin";
+} from "../services/billdeskServices.js";
+import { getFirestoreDb } from "../services/firebaseAdmin.js";
 
 const router = express.Router();
 
