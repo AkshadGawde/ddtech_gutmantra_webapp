@@ -463,20 +463,43 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
       const resolvedLat = validated.latitude!;
       const resolvedLng = validated.longitude!;
 
-      const payload = {
-        orderID,
-        userId: user.uid,
-        shippingAddress: {
-          ...shippingAddress,
-          latitude: resolvedLat,
-          longitude: resolvedLng,
-          fullAddress:
-            shippingAddress.fullAddress || buildFullAddress(shippingAddress),
-        },
-        items: formattedItems,
-        paymentMode,
-        couponCode: couponApplied ? couponCode : undefined,
-      };
+      const fullAddress = buildFullAddress(shippingAddress);
+
+if (!fullAddress) {
+
+  alert("Address missing");
+
+  return;
+
+}
+
+const payload = {
+
+  orderID,
+
+  userId: user.uid,
+
+  shippingAddress: {
+
+    ...shippingAddress,
+
+    fullAddress,
+
+    latitude: resolvedLat,
+
+    longitude: resolvedLng,
+
+  },
+
+  items: formattedItems,
+
+  paymentMode,
+
+  couponCode: couponApplied ? couponCode : undefined,
+
+};
+
+console.log("🚀 FINAL PAYLOAD", payload);
 
       console.log("🚀 Sending order:", payload);
 

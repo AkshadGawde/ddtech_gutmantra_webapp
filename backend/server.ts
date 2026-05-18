@@ -139,7 +139,7 @@ async function startServer() {
   app.post("/api/create-order", async (req: Request, res: Response) => {
     try {
       const body = req.body;
-
+console.log("📦 BODY RECEIVED", req.body);
       // Validate required fields
       for (const field of ["orderID", "shippingAddress", "items"]) {
         if (!body[field]) {
