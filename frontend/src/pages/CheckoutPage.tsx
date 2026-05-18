@@ -449,12 +449,26 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
       const orderID = `${user.uid}_${Date.now()}`;
 
       const formattedItems = items.map((item: any) => ({
-        base_id: item.baseId,
-        variation_id: item.petpoojaVariationId || "",
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-      }));
+
+  base_id: item.base_id || item.sku || "",
+
+  variation_id:
+
+    item.variation_id ||
+
+    (item.petpoojaId
+
+      ? String(item.petpoojaId).replace("V", "")
+
+      : ""),
+
+  name: item.name,
+
+  price: item.price,
+
+  quantity: item.quantity,
+
+}));
 
       // Read coordinates from `validated` (the returned DeliveryResult),
       // NOT from shippingAddress state. React state updates are async — by the

@@ -42,39 +42,79 @@ export default function ProductVariantsModal({ product, isOpen, onClose }: Produ
   };
 
   /* ================= ADD TO CART ================= */
-  const handleAddToCart = (e: React.MouseEvent) => {
-    const price = selectedVariant ? Number(selectedVariant.price) : product.price;
-    const variantName = selectedVariant 
-      ? `${selectedVariant.grind || ""} - ${selectedVariant.quantity || ""}`.trim()
+
+const handleAddToCart = (e: React.MouseEvent) => {
+  const price = selectedVariant
+    ? Number(selectedVariant.price)
+    : product.price;
+
+  const variantName = selectedVariant
+    ? `${selectedVariant.grind || ""} - ${
+        selectedVariant.quantity || ""
+      }`.trim()
+    : "";
+
+  // Debug logs
+  console.log("🛒 Selected Variant:", selectedVariant);
+
+  // Base item ID (required by Petpooja)
+  const baseId =
+    selectedVariant?.sku ||
+    (selectedVariant as any)?.sku || 
+    "";
+
+  // Real variation ID only if valid
+  const variationId =
+    selectedVariant?.petpoojaId &&
+    selectedVariant.petpoojaId.startsWith("V")
+      ? selectedVariant.petpoojaId.replace("V", "")
       : "";
-    
-    if (!selectedVariant?.petpoojaId) {
-      console.warn("⚠️ petpoojaId missing for variant:", selectedVariant);
-    }
 
-    addToCart({
-      id: product.id,
-      productId: product.id,
-      name: product.name,
-      price: price,
-      quantity: quantity,
-      image: product.image || "",
-      variant: variantName,
-      petpoojaId: selectedVariant?.petpoojaId,
-      category: product.category,
-      grind: selectedVariant?.grind,
-      selectedQuantity: selectedVariant?.quantity,
-      sku: selectedVariant?.sku,
-    });
-    
-    // Trigger animation
-    if ((window as any).triggerAddToCartAnimation) {
-      (window as any).triggerAddToCartAnimation(e.clientX, e.clientY);
-    }
+  if (!baseId) {
+    console.error("❌ Missing base_id/sku");
+    alert("Product SKU missing");
+    return;
+  }
 
-    setQuantity(1);
-    onClose();
-  };
+  addToCart({
+    id: product.id,
+    productId: product.id,
+
+    // REQUIRED FOR PETPOOJA
+    base_id: baseId,
+    variation_id: variationId,
+
+    name: product.name,
+    price: price,
+    quantity: quantity,
+
+    image: product.image || "",
+    variant: variantName,
+
+    petpoojaId: selectedVariant?.petpoojaId,
+    sku: baseId,
+
+    category: product.category,
+    grind: selectedVariant?.grind,
+    selectedQuantity: selectedVariant?.quantity,
+  });
+
+  console.log("✅ Added to cart:", {
+    base_id: baseId,
+    variation_id: variationId,
+  });
+
+  // Trigger animation
+  if ((window as any).triggerAddToCartAnimation) {
+    (window as any).triggerAddToCartAnimation(
+      e.clientX,
+      e.clientY
+    );
+  }
+
+  setQuantity(1);
+  onClose();
+};
 
   React.useEffect(() => {
     if (isOpen) {

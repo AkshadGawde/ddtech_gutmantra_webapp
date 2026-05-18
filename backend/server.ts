@@ -182,7 +182,15 @@ console.log("📦 BODY RECEIVED", req.body);
 
       for (const item of body.items) {
         const baseId = item.base_id || item.sku;
-        const variationId = item.variation_id || item.petpoojaId;
+const variationId =
+
+  item.variation_id &&
+
+  item.variation_id !== item.base_id
+
+    ? item.variation_id
+
+    : "";
 
         if (!baseId) {
           return res.status(400).json({
@@ -192,13 +200,38 @@ console.log("📦 BODY RECEIVED", req.body);
         }
 
         items.push({
-          id: String(baseId),
-          variation_id: variationId ? String(variationId).replace("V", "") : "",
-          name: item.name,
-          price: String(item.price),
-          quantity: String(item.quantity),
-          tax_inclusive: true,
-        });
+
+  id: String(baseId),
+
+  name: item.name,
+
+  tax_inclusive: true,
+
+  gst_liability: "restaurant",
+
+  item_tax: [],
+
+  item_discount: "0",
+
+  price: String(item.price),
+
+  final_price: String(item.price),
+
+  quantity: String(item.quantity),
+
+  description: "",
+
+  variation_name: "",
+
+  variation_id: variationId || "",
+
+  AddonItem: {
+
+    details: [],
+
+  },
+
+});
       }
 
       if (!items.length) {
@@ -227,92 +260,134 @@ console.log("📦 BODY RECEIVED", req.body);
 
       // Build Petpooja payload
       const payload = {
-        app_key: PP_APP_KEY,
-        app_secret: PP_APP_SECRET,
-        access_token: PP_ACCESS_TOKEN,
+  app_key: PP_APP_KEY,
+  app_secret: PP_APP_SECRET,
+  access_token: PP_ACCESS_TOKEN,
 
-        orderinfo: {
-          OrderInfo: {
-            Restaurant: {
-              details: {
-                restID: PP_REST_ID,
-                res_name: "GutMantra",
-                address: body.address || "Mumbai",
-                contact_information: body.phone,
-              },
-            },
-
-            Customer: {
-              details: {
-                name: `${shippingAddress.firstName} ${shippingAddress.lastName}`,
-                phone: shippingAddress.phone,
-                email: shippingAddress.email,
-                address: shippingAddress.fullAddress,
-                latitude: String(latitude),
-                longitude: String(longitude),
-              },
-            },
-
-            Order: {
-              details: {
-                orderID: orderId,
-
-                preorder_date: "",
-                preorder_time: "",
-
-                service_charge: "0",
-                sc_tax_amount: "0",
-
-                delivery_charges: String(deliveryCharge.toFixed(2)),
-                dc_tax_percentage: "0",
-                dc_tax_amount: "0",
-
-                dc_gst_details: [{ gst_liable: "restaurant", amount: "0" }],
-
-                packing_charges: "0",
-                pc_tax_amount: "0",
-                pc_tax_percentage: "0",
-
-                pc_gst_details: [{ gst_liable: "restaurant", amount: "0" }],
-
-                order_type: "H",
-
-                advanced_order: "N",
-
-                urgent_order: false,
-                urgent_time: 20,
-
-                payment_type: body.paymentMode || "COD",
-
-                table_no: "",
-                no_of_persons: "0",
-
-                discount_total: String(discount.toFixed(2)),
-
-                tax_total: "0.00",
-
-                discount_type: "F",
-
-                total: String(finalAmount.toFixed(2)),
-
-                collect_cash: String(finalAmount.toFixed(2)),
-
-                otp: "1234",
-
-                description: "",
-              },
-            },
-
-            Items: items,
-          },
+  orderinfo: {
+    OrderInfo: {
+      Restaurant: {
+        details: {
+          restID: PP_REST_ID,
+          res_name: "GutMantra",
+          address: body.address || "Pune",
         },
+      },
 
-        callback_url: PP_CALLBACK_URL,
+      Customer: {
+        details: {
+          name: `${shippingAddress.firstName} ${shippingAddress.lastName}`,
+          phone: shippingAddress.phone,
+          email: shippingAddress.email,
+          address: shippingAddress.fullAddress,
+          latitude: String(latitude),
+          longitude: String(longitude),
+        },
+      },
 
-        udid: "",
+      Order: {
+        details: {
+          orderID: orderId,
 
-        device_type: "Web",
-      };
+          preorder_date: "",
+          preorder_time: "",
+
+          service_charge: "0",
+          sc_tax_amount: "0",
+
+          delivery_charges: String(
+            deliveryCharge.toFixed(2)
+          ),
+
+          dc_tax_percentage: "0",
+          dc_tax_amount: "0",
+
+          dc_gst_details: [
+            {
+              gst_liable: "restaurant",
+              amount: "0",
+            },
+          ],
+
+          packing_charges: "0",
+
+          pc_tax_amount: "0",
+
+          pc_tax_percentage: "0",
+
+          pc_gst_details: [
+            {
+              gst_liable: "restaurant",
+              amount: "0",
+            },
+          ],
+
+          order_type: "D",
+
+          advanced_order: "N",
+
+          urgent_order: false,
+
+          urgent_time: 20,
+
+          payment_type:
+            body.paymentMode || "COD",
+
+          table_no: "",
+
+          no_of_persons: "0",
+
+          discount_total: String(
+            discount.toFixed(2)
+          ),
+
+          tax_total: "0.00",
+
+          discount_type: "F",
+
+          total: String(
+            finalAmount.toFixed(2)
+          ),
+
+          description: "",
+
+          created_on: new Date()
+            .toISOString()
+            .slice(0, 19)
+            .replace("T", " "),
+
+          enable_delivery: 1,
+
+          min_prep_time: 20,
+
+          callback_url: PP_CALLBACK_URL,
+
+          collect_cash: String(
+            finalAmount.toFixed(2)
+          ),
+
+          otp: "1234",
+        },
+      },
+
+      OrderItem: {
+        details: items,
+      },
+
+      Tax: {
+        details: [],
+      },
+
+      Discount: {
+        details: [],
+      },
+    },
+
+    udid: "",
+
+    device_type: "Web",
+  },
+};
 
       console.log("📦 PAYLOAD →", JSON.stringify(payload, null, 2));
 

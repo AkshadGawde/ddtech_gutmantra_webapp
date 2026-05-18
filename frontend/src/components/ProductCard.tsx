@@ -40,7 +40,9 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
       image: product.image || "",
       variant: variantName,
       petpoojaId: minVariant?.petpoojaId,
-      category: product.category
+      category: product.category,
+      sku: (product as any).sku,
+      
     });
 
     // Trigger animation
