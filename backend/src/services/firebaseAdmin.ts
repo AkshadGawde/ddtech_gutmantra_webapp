@@ -1,19 +1,43 @@
 import admin from "firebase-admin";
-const serviceAccount = JSON.parse(
-
-  process.env.FIREBASE_SERVICE_ACCOUNT || "{}"
-
-);
 
 let initialized = false;
+
+function getServiceAccount(): admin.ServiceAccount {
+  const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
+
+  if (!raw) {
+    throw new Error("❌ FIREBASE_SERVICE_ACCOUNT env missing");
+  }
+
+  let parsed;
+
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    console.error("❌ Failed to parse FIREBASE_SERVICE_ACCOUNT");
+    console.error(raw);
+
+    throw error;
+  }
+
+  if (!parsed.project_id) {
+    throw new Error("❌ Firebase service account missing project_id");
+  }
+
+  if (parsed.private_key) {
+    parsed.private_key = parsed.private_key.replace(/\\n/g, "\n");
+  }
+
+  return parsed as admin.ServiceAccount;
+}
 
 export function initializeFirebaseAdmin() {
   if (initialized) return;
 
+  const serviceAccount = getServiceAccount();
+
   admin.initializeApp({
-    credential: admin.credential.cert(
-      serviceAccount as admin.ServiceAccount
-    ),
+    credential: admin.credential.cert(serviceAccount),
   });
 
   initialized = true;
