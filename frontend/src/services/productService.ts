@@ -103,59 +103,68 @@ function normalizeCategory(raw: string): "atta" | "oils" | "spices" | "other" {
  * Converts raw Firestore product → clean frontend product
  */
 export function normalizeProduct(p: any): Product {
+  // ✅ Enrich variants with SKU and petpoojaId if missing
+  const enrichedVariants = (p.variants || p.variation || []).map((v: any) => {
+    const enriched = { ...v };
+
+    // Ensure SKU exists (fallback chain)
+    if (!enriched.sku) {
+      enriched.sku =
+        enriched.variationId ||
+        enriched.variation_id ||
+        enriched.itemVariationId ||
+        enriched.item_variation_id ||
+        enriched.eid ||
+        enriched.EID ||
+        p.sku ||
+        p.itemid ||
+        p.id;
+    }
+
+    // Ensure petpoojaId exists (fallback chain)
+    if (!enriched.petpoojaId) {
+      if (enriched.variationId) {
+        enriched.petpoojaId = `V${enriched.variationId}`;
+      } else if (p.sku || p.itemid) {
+        enriched.petpoojaId = `V${p.sku || p.itemid}`;
+      } else {
+        enriched.petpoojaId = `V${p.id}`;
+      }
+    }
+
+    // Ensure price exists (fallback chain)
+    if (!enriched.price || Number(enriched.price) === 0) {
+      enriched.price =
+        Number(p.price) ||
+        Number(p.sellingPrice) ||
+        Number(p.mrp) ||
+        0;
+    }
+
+    return enriched;
+  });
 
   return {
-
     id: p.id,
-
     name: p.name || p.itemname || "",
-
     price:
-
       Number(p.price) ||
-
       Number(p.sellingPrice) ||
-
       Number(p.mrp) ||
-
       Number(p.variants?.[0]?.price) ||
-
       0,
-
-    // 🔥 MAIN FIX HERE
-
     image:
-
       p.image ||
-
       p.images?.[0] ||
-
       getCloudinaryImage(p.id),
-
     images: p.images || [],
-
     category: normalizeCategory(p.category || p.categoryname),
-
     rawCategory: p.category || p.categoryname || "",
-
     description:
-
       p.description ||
-
       p.itemdescription ||
-
       "",
-
-    variants:
-
-      p.variants ||
-
-      p.variation ||
-
-      [],
-
+    variants: enrichedVariants,
     createdAt: p.createdAt || null,
-
   };
-
 }

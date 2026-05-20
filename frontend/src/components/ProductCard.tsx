@@ -6,6 +6,11 @@ import { useCart } from "../context/CartContext";
 import { useNavigate } from "react-router-dom";
 import { cn } from "../lib/utils";
 import ProductVariantsModal from "./ProductVariantsModal";
+import {
+  extractVariantSku,
+  extractVariantPrice,
+  buildVariantName,
+} from "../utils/skuHelpers";
 
 interface ProductCardProps {
   product: Product;
@@ -25,29 +30,41 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
     // Add minimum variant with minimum quantity
-    const price = minVariant ? Number(minVariant.price) : product.price;
-    const variantName = minVariant ? (minVariant.weight || minVariant.name || "") : "";
-    
-    // 🧪 DEBUG: Log input state
-    console.log("🧪 MIN_VARIANT (ProductCard)", minVariant);
-    console.log("🧪 PRODUCT (ProductCard)", product);
-    
+    const price = extractVariantPrice(minVariant, product);
+    const variantName = buildVariantName(minVariant);
+    const baseId = extractVariantSku(minVariant, product);
+
+    // Debug logs
+    console.log("🛒 MIN_VARIANT (ProductCard)", minVariant);
+    console.log("🛒 Extracted SKU:", baseId);
+    console.log("🛒 Extracted Price:", price);
+
     if (!minVariant?.petpoojaId) {
       console.warn("⚠️ petpoojaId missing for variant:", minVariant);
     }
 
-    const baseId = minVariant?.sku || (product as any).sku || "";
+    if (!baseId) {
+      console.error("❌ Quick add missing SKU for product", {
+        minVariant,
+        product,
+      });
+      alert("Product information incomplete. Please try again.");
+      return;
+    }
+
+    if (price <= 0) {
+      console.error("❌ Quick add invalid price", {
+        minVariant,
+        product,
+        price,
+      });
+      alert("Product price information missing. Please try again.");
+      return;
+    }
+
     const variationId = minVariant?.petpoojaId
       ? String(minVariant.petpoojaId).replace(/^V/, "")
       : "";
-
-    console.log("🧪 COMPUTED: baseId=", baseId, "variationId=", variationId);
-
-    if (!baseId) {
-      console.error("❌ Quick add missing base_id / sku for product", product);
-      alert("Product SKU is missing. Please select a variant.");
-      return;
-    }
 
     const cartItem = {
       id: `${product.id}${variantName ? `-${variantName}` : ""}`,
@@ -63,7 +80,7 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
       category: product.category,
     };
 
-    console.log("✅ CART_ITEM (ProductCard)", cartItem);
+    console.log("✅ CART_ITEM (ProductCard quick add)", cartItem);
     addToCart(cartItem);
 
     // Trigger animation

@@ -536,52 +536,64 @@ console.log(
 
       // ── ONLINE PAYMENT FLOW ──────────────────────────────────────────────
       if (paymentMode === "ONLINE") {
-  const onlinePayload = {
-    orderId: orderID,
-    amount: totalWithDelivery,
-    customerEmail: shippingAddress.email,
-    customerPhone: shippingAddress.phone,
-  };
+        const onlinePayload = {
+          orderId: orderID,
+          amount: totalWithDelivery,
+          customerEmail: shippingAddress.email,
+          customerPhone: shippingAddress.phone,
+        };
 
-  console.log("🚀 ONLINE PAYMENT PAYLOAD", onlinePayload);
+        console.log("🚀 ONLINE PAYMENT PAYLOAD", onlinePayload);
 
-  const paymentResponse = await fetch(`${API_BASE}/create-online-order`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(onlinePayload),
-  });
+        const paymentResponse = await fetch(`${API_BASE}/create-online-order`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(onlinePayload),
+        });
 
-  const paymentData = await paymentResponse.json();
+        const paymentData = await paymentResponse.json();
 
-  console.log("📡 ONLINE PAYMENT RESPONSE", paymentData);
+        console.log("📡 ONLINE PAYMENT RESPONSE", paymentData);
 
-  if (!paymentData.success) {
-    throw new Error(
-      paymentData.message || "Payment initialization failed"
-    );
-  }
+        if (!paymentData.success) {
+          throw new Error(
+            paymentData.message || "Payment initialization failed"
+          );
+        }
 
-  if (!paymentData.paymentUrl || !paymentData.payload) {
-    throw new Error("Invalid payment initialization response");
-  }
+        if (paymentData.next_step !== "redirect") {
+          throw new Error("Payment initialization did not return redirect instructions");
+        }
 
-  const form = document.createElement("form");
-  form.method = "POST";
-  form.action = paymentData.paymentUrl;
+        const redirectLink = paymentData.links?.find(
+          (link: any) => link.rel === "redirect" && link.method === "POST"
+        );
 
-  Object.entries(paymentData.payload).forEach(([key, value]) => {
-    const input = document.createElement("input");
-    input.type = "hidden";
-    input.name = key;
-    input.value = String(value);
-    form.appendChild(input);
-  });
+        if (!redirectLink || !redirectLink.href || !redirectLink.parameters) {
+          throw new Error("Invalid payment redirect payload");
+        }
 
-  document.body.appendChild(form);
-  form.submit();
+        const form = document.createElement("form");
+        form.method = "POST";
+        form.action = redirectLink.href;
+        form.target = "_top";
+        form.acceptCharset = "UTF-8";
 
-  return;
-}
+        console.log("📤 Submitting BillDesk form", redirectLink.href, redirectLink.parameters);
+
+        Object.entries(redirectLink.parameters).forEach(([key, value]) => {
+          const input = document.createElement("input");
+          input.type = "hidden";
+          input.name = key;
+          input.value = String(value);
+          form.appendChild(input);
+        });
+
+        document.body.appendChild(form);
+        form.submit();
+
+        return;
+      }
       // ── COD FLOW ────────────────────────────────────────────────────────
       clearCart();
       onNext ? onNext() : navigate("/success");

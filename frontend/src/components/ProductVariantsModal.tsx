@@ -3,6 +3,11 @@ import { motion, AnimatePresence } from "motion/react";
 import { X, Plus, Minus, ShoppingBag } from "lucide-react";
 import { Product } from "../services/productService";
 import { useCart } from "../context/CartContext";
+import {
+  extractVariantSku,
+  extractVariantPrice,
+  buildVariantName,
+} from "../utils/skuHelpers";
 
 interface ProductVariantsModalProps {
   product: Product;
@@ -44,24 +49,15 @@ export default function ProductVariantsModal({ product, isOpen, onClose }: Produ
   /* ================= ADD TO CART ================= */
 
 const handleAddToCart = (e: React.MouseEvent) => {
-  const price = selectedVariant
-    ? Number(selectedVariant.price)
-    : product.price;
-
-  const variantName = selectedVariant
-    ? `${selectedVariant.grind || ""} - ${
-        selectedVariant.quantity || ""
-      }`.trim()
-    : "";
+  // ✅ Use robust SKU extraction
+  const baseId = extractVariantSku(selectedVariant, product);
+  const price = extractVariantPrice(selectedVariant, product);
+  const variantName = buildVariantName(selectedVariant);
 
   // Debug logs
   console.log("🛒 Selected Variant:", selectedVariant);
-
-  // Base item ID (required by Petpooja)
-  const baseId =
-    selectedVariant?.sku ||
-    (product as any).sku ||
-    "";
+  console.log("🛒 Extracted SKU:", baseId);
+  console.log("🛒 Extracted Price:", price);
 
   // Real variation ID only if valid
   const variationId = selectedVariant?.petpoojaId
@@ -69,8 +65,22 @@ const handleAddToCart = (e: React.MouseEvent) => {
     : "";
 
   if (!baseId) {
-    console.error("❌ Missing base_id/sku for selected variant", selectedVariant, product);
-    alert("Product SKU missing. Please select a valid variant.");
+    console.error("❌ Missing SKU for selected variant", {
+      selectedVariant,
+      product,
+      baseId,
+    });
+    alert("Product information incomplete. Please refresh and try again.");
+    return;
+  }
+
+  if (price <= 0) {
+    console.error("❌ Invalid price for variant", {
+      selectedVariant,
+      product,
+      price,
+    });
+    alert("Product price information missing. Please refresh and try again.");
     return;
   }
 
@@ -100,6 +110,8 @@ const handleAddToCart = (e: React.MouseEvent) => {
   console.log("✅ Added to cart:", {
     base_id: baseId,
     variation_id: variationId,
+    price,
+    variantName,
   });
 
   // Trigger animation
@@ -113,6 +125,7 @@ const handleAddToCart = (e: React.MouseEvent) => {
   setQuantity(1);
   onClose();
 };
+
 
   React.useEffect(() => {
     if (isOpen) {

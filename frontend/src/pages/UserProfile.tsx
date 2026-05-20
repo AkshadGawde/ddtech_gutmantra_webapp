@@ -79,30 +79,46 @@ export default function UserProfile({ onNavigate }: UserProfileProps) {
   const [isEditing, setIsEditing] = useState(false);
 
   const [editData, setEditData] = useState({
-    name: "",
-    phone: "",
-    streetAddress: "",
-    apartment: "",
-    city: "",
-    state: "",
-    pinCode: "",
-    country: "India",
-  });
+  name: "",
+  phone: "",
+
+  streetAddress: "",
+  apartment: "",
+  city: "",
+  state: "",
+  pinCode: "",
+  country: "India",
+
+});
 
   useEffect(() => {
-    if (!userData || isEditing) return;
+  if (!userData || isEditing) return;
 
-    setEditData({
-      name: getDisplayName(userData, user),
-      phone: userData.phone || "",
-      streetAddress: userData.address?.streetAddress || "",
-      apartment: userData.address?.apartment || "",
-      city: userData.address?.city || "",
-      state: userData.address?.state || "",
-      pinCode: userData.address?.pinCode || "",
-      country: userData.address?.country || "India",
-    });
-  }, [userData, user, isEditing]);
+  setEditData({
+    name: getDisplayName(userData, user),
+
+    phone: userData.phone || "",
+
+    streetAddress:
+      userData.address?.streetAddress || "",
+
+    apartment:
+      userData.address?.apartment || "",
+
+    city:
+      userData.address?.city || "",
+
+    state:
+      userData.address?.state || "",
+
+    pinCode:
+      userData.address?.pinCode || "",
+
+    country:
+      userData.address?.country || "India",
+
+  });
+}, [userData, user, isEditing]);
 
   const displayName = getDisplayName(userData ?? undefined, user);
   const addressLines = useMemo(() => {
@@ -164,20 +180,6 @@ export default function UserProfile({ onNavigate }: UserProfileProps) {
 
   }, [user?.uid]);
 
-  useEffect(() => {
-    if (!userData || isEditing) return;
-
-    setEditData({
-      name: getDisplayName(userData, user),
-      phone: userData.phone || "",
-      streetAddress: userData.address?.streetAddress || "",
-      apartment: userData.address?.apartment || "",
-      city: userData.address?.city || "",
-      state: userData.address?.state || "",
-      pinCode: userData.address?.pinCode || "",
-      country: userData.address?.country || "India",
-    });
-  }, [userData, user, isEditing]);
 
   /* ================= STATUS MAPPING ================= */
 
@@ -216,51 +218,75 @@ export default function UserProfile({ onNavigate }: UserProfileProps) {
   /* ================= PROFILE SAVE ================= */
 
   const handleSaveProfile = async () => {
-    try {
-      if (!user?.uid) return;
+  try {
+    if (!user?.uid) return;
 
-      const firstName = editData.name.trim().split(" ")[0] || "";
-      const lastName = editData.name.trim().split(" ").slice(1).join(" ") || "";
-      const fullAddress = formatAddress({
-        streetAddress: editData.streetAddress,
-        apartment: editData.apartment,
-        city: editData.city,
-        state: editData.state,
-        pinCode: editData.pinCode,
-        country: editData.country,
-      });
+    const firstName =
+      editData.name.trim().split(" ")[0] || "";
 
-      const userRef = doc(db, "users", user.uid);
-      await updateDoc(userRef, {
-        name: editData.name,
-        phone: editData.phone,
-        street: editData.streetAddress,
-        city: editData.city,
-        state: editData.state,
-        zipCode: editData.pinCode,
-        updatedAt: new Date(),
-        address: {
-          firstName,
-          lastName,
-          streetAddress: editData.streetAddress,
-          apartment: editData.apartment,
-          city: editData.city,
-          state: editData.state,
-          pinCode: editData.pinCode,
-          country: editData.country,
-          fullAddress,
-        },
-      });
+    const lastName =
+      editData.name
+        .trim()
+        .split(" ")
+        .slice(1)
+        .join(" ") || "";
 
-      setIsEditing(false);
+    const fullAddress = formatAddress({
+      streetAddress: editData.streetAddress,
+      apartment: editData.apartment,
+      city: editData.city,
+      state: editData.state,
+      pinCode: editData.pinCode,
+      country: editData.country,
+    });
 
-    } catch (error) {
+    const userRef = doc(db, "users", user.uid);
 
-      console.error("Error saving profile:", error);
+    await updateDoc(userRef, {
+      name: editData.name,
 
-    }
+      updatedAt: new Date(),
 
-  };
+      address: {
+        firstName,
+        lastName,
+
+        streetAddress:
+          editData.streetAddress,
+
+        apartment:
+          editData.apartment,
+
+        city:
+          editData.city,
+
+        state:
+          editData.state,
+
+        pinCode:
+          editData.pinCode,
+
+        country:
+          editData.country,
+
+        fullAddress,
+      },
+
+      // legacy support
+      street: editData.streetAddress,
+      city: editData.city,
+      state: editData.state,
+      zipCode: editData.pinCode,
+    });
+
+    setIsEditing(false);
+  } catch (error) {
+    console.error(
+      "Error saving profile:",
+      error
+    );
+  }
+};
 
   const handleLogout = async () => {
 
@@ -405,21 +431,57 @@ export default function UserProfile({ onNavigate }: UserProfileProps) {
                         Phone Number
                       </p>
                       {isEditing ? (
-                        <input
-                          type="tel"
-                          value={editData.phone}
-                          onChange={(e) =>
-                            setEditData({ ...editData, phone: e.target.value })
-                          }
-                          placeholder="Enter phone number"
-                          className="w-full px-3 py-2 border border-primary/20 rounded-lg focus:outline-none focus:border-primary text-sm font-medium"
-                        />
-                      ) : (
-                        <p className="text-sm font-bold text-gray-900">
-                          {userData?.phone || "Not provided"}
-                        </p>
+
+  <input
+
+    type="tel"
+
+    value={editData.phone}
+
+    disabled
+
+    placeholder="Phone number"
+
+    className="w-full px-3 py-2 border border-primary/20 rounded-lg text-sm font-medium bg-gray-100 cursor-not-allowed"
+
+  />
+
+) : (
+                        <div className="flex items-center gap-2">
+
+  <p className="text-sm font-bold text-gray-900">
+
+    {userData?.phone || "Not provided"}
+
+  </p>
+
+  {userData?.phoneVerified ? (
+
+    <span className="text-[10px] px-2 py-1 rounded-full bg-green-100 text-green-700 font-bold uppercase tracking-wider">
+
+      Verified
+
+    </span>
+
+  ) : (
+
+    <span className="text-[10px] px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 font-bold uppercase tracking-wider">
+
+      Unverified
+
+    </span>
+
+  )}
+
+</div>
+
                       )}
                     </div>
+                    <p className="text-[11px] text-gray-500 mt-2">
+
+  Phone number is linked to loyalty rewards and order history.
+
+</p>
                   </div>
 
                   {/* Member Since */}
@@ -487,19 +549,21 @@ export default function UserProfile({ onNavigate }: UserProfileProps) {
                         placeholder="Full Name"
                         className="px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary text-sm"
                       />
-                      <input
-                        type="tel"
-                        value={editData.phone}
-                        onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
-                        placeholder="Phone"
-                        className="px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary text-sm"
-                      />
                     </div>
 
                     <input
                       type="text"
-                      value={editData.street}
-                      onChange={(e) => setEditData({ ...editData, street: e.target.value })}
+                      value={editData.streetAddress}
+
+onChange={(e) =>
+
+  setEditData({
+
+    ...editData,
+
+    streetAddress: e.target.value,
+
+  })}
                       placeholder="Street Address"
                       className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary text-sm"
                     />
@@ -523,8 +587,19 @@ export default function UserProfile({ onNavigate }: UserProfileProps) {
 
                     <input
                       type="text"
-                      value={editData.zipCode}
-                      onChange={(e) => setEditData({ ...editData, zipCode: e.target.value })}
+                      value={editData.pinCode}
+
+onChange={(e) =>
+
+  setEditData({
+
+    ...editData,
+
+    pinCode: e.target.value,
+
+  })
+
+}
                       placeholder="PIN Code"
                       className="px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-primary text-sm"
                     />
@@ -663,17 +738,30 @@ export default function UserProfile({ onNavigate }: UserProfileProps) {
                 </div>
 
                 <p className="text-xs text-gray-500 mb-3 font-medium">
-                  {order.updatedAt
-                    ? new Date(order.updatedAt.seconds * 1000).toLocaleDateString("en-IN", {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })
-                    : "Just now"}
-                </p>
 
+  {order.updatedAt?.seconds
+
+    ? new Date(
+
+        order.updatedAt.seconds * 1000
+
+      ).toLocaleDateString("en-IN", {
+
+        year: "numeric",
+
+        month: "short",
+
+        day: "numeric",
+
+        hour: "2-digit",
+
+        minute: "2-digit",
+
+      })
+
+    : "Just now"}
+
+</p>
                 <div className="text-xs text-gray-600 space-y-1 font-medium">
                   <p>
                     <span className="font-bold">Items:</span>{" "}

@@ -30,24 +30,16 @@ export default function PaymentProcessing() {
           data
         );
 
-        if (
-          data.paymentStatus === "PAID"
-        ) {
-          clearInterval(interval);
+        const status = String(data.paymentStatus || "").toUpperCase();
 
-          navigate(
-            `/success?orderId=${orderId}`
-          );
+        if (["PAID", "PAYMENT_SUCCESS", "SUCCESS", "payment_success", "paid"].includes(status)) {
+          clearInterval(interval);
+          navigate(`/success?orderId=${orderId}`);
         }
 
-        if (
-          data.paymentStatus === "FAILED"
-        ) {
+        if (["FAILED", "PAYMENT_FAILED", "payment_failed", "payment_cancelled", "CANCELLED"].includes(status)) {
           clearInterval(interval);
-
-          navigate(
-            `/payment-failed?orderId=${orderId}`
-          );
+          navigate(`/payment-failed?orderId=${orderId}`);
         }
       } catch (error) {
         console.error(error);

@@ -14,6 +14,11 @@ import { useCart } from "../context/CartContext";
 import ProductVariantsModal from "../components/ProductVariantsModal";
 import ReviewsSection from "../components/ReviewsSection";
 import SimilarProducts from "../components/SimilarProducts";
+import {
+  extractVariantSku,
+  extractVariantPrice,
+  buildVariantName,
+} from "../utils/skuHelpers";
 
 export default function ProductPage() {
   const { id } = useParams();
@@ -107,39 +112,47 @@ export default function ProductPage() {
       return;
     }
 
-    // 🧪 DEBUG: Log input state
-    console.log("🧪 SELECTED_VARIANT (ProductPage)", selectedVariant);
-    console.log("🧪 PRODUCT (ProductPage)", product);
+    // ✅ Use robust SKU and price extraction
+    const baseId = extractVariantSku(selectedVariant, product);
+    const price = extractVariantPrice(selectedVariant, product);
+    const variantName = buildVariantName(selectedVariant);
 
-    const baseId =
-      selectedVariant.sku ||
-      (product as any).sku ||
-      "";
+    // Debug logs
+    console.log("🛒 SELECTED_VARIANT (ProductPage)", selectedVariant);
+    console.log("🛒 Extracted SKU:", baseId);
+    console.log("🛒 Extracted Price:", price);
 
     const variationId = selectedVariant.petpoojaId
       ? String(selectedVariant.petpoojaId).replace(/^V/, "")
       : "";
 
-    console.log("🧪 COMPUTED: baseId=", baseId, "variationId=", variationId);
-
     if (!baseId) {
-      console.error("❌ Missing base_id/sku for selected variant", selectedVariant, product);
-      alert("Product SKU missing. Please select a valid variant.");
+      console.error("❌ Missing SKU for selected variant", {
+        selectedVariant,
+        product,
+      });
+      alert("Product information incomplete. Please refresh and try again.");
       return;
     }
 
-    if (!selectedVariant.petpoojaId) {
-      console.warn("⚠️ petpoojaId missing for variant:", selectedVariant);
+    if (price <= 0) {
+      console.error("❌ Invalid price for variant", {
+        selectedVariant,
+        product,
+        price,
+      });
+      alert("Product price information missing. Please refresh and try again.");
+      return;
     }
 
     const cartItem = {
       id: product.id,
       productId: product.id,
       name: product.name,
-      price: selectedVariant.price,
+      price: price,
       quantity: selectedQuantity,
       image: product.image || "",
-      variant: `${selectedVariant.grind || ""} - ${selectedVariant.quantity || ""}`.trim(),
+      variant: variantName,
       base_id: baseId,
       variation_id: variationId,
       petpoojaId: selectedVariant.petpoojaId,

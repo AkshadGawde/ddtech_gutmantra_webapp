@@ -122,11 +122,17 @@ export async function syncMenuToFirestore(
     ? `V${item.itemid}` // 🔥 fallback for simple items
     : null;
 
+  // ✅ Generate SKU from available fields in order of preference
+  let sku = v.eid || v.EID || v.variationid || item.itemid || null;
+  if (sku) {
+    sku = String(sku); // ensure it's a string
+  }
+
   return {
     price: parseFloat(v.price || "0"),
     quantity: v.name || "Standard",
     grind: null,
-    sku: null,
+    sku: sku,
     petpoojaId,
   };
 });
