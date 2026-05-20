@@ -55,7 +55,7 @@ export async function syncMenuToFirestore(
     }
   });
 
-  // Log a sample item so we can verify the data on first push
+  // Log a simple item and the first variant-priced item so we can see the exact field names
   if (items.length > 0) {
     const sample = items[0];
     console.log("🔍 [menuSync] sample item:", {
@@ -65,6 +65,17 @@ export async function syncMenuToFirestore(
       variationCount: (sample.variation || []).length,
       firstVariation: (sample.variation || [])[0] || null,
     });
+  }
+  // Log the FULL variation array of the first item that has variants + price=0
+  // This lets us see exactly what fields PetPooja sends inside item.variation[x]
+  const variantItem = items.find(
+    (it: any) => it.variation && it.variation.length > 0 && (parseFloat(it.price) === 0 || !it.price)
+  );
+  if (variantItem) {
+    console.log(`🔍 [menuSync] VARIANT ITEM "${variantItem.itemname}" (${variantItem.itemid}):`);
+    console.log("   item.variation full dump:", JSON.stringify(variantItem.variation, null, 2));
+  } else {
+    console.log("🔍 [menuSync] No variant-priced items found in payload");
   }
 
   // ---------- CATEGORY MAP ----------
