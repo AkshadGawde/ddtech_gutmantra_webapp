@@ -120,10 +120,17 @@ export async function syncMenuToFirestore(
 
       const ref = db.collection("products").doc(item.itemid);
 
-      // Use item.variation if it exists, otherwise create a single Default variant
+      // Build variant list from best available source:
+      //  1. item.variation — populated for simple products (oils, basic atta)
+      //  2. itemvariations map — populated for spices / multi-size products
+      //     (PetPooja stores variant prices here, not inline on item.variation)
+      //  3. Default fallback — single-price item with no variants at all
+      const ivIds = Object.keys(ivPriceMap[item.itemid] || {});
       const rawVariants: any[] =
         item.variation && item.variation.length > 0
           ? item.variation
+          : ivIds.length > 0
+          ? ivIds.map((vid) => ({ variationid: vid }))
           : [{ price: item.price, name: "Default", _isDefault: true }];
 
       const mappedVariants = rawVariants.map((v: any) => {
