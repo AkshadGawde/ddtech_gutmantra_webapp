@@ -9,7 +9,7 @@ import {
   Share2,
   Loader,
 } from "lucide-react";
-import { getProduct, Product } from "../services/productService";
+import { fetchProductWithVariants, Product } from "../services/productService";
 import { useCart } from "../context/CartContext";
 import ProductVariantsModal from "../components/ProductVariantsModal";
 import ReviewsSection from "../components/ReviewsSection";
@@ -36,7 +36,7 @@ export default function ProductPage() {
 
   /* ================= FETCH PRODUCT ================= */
   useEffect(() => {
-    const fetchProduct = async () => {
+    const loadProduct = async () => {
       if (!id) {
         setError("Product ID not found");
         setLoading(false);
@@ -45,7 +45,7 @@ export default function ProductPage() {
 
       try {
         setLoading(true);
-        const data = await getProduct(id);
+        const data = await fetchProductWithVariants(id);
 
         if (!data) {
           setError("Product not found");
@@ -54,18 +54,29 @@ export default function ProductPage() {
         }
 
         setProduct(data);
-        if (data.variants && data.variants.length > 0) {
-          setSelectedVariant(data.variants[0]);
-        }
+
+        // Pick the cheapest non-zero price variant as the default selection
+        const variants = data.variants ?? [];
+        const pricedVariants = variants.filter((v: any) => Number(v.price) > 0);
+        const initial =
+          pricedVariants.length > 0
+            ? pricedVariants.reduce(
+                (min: any, v: any) => Number(v.price) < Number(min.price) ? v : min,
+                pricedVariants[0]
+              )
+            : variants[0] ?? null;
+
+        console.log("🎯 [ProductPage] Initial variant selected:", initial);
+        setSelectedVariant(initial);
         setLoading(false);
       } catch (err) {
-        console.error("Error fetching product:", err);
+        console.error("❌ [ProductPage] Failed to load product:", err);
         setError("Failed to load product");
         setLoading(false);
       }
     };
 
-    fetchProduct();
+    loadProduct();
   }, [id]);
 
   /* ================= IMAGE GALLERY ================= */
@@ -101,47 +112,77 @@ export default function ProductPage() {
         (!grind || v.grind === grind) && (!quantity || v.quantity === quantity)
     );
     if (variant) {
+      console.log(`🔄 [ProductPage] Variant selected: qty="${variant.quantity}" grind="${variant.grind}" price=₹${variant.price}`);
       setSelectedVariant(variant);
+    } else {
+      console.warn(`⚠️ [ProductPage] No variant found for grind="${grind}" qty="${quantity}"`);
     }
   };
 
   /* ================= ADD TO CART ================= */
   const handleAddToCart = () => {
-    if (!product || !selectedVariant) {
-      alert("Please select a variant");
+    console.log("🛒 [ProductPage] handleAddToCart called");
+    console.log("   product:", product?.name, "| id:", product?.id);
+    console.log("   selectedVariant:", selectedVariant);
+    console.log("   selectedQuantity:", selectedQuantity);
+
+    if (!product) {
+      console.error("❌ [ProductPage] product is null");
+      alert("Product not loaded. Please refresh and try again.");
       return;
     }
 
-    // ✅ Use robust SKU and price extraction
-    const baseId = extractVariantSku(selectedVariant, product);
-    const price = extractVariantPrice(selectedVariant, product);
-    const variantName = buildVariantName(selectedVariant);
+    // If no variant is selected but priced variants exist, auto-pick the cheapest
+    let variant = selectedVariant;
+    if (!variant) {
+      const allVariants = product.variants ?? [];
+      const priced = allVariants.filter((v: any) => Number(v.price) > 0);
+      variant = priced.length > 0
+        ? priced.reduce((min: any, v: any) => Number(v.price) < Number(min.price) ? v : min, priced[0])
+        : allVariants[0] ?? null;
 
-    // Debug logs
-    console.log("🛒 SELECTED_VARIANT (ProductPage)", selectedVariant);
-    console.log("🛒 Extracted SKU:", baseId);
-    console.log("🛒 Extracted Price:", price);
+      if (variant) {
+        console.warn("⚠️ [ProductPage] No variant selected — auto-picked:", variant);
+        setSelectedVariant(variant);
+      } else {
+        console.error("❌ [ProductPage] No variants available");
+        alert("Please select a variant before adding to cart.");
+        return;
+      }
+    }
 
-    const variationId = selectedVariant.petpoojaId
-      ? String(selectedVariant.petpoojaId).replace(/^V/, "")
-      : "";
+    const baseId = extractVariantSku(variant, product);
+    const price = extractVariantPrice(variant, product);
+    const variantName = buildVariantName(variant);
+    const variationId = variant.petpoojaId
+      ? String(variant.petpoojaId).replace(/^V/, "")
+      : baseId;
+
+    console.log("   baseId:", baseId);
+    console.log("   variationId:", variationId);
+    console.log("   price:", price);
+    console.log("   variantName:", variantName);
 
     if (!baseId) {
-      console.error("❌ Missing SKU for selected variant", {
-        selectedVariant,
-        product,
-      });
-      alert("Product information incomplete. Please refresh and try again.");
+      console.error("❌ [ProductPage] baseId is empty", { variant, product });
+      alert("Product SKU is missing. Please refresh and try again.");
       return;
     }
 
     if (price <= 0) {
-      console.error("❌ Invalid price for variant", {
-        selectedVariant,
+      // Give a more actionable message: tell user to pick a priced variant
+      const pricedVariants = (product.variants ?? []).filter((v: any) => Number(v.price) > 0);
+      console.error("❌ [ProductPage] price is 0", {
+        variant,
         product,
-        price,
+        pricedVariantsAvailable: pricedVariants.length,
       });
-      alert("Product price information missing. Please refresh and try again.");
+
+      if (pricedVariants.length > 0) {
+        alert(`Please select a size/quantity — available: ${pricedVariants.map((v: any) => `${v.quantity ?? v.name} ₹${v.price}`).join(", ")}`);
+      } else {
+        alert("Price information is missing for this product. Please contact support.");
+      }
       return;
     }
 
@@ -149,24 +190,23 @@ export default function ProductPage() {
       id: product.id,
       productId: product.id,
       name: product.name,
-      price: price,
+      price,
       quantity: selectedQuantity,
       image: product.image || "",
       variant: variantName,
       base_id: baseId,
       variation_id: variationId,
-      petpoojaId: selectedVariant.petpoojaId,
+      petpoojaId: variant.petpoojaId,
       category: product.category,
-      grind: selectedVariant.grind,
-      selectedQuantity: selectedVariant.quantity,
+      grind: variant.grind,
+      selectedQuantity: variant.quantity,
       sku: baseId,
     };
 
-    console.log("✅ CART_ITEM (ProductPage)", cartItem);
+    console.log("✅ [ProductPage] Adding to cart:", cartItem);
     addToCart(cartItem);
     setSelectedQuantity(1);
 
-    // Trigger animation if available
     if ((window as any).triggerAddToCartAnimation) {
       (window as any).triggerAddToCartAnimation(window.innerWidth - 100, 50);
     }
@@ -329,7 +369,7 @@ export default function ProductPage() {
               {/* PRICE */}
               <div className="flex items-baseline gap-3">
                 <span className="text-4xl font-bold text-primary">
-                  ₹{selectedVariant?.price || product.price}
+                  ₹{extractVariantPrice(selectedVariant, product)}
                 </span>
                 <span className="text-sm text-gray-500">
                   {selectedVariant?.quantity || "Per unit"}
@@ -371,29 +411,48 @@ export default function ProductPage() {
                     </div>
                   )}
 
-                  {/* QUANTITY SELECTOR */}
-                  {getUniqueQuantities(selectedVariant?.grind).length > 1 && (
-                    <div>
-                      <label className="block text-sm font-bold text-gray-900 mb-3">
-                        Size / Quantity
-                      </label>
-                      <div className="grid grid-cols-2 gap-2">
-                        {getUniqueQuantities(selectedVariant?.grind).map((qty) => (
-                          <button
-                            key={qty}
-                            onClick={() => updateVariant(selectedVariant?.grind, qty)}
-                            className={`py-3 px-4 rounded-lg border-2 font-bold transition-all ${
-                              selectedVariant?.quantity === qty
-                                ? "border-primary bg-primary/5 text-primary"
-                                : "border-gray-200 text-gray-700 hover:border-gray-300"
-                            }`}
-                          >
-                            {qty}
-                          </button>
-                        ))}
+                  {/* QUANTITY / SIZE SELECTOR */}
+                  {(() => {
+                    const qtys = getUniqueQuantities(selectedVariant?.grind).filter(
+                      (q) => q && q !== "Default"
+                    );
+                    if (qtys.length === 0) return null;
+                    return (
+                      <div>
+                        <label className="block text-sm font-bold text-gray-900 mb-3">
+                          Size / Quantity
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {qtys.map((qty) => {
+                            const v = product.variants?.find(
+                              (vv: any) =>
+                                vv.quantity === qty &&
+                                (!selectedVariant?.grind || vv.grind === selectedVariant.grind)
+                            );
+                            const vPrice = v ? Number(v.price) : 0;
+                            return (
+                              <button
+                                key={qty}
+                                onClick={() => updateVariant(selectedVariant?.grind, qty)}
+                                className={`py-3 px-4 rounded-lg border-2 font-bold transition-all text-left ${
+                                  selectedVariant?.quantity === qty
+                                    ? "border-primary bg-primary/5 text-primary"
+                                    : "border-gray-200 text-gray-700 hover:border-gray-300"
+                                }`}
+                              >
+                                <span>{qty}</span>
+                                {vPrice > 0 && (
+                                  <span className="block text-xs font-normal mt-0.5">
+                                    ₹{vPrice}
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               )}
 

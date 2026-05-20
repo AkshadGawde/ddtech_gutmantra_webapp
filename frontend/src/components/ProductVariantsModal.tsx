@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Plus, Minus, ShoppingBag } from "lucide-react";
 import { Product } from "../services/productService";
@@ -17,122 +17,115 @@ interface ProductVariantsModalProps {
 
 export default function ProductVariantsModal({ product, isOpen, onClose }: ProductVariantsModalProps) {
   const { addToCart } = useCart();
-  const variants = product.variants || [];
-  
-  const [selectedVariant, setSelectedVariant] = useState(variants[0] || null);
+  const allVariants: any[] = product.variants || [];
+
+  // ---------- derive selectable variants ----------
+  // Filter out the meaningless "Default"/"Standard" placeholders.
+  // Keep any variant that has a real name (quantity label).
+  const namedVariants = allVariants.filter(
+    (v) => v.quantity && v.quantity !== "Default" && v.quantity !== "Standard"
+  );
+  const pricedNamed = namedVariants.filter((v) => Number(v.price) > 0);
+
+  // What we actually show in the selector:
+  //   • priced named variants  (best case — spices with 50gm / 100gm)
+  //   • all named variants     (priced later — at least show the names)
+  //   • all variants           (fallback — even if only "Default" exists)
+  const selectorVariants =
+    pricedNamed.length > 0
+      ? pricedNamed
+      : namedVariants.length > 0
+      ? namedVariants
+      : allVariants;
+
+  // Default selection: prefer 100gm variant → largest by price → first priced → first
+  function pickDefault(list: any[]) {
+    const priced = list.filter((v) => Number(v.price) > 0);
+    if (priced.length === 0) return list[0] ?? null;
+    const hundred = priced.find((v) => String(v.quantity || "").includes("100"));
+    if (hundred) return hundred;
+    return priced.reduce((max, v) => (Number(v.price) > Number(max.price) ? v : max), priced[0]);
+  }
+
+  const [selectedVariant, setSelectedVariant] = useState<any>(() => pickDefault(selectorVariants));
   const [quantity, setQuantity] = useState(1);
 
-  /* ================= DYNAMIC GRIND/QUANTITY ================= */
-  const getUniqueGrinds = () => {
-    const grinds = variants.map((v: any) => v.grind).filter(Boolean);
-    return [...new Set(grinds)];
-  };
-
-  const getUniqueQuantities = (grind?: string) => {
-    const filtered = grind
-      ? variants.filter((v: any) => v.grind === grind)
-      : variants;
-    const quantities = filtered.map((v: any) => v.quantity).filter(Boolean);
-    return [...new Set(quantities)];
-  };
-
-  const updateVariant = (grind?: string, qty?: string) => {
-    const variant = variants.find(
-      (v: any) =>
-        (!grind || v.grind === grind) && (!qty || v.quantity === qty)
-    );
-    if (variant) {
-      setSelectedVariant(variant);
-    }
-  };
-
-  /* ================= ADD TO CART ================= */
-
-const handleAddToCart = (e: React.MouseEvent) => {
-  // ✅ Use robust SKU extraction
-  const baseId = extractVariantSku(selectedVariant, product);
-  const price = extractVariantPrice(selectedVariant, product);
-  const variantName = buildVariantName(selectedVariant);
-
-  // Debug logs
-  console.log("🛒 Selected Variant:", selectedVariant);
-  console.log("🛒 Extracted SKU:", baseId);
-  console.log("🛒 Extracted Price:", price);
-
-  // Real variation ID only if valid
-  const variationId = selectedVariant?.petpoojaId
-    ? String(selectedVariant.petpoojaId).replace(/^V/, "")
-    : "";
-
-  if (!baseId) {
-    console.error("❌ Missing SKU for selected variant", {
-      selectedVariant,
-      product,
-      baseId,
-    });
-    alert("Product information incomplete. Please refresh and try again.");
-    return;
-  }
-
-  if (price <= 0) {
-    console.error("❌ Invalid price for variant", {
-      selectedVariant,
-      product,
-      price,
-    });
-    alert("Product price information missing. Please refresh and try again.");
-    return;
-  }
-
-  addToCart({
-    id: product.id,
-    productId: product.id,
-
-    // REQUIRED FOR PETPOOJA
-    base_id: baseId,
-    variation_id: variationId,
-
-    name: product.name,
-    price: price,
-    quantity: quantity,
-
-    image: product.image || "",
-    variant: variantName,
-
-    petpoojaId: selectedVariant?.petpoojaId,
-    sku: baseId,
-
-    category: product.category,
-    grind: selectedVariant?.grind,
-    selectedQuantity: selectedVariant?.quantity,
-  });
-
-  console.log("✅ Added to cart:", {
-    base_id: baseId,
-    variation_id: variationId,
-    price,
-    variantName,
-  });
-
-  // Trigger animation
-  if ((window as any).triggerAddToCartAnimation) {
-    (window as any).triggerAddToCartAnimation(
-      e.clientX,
-      e.clientY
-    );
-  }
-
-  setQuantity(1);
-  onClose();
-};
-
-
-  React.useEffect(() => {
+  // Re-initialise when the modal opens or the product changes
+  useEffect(() => {
     if (isOpen) {
-      setSelectedVariant(variants[0] || null);
+      setSelectedVariant(pickDefault(selectorVariants));
       setQuantity(1);
     }
-  }, [isOpen, variants]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, product.id]);
+
+  // ---------- grind sub-selector (atta products) ----------
+  const uniqueGrinds = [...new Set(selectorVariants.map((v) => v.grind).filter(Boolean))] as string[];
+  const hasMultipleGrinds = uniqueGrinds.length > 1;
+
+  // Variants matching the currently selected grind
+  const variantsForGrind = hasMultipleGrinds && selectedVariant?.grind
+    ? selectorVariants.filter((v) => v.grind === selectedVariant.grind)
+    : selectorVariants;
+
+  const uniqueSizes = [...new Set(variantsForGrind.map((v) => v.quantity).filter(Boolean))] as string[];
+
+  // ---------- add to cart ----------
+  const handleAddToCart = (e: React.MouseEvent) => {
+    const baseId = extractVariantSku(selectedVariant, product);
+    const price = extractVariantPrice(selectedVariant, product);
+    const variantName = buildVariantName(selectedVariant);
+    const variationId = selectedVariant?.petpoojaId
+      ? String(selectedVariant.petpoojaId).replace(/^V/, "")
+      : baseId;
+
+    console.log("🛒 [Modal] selectedVariant:", selectedVariant);
+    console.log("🛒 [Modal] baseId:", baseId, "| price:", price, "| variantName:", variantName);
+
+    if (!baseId) {
+      alert("Product SKU is missing. Please refresh and try again.");
+      return;
+    }
+
+    if (price <= 0) {
+      const available = pricedNamed.map((v) => `${v.quantity} ₹${v.price}`).join(", ");
+      alert(
+        available
+          ? `Please select a variant — available: ${available}`
+          : "Price not available yet. Please check back soon."
+      );
+      return;
+    }
+
+    addToCart({
+      id: product.id,
+      productId: product.id,
+      base_id: baseId,
+      variation_id: variationId,
+      name: product.name,
+      price,
+      quantity,
+      image: product.image || "",
+      variant: variantName,
+      petpoojaId: selectedVariant?.petpoojaId,
+      sku: baseId,
+      category: product.category,
+      grind: selectedVariant?.grind,
+      selectedQuantity: selectedVariant?.quantity,
+    });
+
+    console.log("✅ [Modal] Added to cart:", { base_id: baseId, variation_id: variationId, price, variantName });
+
+    if ((window as any).triggerAddToCartAnimation) {
+      (window as any).triggerAddToCartAnimation(e.clientX, e.clientY);
+    }
+
+    setQuantity(1);
+    onClose();
+  };
+
+  const displayPrice = extractVariantPrice(selectedVariant, product);
+  const hasNoPrice = pricedNamed.length === 0 && Number(product.price) === 0;
 
   return (
     <AnimatePresence>
@@ -145,24 +138,24 @@ const handleAddToCart = (e: React.MouseEvent) => {
             onClick={onClose}
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
           />
-          
+
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             className="relative w-full max-w-lg bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row"
           >
-            {/* Close Button */}
-            <button 
+            {/* Close */}
+            <button
               onClick={onClose}
               className="absolute top-6 right-6 z-10 p-2 bg-white/80 backdrop-blur-md rounded-full shadow-sm hover:bg-white transition-colors"
             >
               <X size={20} />
             </button>
 
-            {/* Product Image */}
+            {/* Image */}
             <div className="w-full md:w-2/5 aspect-square md:aspect-auto overflow-hidden bg-black/5">
-              <img 
+              <img
                 src={product.image || "/placeholder.png"}
                 alt={product.name}
                 className="w-full h-full object-cover"
@@ -182,17 +175,20 @@ const handleAddToCart = (e: React.MouseEvent) => {
                 <h2 className="text-2xl font-bold tracking-tight">{product.name}</h2>
               </div>
 
-              {/* ================= GRIND SELECTOR ================= */}
-              {variants.length > 0 && getUniqueGrinds().length > 1 && (
-                <div className="mb-6">
+              {/* ── Grind selector (atta only) ── */}
+              {hasMultipleGrinds && (
+                <div className="mb-4">
                   <label className="text-xs font-bold uppercase tracking-widest opacity-60 mb-3 block">
                     Grind Type
                   </label>
                   <div className="grid grid-cols-2 gap-2">
-                    {getUniqueGrinds().map((grind: string) => (
+                    {uniqueGrinds.map((grind) => (
                       <button
                         key={grind}
-                        onClick={() => updateVariant(grind, selectedVariant?.quantity)}
+                        onClick={() => {
+                          const next = selectorVariants.find((v) => v.grind === grind);
+                          if (next) setSelectedVariant(next);
+                        }}
                         className={`py-2 px-3 rounded-lg border-2 text-sm font-bold transition-all ${
                           selectedVariant?.grind === grind
                             ? "border-primary bg-primary/5 text-primary"
@@ -206,93 +202,85 @@ const handleAddToCart = (e: React.MouseEvent) => {
                 </div>
               )}
 
-              {/* ================= QUANTITY/SIZE SELECTOR ================= */}
-              {variants.length > 0 && getUniqueQuantities(selectedVariant?.grind).length > 1 && (
+              {/* ── Size / weight selector ── */}
+              {uniqueSizes.length > 0 && (
                 <div className="mb-6">
                   <label className="text-xs font-bold uppercase tracking-widest opacity-60 mb-3 block">
-                    Size / Weight
+                    Select Size
                   </label>
                   <div className="grid grid-cols-2 gap-2">
-                    {getUniqueQuantities(selectedVariant?.grind).map((qty: string) => (
-                      <button
-                        key={qty}
-                        onClick={() => updateVariant(selectedVariant?.grind, qty)}
-                        className={`py-2 px-3 rounded-lg border-2 text-sm font-bold transition-all ${
-                          selectedVariant?.quantity === qty
-                            ? "border-primary bg-primary/5 text-primary"
-                            : "border-gray-200 text-gray-700 hover:border-gray-300"
-                        }`}
-                      >
-                        {qty}
-                      </button>
-                    ))}
+                    {uniqueSizes.map((size) => {
+                      const v = variantsForGrind.find((vv) => vv.quantity === size);
+                      const vPrice = v ? Number(v.price) : 0;
+                      const isSelected = selectedVariant?.quantity === size &&
+                        (!hasMultipleGrinds || selectedVariant?.grind === v?.grind);
+                      return (
+                        <button
+                          key={size}
+                          onClick={() => { if (v) setSelectedVariant(v); }}
+                          className={`p-3 rounded-lg border-2 transition-all text-left ${
+                            isSelected
+                              ? "border-primary bg-primary/5 text-primary"
+                              : "border-gray-200 text-gray-700 hover:border-gray-300"
+                          }`}
+                        >
+                          <p className="text-sm font-bold">{size}</p>
+                          {vPrice > 0 && (
+                            <p className="text-xs font-semibold mt-0.5 text-primary">₹{vPrice}</p>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
 
-              {/* ================= VARIANT OPTIONS (Fallback) ================= */}
-              {variants.length > 0 && getUniqueGrinds().length <= 1 && getUniqueQuantities().length <= 1 && (
-                <div className="mb-6">
-                  <label className="text-xs font-bold uppercase tracking-widest opacity-60 mb-3 block">
-                    Select Option
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {variants.map((v: any, i: number) => (
-                      <button
-                        key={i}
-                        onClick={() => setSelectedVariant(v)}
-                        className={`p-3 rounded-lg border-2 transition-all text-left text-sm font-bold ${
-                          selectedVariant === v 
-                            ? "border-primary bg-primary/5 text-primary" 
-                            : "border-gray-200 hover:border-gray-300"
-                        }`}
-                      >
-                        <p>{v.grind || v.quantity || "Option"}</p>
-                        <p className="text-primary mt-1">₹{v.price}</p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+              {/* ── No data yet ── */}
+              {hasNoPrice && (
+                <p className="text-sm text-gray-400 mb-4">
+                  Pricing will be available soon. Contact us for bulk orders.
+                </p>
               )}
 
-              {/* ================= QUANTITY SELECTOR ================= */}
+              {/* ── Order quantity + total ── */}
               <div className="mb-6">
                 <label className="text-xs font-bold uppercase tracking-widest opacity-60 mb-3 block">
                   Order Quantity
                 </label>
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-3 bg-gray-100 p-2 rounded-lg">
-                    <button 
-                      onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
+                    <button
+                      onClick={() => setQuantity((p) => Math.max(1, p - 1))}
                       className="p-2 hover:bg-white rounded-md transition-all active:scale-95"
                     >
                       <Minus size={16} />
                     </button>
                     <span className="text-lg font-bold w-8 text-center">{quantity}</span>
-                    <button 
-                      onClick={() => setQuantity(prev => prev + 1)}
+                    <button
+                      onClick={() => setQuantity((p) => p + 1)}
                       className="p-2 hover:bg-white rounded-md transition-all active:scale-95"
                     >
                       <Plus size={16} />
                     </button>
                   </div>
-                  
+
                   <div className="text-right flex-1">
                     <p className="text-xs font-bold uppercase tracking-widest opacity-60">Total Price</p>
                     <p className="text-2xl font-bold text-primary">
-                      ₹{((selectedVariant ? Number(selectedVariant.price) : product.price) * quantity).toFixed(0)}
+                      {displayPrice > 0 ? `₹${(displayPrice * quantity).toFixed(0)}` : "—"}
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* ================= ADD BUTTON ================= */}
+              {/* ── Add to cart ── */}
               <button
                 onClick={handleAddToCart}
-                className="w-full py-4 bg-primary text-white rounded-xl font-bold uppercase tracking-widest hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-3 group mt-auto"
+                disabled={hasNoPrice}
+                className="w-full py-4 bg-primary text-white rounded-xl font-bold uppercase tracking-widest hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-3 group mt-auto disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <ShoppingBag size={20} className="group-hover:scale-110 transition-transform" />
-                Add to Cart
+                {hasNoPrice ? "Pricing Unavailable" : "Add to Cart"}
               </button>
             </div>
           </motion.div>

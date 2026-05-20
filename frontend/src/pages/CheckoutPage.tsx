@@ -448,18 +448,24 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
 
       const orderID = `${user.uid}_${Date.now()}`;
 
-      const formattedItems = items.map((item: any) => ({
-        base_id:
-          item.base_id ||
-          item.sku ||
-          (item.petpoojaId ? String(item.petpoojaId).replace(/^V/, "") : ""),
-        variation_id:
-          item.variation_id ||
-          (item.petpoojaId ? String(item.petpoojaId).replace(/^V/, "") : ""),
-        name: item.name,
-        price: String(item.price),
-        quantity: String(item.quantity),
-      }));
+      const formattedItems = items.map((item: any) => {
+        const variantSuffix =
+          item.variant && !item.name.includes(item.variant)
+            ? ` (${item.variant})`
+            : "";
+        return {
+          base_id:
+            item.base_id ||
+            item.sku ||
+            (item.petpoojaId ? String(item.petpoojaId).replace(/^V/, "") : ""),
+          variation_id:
+            item.variation_id ||
+            (item.petpoojaId ? String(item.petpoojaId).replace(/^V/, "") : ""),
+          name: `${item.name}${variantSuffix}`,
+          price: String(item.price),
+          quantity: String(item.quantity),
+        };
+      });
 
       // Read coordinates from `validated` (the returned DeliveryResult),
       // NOT from shippingAddress state. React state updates are async — by the
@@ -880,15 +886,24 @@ console.log(
 
               {/* Items */}
               <div className="space-y-4 mb-6">
-                {items.map((item, index) => (
-                  <div key={index} className="flex justify-between">
-                    <div>
-                      <p className="font-medium">{item.name}</p>
-                      <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
+                {items.map((item, index) => {
+                  const variantLabel =
+                    item.variant && !item.name.includes(item.variant)
+                      ? item.variant
+                      : null;
+                  return (
+                    <div key={index} className="flex justify-between">
+                      <div>
+                        <p className="font-medium">{item.name}</p>
+                        {variantLabel && (
+                          <p className="text-xs text-gray-500">{variantLabel}</p>
+                        )}
+                        <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
+                      </div>
+                      <p>₹{(item.price * item.quantity).toFixed(2)}</p>
                     </div>
-                    <p>₹{(item.price * item.quantity).toFixed(2)}</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* ── Coupon section ── */}

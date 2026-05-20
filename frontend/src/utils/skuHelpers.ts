@@ -81,22 +81,31 @@ export function extractVariantPrice(variant: any, product: any): number {
 
 /**
  * Extract price from product with fallback chain.
+ * Scans ALL variants for a non-zero price — not just the first one.
  */
 export function extractProductPrice(product: any): number {
   if (!product) return 0;
 
-  const priceCandidates = [
+  const directCandidates = [
     product.price,
     product.sellingPrice,
     product.selling_price,
     product.mrp,
-    product.variants?.[0]?.price,
   ];
 
-  for (const candidate of priceCandidates) {
+  for (const candidate of directCandidates) {
     const price = Number(candidate);
-    if (price > 0) {
-      return price;
+    if (price > 0) return price;
+  }
+
+  // Scan every variant for a non-zero price (not just variants[0])
+  if (Array.isArray(product.variants)) {
+    for (const v of product.variants) {
+      const fields = [v?.price, v?.sellingPrice, v?.selling_price, v?.mrp];
+      for (const f of fields) {
+        const price = Number(f);
+        if (price > 0) return price;
+      }
     }
   }
 

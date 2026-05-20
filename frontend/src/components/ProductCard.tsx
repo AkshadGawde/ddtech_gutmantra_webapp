@@ -22,10 +22,20 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Get lowest price and min variant
   const variants = product.variants || [];
-  const minVariant = variants.length > 0 ? variants.reduce((min, v) => (Number(v.price) < Number(min.price) ? v : min), variants[0]) : null;
-  const displayPrice = minVariant ? Number(minVariant.price) : product.price;
+  const pricedVariants = variants.filter((v) => Number(v.price) > 0);
+  const sortedPriced = [...pricedVariants].sort((a, b) => Number(a.price) - Number(b.price));
+  // Default to 100gm variant → largest → first priced
+  const defaultVariant =
+    pricedVariants.find((v) => String(v.quantity || "").includes("100")) ||
+    (sortedPriced.length > 0 ? sortedPriced[sortedPriced.length - 1] : null) ||
+    (variants.length > 0 ? variants[0] : null);
+  const minVariant = sortedPriced.length > 0 ? sortedPriced[0] : defaultVariant;
+  const minPrice = sortedPriced.length > 0 ? Number(sortedPriced[0].price) : product.price;
+  const maxPrice = sortedPriced.length > 1 ? Number(sortedPriced[sortedPriced.length - 1].price) : 0;
+  const defaultPrice = defaultVariant ? Number(defaultVariant.price) : product.price;
+  const displayPrice = defaultPrice > 0 ? defaultPrice : product.price;
+  const showRange = maxPrice > minPrice;
 
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -178,9 +188,22 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
           </div>
 
           <div className="text-right">
-            <p className="text-xl font-bold text-primary">₹{displayPrice}</p>
-            {variants.length > 0 && (
-              <p className="text-[8px] font-bold opacity-30 uppercase tracking-widest">Starting at</p>
+            <p className="text-xl font-bold text-primary">
+              {displayPrice > 0
+                ? showRange
+                  ? `₹${minPrice} – ₹${maxPrice}`
+                  : `₹${displayPrice}`
+                : "—"}
+            </p>
+            {pricedVariants.length > 0 && (
+              <p className="text-[8px] font-bold opacity-30 uppercase tracking-widest">
+                {showRange ? "Price range" : "Starting at"}
+              </p>
+            )}
+            {displayPrice === 0 && (
+              <p className="text-[8px] font-bold opacity-30 uppercase tracking-widest">
+                Select variant
+              </p>
             )}
           </div>
         </div>

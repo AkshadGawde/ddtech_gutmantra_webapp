@@ -100,14 +100,27 @@ function normalizeCategory(raw: string): "atta" | "oils" | "spices" | "other" {
 }
 
 /**
+ * Returns the lowest non-zero price across all variants, or 0 if none found.
+ */
+function lowestVariantPrice(variants: any[]): number {
+  let min = 0;
+  for (const v of variants) {
+    const p = Number(v?.price ?? v?.sellingPrice ?? v?.mrp ?? 0);
+    if (p > 0 && (min === 0 || p < min)) min = p;
+  }
+  return min;
+}
+
+/**
  * Converts raw Firestore product → clean frontend product
  */
 export function normalizeProduct(p: any): Product {
-  // ✅ Enrich variants with SKU and petpoojaId if missing
-  const enrichedVariants = (p.variants || p.variation || []).map((v: any) => {
+  const rawVariants: any[] = p.variants || p.variation || [];
+
+  const enrichedVariants = rawVariants.map((v: any) => {
     const enriched = { ...v };
 
-    // Ensure SKU exists (fallback chain)
+    // SKU fallback chain
     if (!enriched.sku) {
       enriched.sku =
         enriched.variationId ||
@@ -116,15 +129,18 @@ export function normalizeProduct(p: any): Product {
         enriched.item_variation_id ||
         enriched.eid ||
         enriched.EID ||
+        (enriched.petpoojaId ? String(enriched.petpoojaId).replace(/^V/, "") : null) ||
         p.sku ||
         p.itemid ||
         p.id;
     }
 
-    // Ensure petpoojaId exists (fallback chain)
+    // petpoojaId fallback chain
     if (!enriched.petpoojaId) {
       if (enriched.variationId) {
         enriched.petpoojaId = `V${enriched.variationId}`;
+      } else if (enriched.sku) {
+        enriched.petpoojaId = `V${enriched.sku}`;
       } else if (p.sku || p.itemid) {
         enriched.petpoojaId = `V${p.sku || p.itemid}`;
       } else {
@@ -132,27 +148,33 @@ export function normalizeProduct(p: any): Product {
       }
     }
 
-    // Ensure price exists (fallback chain)
-    if (!enriched.price || Number(enriched.price) === 0) {
-      enriched.price =
-        Number(p.price) ||
-        Number(p.sellingPrice) ||
-        Number(p.mrp) ||
-        0;
+    // Price fallback: only fill in when the variant truly has no price.
+    // Do NOT replace a valid variant price with the product base price —
+    // spice products intentionally have base_price=0 with variant-level prices.
+    if (Number(enriched.price) <= 0) {
+      // Try the product base price only if it's a real non-zero value
+      const basePrice = Number(p.price) || Number(p.sellingPrice) || Number(p.mrp) || 0;
+      if (basePrice > 0) {
+        enriched.price = basePrice;
+      }
+      // Leave at 0 if even the product price is 0 — don't manufacture a wrong value
     }
 
     return enriched;
   });
 
+  // Product-level price: use base price, then fall back to lowest non-zero variant price
+  const basePrice =
+    Number(p.price) ||
+    Number(p.sellingPrice) ||
+    Number(p.mrp) ||
+    0;
+  const productPrice = basePrice > 0 ? basePrice : lowestVariantPrice(enrichedVariants);
+
   return {
     id: p.id,
     name: p.name || p.itemname || "",
-    price:
-      Number(p.price) ||
-      Number(p.sellingPrice) ||
-      Number(p.mrp) ||
-      Number(p.variants?.[0]?.price) ||
-      0,
+    price: productPrice,
     image:
       p.image ||
       p.images?.[0] ||
@@ -160,11 +182,53 @@ export function normalizeProduct(p: any): Product {
     images: p.images || [],
     category: normalizeCategory(p.category || p.categoryname),
     rawCategory: p.category || p.categoryname || "",
-    description:
-      p.description ||
-      p.itemdescription ||
-      "",
+    description: p.description || p.itemdescription || "",
     variants: enrichedVariants,
     createdAt: p.createdAt || null,
   };
 }
+
+/* ================= FETCH WITH VARIANTS (DETAILED) ================= */
+
+/**
+ * Fetches a single product and logs full variant details for debugging.
+ * Use this in ProductPage instead of getProduct() for better diagnostics.
+ */
+export const fetchProductWithVariants = async (id: string): Promise<Product | null> => {
+  console.log(`🔍 [fetchProductWithVariants] Loading product: ${id}`);
+
+  const product = await getProduct(id);
+
+  if (!product) {
+    console.error(`❌ [fetchProductWithVariants] Product not found: ${id}`);
+    return null;
+  }
+
+  const variants = product.variants ?? [];
+  const pricedVariants = variants.filter((v) => Number(v.price) > 0);
+
+  console.log(`✅ [fetchProductWithVariants] Loaded: "${product.name}" (${product.id})`);
+  console.log(`   base price:      ₹${product.price}`);
+  console.log(`   total variants:  ${variants.length}`);
+  console.log(`   priced variants: ${pricedVariants.length}`);
+
+  variants.forEach((v, i) => {
+    const qty = v.quantity ?? v.name ?? "—";
+    const grind = v.grind ? ` | grind: ${v.grind}` : "";
+    console.log(
+      `   [${i}] qty="${qty}"${grind} | price=₹${v.price} | sku="${v.sku}" | petpoojaId="${v.petpoojaId}"`
+    );
+  });
+
+  if (product.price === 0 && pricedVariants.length === 0) {
+    console.warn(
+      `⚠️ [fetchProductWithVariants] "${product.name}" has NO pricing data. ` +
+      `Both base price and all variant prices are 0. Check Petpooja sync.`
+    );
+  } else if (product.price === 0 && pricedVariants.length > 0) {
+    const summary = pricedVariants.map((v) => `${v.quantity ?? v.name}=₹${v.price}`).join(", ");
+    console.log(`ℹ️ [fetchProductWithVariants] "${product.name}" uses variant-level pricing: ${summary}`);
+  }
+
+  return product;
+};
