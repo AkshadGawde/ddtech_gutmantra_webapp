@@ -3,11 +3,18 @@ import crypto from "crypto";
 const BILLDESK_SECRET_KEY = process.env.BILLDESK_SECRET_KEY || "";
 
 if (!BILLDESK_SECRET_KEY) {
-  throw new Error("BILLDESK_SECRET_KEY environment variable is required");
+  console.warn("⚠️ BILLDESK_SECRET_KEY not set — BillDesk payment features disabled");
+}
+
+function requireSecretKey(): string {
+  if (!BILLDESK_SECRET_KEY) {
+    throw new Error("BILLDESK_SECRET_KEY environment variable is required for payment processing");
+  }
+  return BILLDESK_SECRET_KEY;
 }
 
 export function createBillDeskSignature(payload: string): string {
-  const hmac = crypto.createHmac("sha256", BILLDESK_SECRET_KEY);
+  const hmac = crypto.createHmac("sha256", requireSecretKey());
   hmac.update(payload, "utf8");
   return hmac.digest("hex");
 }

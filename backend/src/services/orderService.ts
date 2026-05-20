@@ -57,8 +57,10 @@ export interface OrderCreatePayload {
 
 export interface OrderRecord extends OrderCreatePayload {
   orderID: string;
+  total: number;
   paymentStatus: OrderPaymentStatus;
   orderStatus: string;
+  isDeliverable: boolean;
   source: string;
   createdAt: any;
   updatedAt: any;
@@ -69,6 +71,7 @@ export interface OrderRecord extends OrderCreatePayload {
   petpoojaID?: string;
   petpoojaResponse?: unknown;
   petpoojaSyncStatus?: string;
+  failureReason?: string;
 }
 
 export async function createOrderRecord(payload: OrderCreatePayload) {

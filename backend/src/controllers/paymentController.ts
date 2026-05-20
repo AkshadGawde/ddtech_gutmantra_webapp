@@ -14,6 +14,7 @@ import {
   OrderCreatePayload,
 } from "../services/orderService.js";
 import { BillDeskRequest } from "../middleware/verifyBilldesk.js";
+import { Money } from "../utils/money.js";
 
 function getUserId(orderId: string, providedUserId?: unknown) {
   if (typeof providedUserId === "string" && orderId.startsWith(providedUserId)) {
@@ -245,7 +246,7 @@ export async function createOnlineOrder(req: Request, res: Response) {
     const expectedAmount = Number(orderData.finalAmount ?? orderData.total ?? 0);
     const requestedAmount = Number(amount);
 
-    if (Number(expectedAmount.toFixed(2)) !== Number(requestedAmount.toFixed(2))) {
+    if (!Money.fromRupees(expectedAmount).equals(Money.fromRupees(requestedAmount))) {
       return res.status(400).json({
         success: false,
         message: "Payment amount mismatch",
@@ -261,10 +262,29 @@ export async function createOnlineOrder(req: Request, res: Response) {
       customerPhone,
     });
 
+    if (!billdeskResult.links || billdeskResult.links.length === 0) {
+      console.error("❌ BillDesk form generation failed - no links returned");
+      return res.status(500).json({
+        success: false,
+        message: "Payment initialization failed - invalid gateway response",
+      });
+    }
+
+    const redirectLink = billdeskResult.links[0];
+
+    if (!redirectLink.href || !redirectLink.parameters) {
+      console.error("❌ BillDesk redirect link malformed:", redirectLink);
+      return res.status(500).json({
+        success: false,
+        message: "Payment initialization failed - invalid redirect data",
+      });
+    }
+
     await updateOrderRecord(orderId, {
       billdeskRequest: {
-        payload: billdeskResult.payload,
-        paymentUrl: billdeskResult.paymentUrl,
+        payload: redirectLink.parameters,
+        paymentUrl: redirectLink.href,
+        method: redirectLink.method,
         transactionToken: billdeskResult.transactionToken,
         createdAt: new Date(),
       },
@@ -278,9 +298,9 @@ export async function createOnlineOrder(req: Request, res: Response) {
       links: [
         {
           rel: "redirect",
-          method: "POST",
-          href: billdeskResult.paymentUrl,
-          parameters: billdeskResult.payload,
+          method: redirectLink.method,
+          href: redirectLink.href,
+          parameters: redirectLink.parameters,
         },
       ],
     });
@@ -322,15 +342,16 @@ export async function billdeskCallback(req: BillDeskRequest, res: Response) {
     const expectedAmount = Number(orderData.finalAmount ?? orderData.total ?? 0);
     const callbackAmount = Number(callback.amount ?? 0);
 
-    if (callbackAmount > 0 && Number(expectedAmount.toFixed(2)) !== Number(callbackAmount.toFixed(2))) {
+    if (callbackAmount > 0 && !Money.fromRupees(expectedAmount).equals(Money.fromRupees(callbackAmount))) {
       console.error(
-        `❌ BillDesk amount mismatch for order ${callback.orderId}: expected ${expectedAmount}, received ${callbackAmount}`
+        `❌ BillDesk amount mismatch for order ${callback.orderId}: expected ${Money.fromRupees(expectedAmount)}, received ${Money.fromRupees(callbackAmount)}`
       );
       await updateOrderRecord(callback.orderId, {
         paymentStatus: "payment_failed",
         orderStatus: "PAYMENT_FAILED",
         paymentResponse: req.body,
         billdeskTransactionId: callback.transactionId,
+        failureReason: "Amount mismatch",
       });
       return res.status(400).send("AMOUNT_MISMATCH");
     }

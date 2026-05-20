@@ -10,10 +10,11 @@ router.get("/order-status/:orderId", async (req, res) => {
   try {
     const { orderId } = req.params;
 
-    if (!orderId) {
+    if (!orderId || typeof orderId !== "string") {
       return res.status(400).json({
         success: false,
-        message: "Missing orderId",
+        error: "INVALID_ORDER_ID",
+        message: "Order ID is required and must be a string",
       });
     }
 
@@ -35,16 +36,11 @@ router.get("/order-status/:orderId", async (req, res) => {
 
     return res.json({
       success: true,
-
       orderId,
-
-      paymentStatus:
-        orderData?.paymentStatus || "PENDING",
-
-      orderStatus:
-        orderData?.orderStatus || "PENDING",
-
-      order: orderData,
+      paymentStatus: orderData?.paymentStatus || "unknown",
+      orderStatus: orderData?.orderStatus || "unknown",
+      petpoojaID: orderData?.petpoojaID || null,
+      updatedAt: orderData?.updatedAt || null,
     });
   } catch (error) {
     console.error(

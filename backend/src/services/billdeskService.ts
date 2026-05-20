@@ -12,11 +12,11 @@ const BILLDESK_PAYMENT_CREATE_PATH =
 const BILLDESK_PAYMENT_URL = `${BILLDESK_BASE_URL}${BILLDESK_PAYMENT_CREATE_PATH}`;
 
 if (!MERCHANT_ID) {
-  throw new Error("BILLDESK_MERCHANT_ID environment variable is required");
+  console.warn("⚠️ BILLDESK_MERCHANT_ID not set — BillDesk payment features disabled");
 }
 
 if (!BILLDESK_RETURN_URL) {
-  throw new Error("BILLDESK_RETURN_URL environment variable is required");
+  console.warn("⚠️ BILLDESK_RETURN_URL not set — BillDesk payment features disabled");
 }
 
 export interface BillDeskPayloadData {
