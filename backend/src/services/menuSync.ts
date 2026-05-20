@@ -55,28 +55,20 @@ export async function syncMenuToFirestore(
     }
   });
 
-  // Log a simple item and the first variant-priced item so we can see the exact field names
-  if (items.length > 0) {
-    const sample = items[0];
-    console.log("🔍 [menuSync] sample item:", {
-      itemid: sample.itemid,
-      itemname: sample.itemname,
-      price: sample.price,
-      variationCount: (sample.variation || []).length,
-      firstVariation: (sample.variation || [])[0] || null,
-    });
-  }
-  // Log the FULL variation array of the first item that has variants + price=0
-  // This lets us see exactly what fields PetPooja sends inside item.variation[x]
-  const variantItem = items.find(
-    (it: any) => it.variation && it.variation.length > 0 && (parseFloat(it.price) === 0 || !it.price)
-  );
-  if (variantItem) {
-    console.log(`🔍 [menuSync] VARIANT ITEM "${variantItem.itemname}" (${variantItem.itemid}):`);
-    console.log("   item.variation full dump:", JSON.stringify(variantItem.variation, null, 2));
-  } else {
-    console.log("🔍 [menuSync] No variant-priced items found in payload");
-  }
+  // Log every item with base price=0 so we can see which have variations and which don't
+  const zeroPriceItems = items.filter((it: any) => parseFloat(it.price || "0") === 0);
+  console.log(`🔍 [menuSync] ${zeroPriceItems.length} items with base price=0:`);
+  zeroPriceItems.forEach((it: any) => {
+    const varCount = (it.variation || []).length;
+    if (varCount > 0) {
+      const fv = it.variation[0];
+      console.log(`   ✅ "${it.itemname}" → ${varCount} variants, first: name="${fv.name}" price="${fv.price}"`);
+    } else {
+      // These are the broken ones — dump ALL top-level fields so we can find hidden price data
+      console.log(`   ❌ "${it.itemname}" (${it.itemid}) → NO variations. All keys: ${Object.keys(it).join(", ")}`);
+      if (it.item_info) console.log(`      item_info: ${JSON.stringify(it.item_info)}`);
+    }
+  });
 
   // ---------- CATEGORY MAP ----------
   const categoryMap: Record<string, string> = {};
