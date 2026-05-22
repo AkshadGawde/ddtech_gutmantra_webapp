@@ -6,13 +6,6 @@ import {
   signOut,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
-  ConfirmationResult,
-  linkWithCredential,
-  EmailAuthProvider,
-  PhoneAuthProvider,
-  signInWithCredential,
   User as FirebaseUser,
 } from "firebase/auth";
 
@@ -20,12 +13,7 @@ import {
   doc,
   getDoc,
   setDoc,
-  updateDoc,
   serverTimestamp,
-  collection,
-  query,
-  where,
-  getDocs,
 } from "firebase/firestore";
 
 import { auth, db, googleProvider } from "../lib/firebase";
@@ -35,9 +23,12 @@ import {
   normalizeFirestoreUserDoc,
 } from "../utils/userHelpers";
 
+import { WhatsAppUser } from "../types/auth";
+
 interface AuthContextType {
   user: FirebaseUser | null;
   userData: FirestoreUserDocument | null;
+  whatsappUser: WhatsAppUser | null;
   loading: boolean;
   isAdmin: boolean;
 
@@ -65,17 +56,19 @@ export const AuthProvider: React.FC<{
   children: React.ReactNode;
 }> = ({ children }) => {
   const [user, setUser] = useState<FirebaseUser | null>(null);
-
-  const [userData, setUserData] =
-    useState<FirestoreUserDocument | null>(null);
-
+  const [userData, setUserData] = useState<FirestoreUserDocument | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const [confirmationResult, setConfirmationResult] =
-    useState<ConfirmationResult | null>(null);
+  const loadWhatsappUser = (): WhatsAppUser | null => {
+    try {
+      const raw = localStorage.getItem("userData");
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  };
 
-  const [phoneAuthUser, setPhoneAuthUser] =
-    useState<FirebaseUser | null>(null);
+  const [whatsappUser, setWhatsappUser] = useState<WhatsAppUser | null>(loadWhatsappUser);
 
   const isAdmin =
     userData?.role === "admin" ||
@@ -321,227 +314,16 @@ export const AuthProvider: React.FC<{
   };
 
   /* =========================================================
-      SEND OTP
+      WHATSAPP LOGIN EVENT
   ========================================================= */
 
-  const sendPhoneOTP = async (
-    phone: string,
-    recaptchaContainerId: string
-  ) => {
-    try {
-      if (!(window as any).recaptchaVerifier) {
-        (window as any).recaptchaVerifier =
-          new RecaptchaVerifier(
-            auth,
-            recaptchaContainerId,
-            {
-              size: "normal",
-              callback: () => {
-                console.log(
-                  "reCAPTCHA solved"
-                );
-              },
-            }
-          );
-
-        await (window as any).recaptchaVerifier.render();
-      }
-
-      const verifier =
-        (window as any).recaptchaVerifier;
-
-      const result = await signInWithPhoneNumber(
-        auth,
-        phone,
-        verifier
-      );
-
-      setConfirmationResult(result);
-
-      console.log("✅ OTP sent");
-    } catch (error) {
-      console.error("OTP send failed:", error);
-      throw error;
-    }
-  };
-
-  /* =========================================================
-      VERIFY OTP
-  ========================================================= */
-
-  const verifyPhoneOTP = async (
-    otp: string
-  ) => {
-    try {
-      if (!confirmationResult) {
-        throw new Error(
-          "OTP session expired"
-        );
-      }
-
-      const result =
-        await confirmationResult.confirm(otp);
-
-      const firebaseUser = result.user;
-
-      setPhoneAuthUser(firebaseUser);
-
-      const phone =
-        firebaseUser.phoneNumber || "";
-
-      /* SEARCH EXISTING USER */
-
-      const usersRef = collection(db, "users");
-
-      const q = query(
-        usersRef,
-        where("phone", "==", phone)
-      );
-
-      const querySnapshot = await getDocs(q);
-
-      /* EXISTING USER */
-
-      if (!querySnapshot.empty) {
-        const existingUserDoc =
-          querySnapshot.docs[0];
-
-        await updateDoc(
-          doc(db, "users", existingUserDoc.id),
-          {
-            phoneVerified: true,
-            updatedAt: serverTimestamp(),
-          }
-        );
-
-        return {
-          isExistingUser: true,
-          uid: existingUserDoc.id,
-        };
-      }
-
-      /* NEW USER */
-
-      const userRef = doc(
-        db,
-        "users",
-        firebaseUser.uid
-      );
-
-      const userSnap = await getDoc(userRef);
-
-      if (!userSnap.exists()) {
-        await setDoc(userRef, {
-          email: firebaseUser.email || "",
-          phone,
-          phoneVerified: true,
-          authMode: "phone",
-          role: "user",
-
-          name: "User",
-
-          profileImage: "",
-
-          address: {
-            firstName: "",
-            lastName: "",
-            streetAddress: "",
-            apartment: "",
-            city: "",
-            state: "",
-            pinCode: "",
-            country: "India",
-            fullAddress: "",
-          },
-
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-      }
-
-      return {
-        isExistingUser: false,
-        uid: firebaseUser.uid,
-      };
-    } catch (error) {
-      console.error("OTP verification failed:", error);
-      throw error;
-    }
-  };
-
-  /* =========================================================
-      LINK PHONE TO EXISTING EMAIL ACCOUNT
-  ========================================================= */
-
-  const linkPhoneToExistingAccount = async (
-    email: string,
-    password: string
-  ) => {
-    try {
-      if (!phoneAuthUser?.phoneNumber) {
-        throw new Error(
-          "Phone authentication missing"
-        );
-      }
-
-      /* LOGIN EXISTING EMAIL ACCOUNT */
-
-      const userCredential =
-        await signInWithEmailAndPassword(
-          auth,
-          email,
-          password
-        );
-
-      const existingUser =
-        userCredential.user;
-
-      /* CREATE PHONE CREDENTIAL */
-
-      const credential =
-        PhoneAuthProvider.credential(
-          confirmationResult!.verificationId,
-          "123456"
-        );
-
-      try {
-        await linkWithCredential(
-          existingUser,
-          credential
-        );
-      } catch (error: any) {
-        console.log(
-          "Phone already linked or skipped:",
-          error?.message
-        );
-      }
-
-      /* UPDATE FIRESTORE */
-
-      const userRef = doc(
-        db,
-        "users",
-        existingUser.uid
-      );
-
-      await updateDoc(userRef, {
-        phone: phoneAuthUser.phoneNumber,
-        phoneVerified: true,
-        authMode: "phone",
-        updatedAt: serverTimestamp(),
-      });
-
-      console.log(
-        "✅ Existing account linked successfully"
-      );
-    } catch (error) {
-      console.error(
-        "Account linking failed:",
-        error
-      );
-      throw error;
-    }
-  };
+  useEffect(() => {
+    const handleWhatsappLogin = () => {
+      setWhatsappUser(loadWhatsappUser());
+    };
+    window.addEventListener("whatsapp-login", handleWhatsappLogin);
+    return () => window.removeEventListener("whatsapp-login", handleWhatsappLogin);
+  }, []);
 
   /* =========================================================
       LOGOUT
@@ -550,6 +332,9 @@ export const AuthProvider: React.FC<{
   const logout = async () => {
     try {
       await signOut(auth);
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("userData");
+      setWhatsappUser(null);
     } catch (error) {
       console.error("Logout failed:", error);
     }
@@ -560,6 +345,7 @@ export const AuthProvider: React.FC<{
       value={{
         user,
         userData,
+        whatsappUser,
         loading,
         isAdmin,
 

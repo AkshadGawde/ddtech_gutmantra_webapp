@@ -17,6 +17,7 @@ import CheckoutPage from "./pages/CheckoutPage";
 import PaymentProcessing from "./pages/PaymentProcessing";
 import SuccessPage from "./pages/SuccessPage";
 import ProductPage from "./pages/ProductPage";
+import LoginPage from "./pages/LoginPage";
 import Footer from "./pages/Footer";
 
 import CategorySection from "./components/CategorySection";
@@ -130,6 +131,9 @@ export default function App() {
             path="/product/:id"
             element={<ProductPage />}
           />
+
+          {/* ================= AUTH ================= */}
+          <Route path="/login" element={<LoginPage />} />
 
           {/* ================= STATIC ================= */}
           <Route
