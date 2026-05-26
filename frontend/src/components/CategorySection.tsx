@@ -66,7 +66,7 @@ export default function CategorySection({ onNavigate }: CategorySectionProps) {
                   playsInline
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-80 mix-blend-multiply"
                 >
-                  <source src="https://assets.mixkit.co/videos/preview/mixkit-close-up-of-flour-being-poured-into-a-bowl-4245-large.mp4" type="video/mp4" />
+                  <source src="https://res.cloudinary.com/dk7ynv44a/video/upload/v1779798078/oubimsrhhxormiyywzof.mp4" type="video/mp4" />
                 </video>
               ) : index === 1 ? (
                 <video 

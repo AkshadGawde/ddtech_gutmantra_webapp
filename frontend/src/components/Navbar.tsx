@@ -28,10 +28,11 @@ interface NavbarProps {
 }
 
 const MARQUEE_H = 36;
+const MARQUEE_TEXT =
+  'Welcome to GutMantra!  🌾  New Users Alert: Use coupon code "GMFIRST" at checkout for an exclusive discount on your first order!  ✨  ';
 
 export default function Navbar({ onOpenCart }: NavbarProps) {
   const [isScrolled, setIsScrolled] = useState(false);
-  const [scrollY, setScrollY] = useState(0);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -45,7 +46,6 @@ export default function Navbar({ onOpenCart }: NavbarProps) {
 
   useEffect(() => {
     const handleScroll = () => {
-      setScrollY(window.scrollY);
       setIsScrolled(window.scrollY > 20);
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -78,15 +78,34 @@ export default function Navbar({ onOpenCart }: NavbarProps) {
     return slug;
   };
 
-  const marqueeOffset = Math.min(scrollY, MARQUEE_H);
-  const navTop = MARQUEE_H - marqueeOffset;
-
   return (
     <>
+      {/* ── Marquee Banner — always fixed at the very top ── */}
+      <div
+        className="fixed left-0 right-0 z-50 bg-primary overflow-hidden"
+        style={{ top: 0, height: MARQUEE_H }}
+      >
+        <div className="relative flex whitespace-nowrap h-full items-center">
+          {[0, 1].map((i) => (
+            <motion.span
+              key={i}
+              className="flex-shrink-0 text-white text-[11px] font-bold uppercase tracking-widest"
+              animate={{ x: ["0%", "-100%"] }}
+              transition={{
+                x: { duration: 32, ease: "linear", repeat: Infinity, delay: i === 1 ? -16 : 0 },
+              }}
+              aria-hidden={i === 1}
+            >
+              {Array(8).fill(MARQUEE_TEXT).join("   •   ")}
+            </motion.span>
+          ))}
+        </div>
+      </div>
+
       <motion.nav
         initial={{ y: -100 }}
         animate={{ y: 0 }}
-        style={{ top: navTop }}
+        style={{ top: MARQUEE_H }}
         className={cn(
           "fixed left-0 right-0 z-50 transition-colors duration-300 border-b",
           isScrolled
