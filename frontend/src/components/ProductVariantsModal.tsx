@@ -143,7 +143,7 @@ export default function ProductVariantsModal({ product, isOpen, onClose }: Produ
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-lg bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row"
+            className="relative w-full max-w-2xl bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row"
           >
             {/* Close */}
             <button
@@ -154,11 +154,11 @@ export default function ProductVariantsModal({ product, isOpen, onClose }: Produ
             </button>
 
             {/* Image */}
-            <div className="w-full md:w-2/5 aspect-square md:aspect-auto overflow-hidden bg-black/5">
+            <div className="w-full md:w-[45%] shrink-0 bg-gray-50 flex items-center justify-center p-6 min-h-64 md:min-h-full">
               <img
                 src={product.image || "/placeholder.png"}
                 alt={product.name}
-                className="w-full h-full object-cover"
+                className="w-full h-full max-h-96 object-contain"
                 referrerPolicy="no-referrer"
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).src = "/placeholder.png";

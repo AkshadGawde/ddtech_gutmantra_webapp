@@ -29,6 +29,7 @@ import CategoryPage from "./components/CategoryPage";
 
 import { CartProvider } from "./context/CartContext";
 import { AuthProvider } from "./context/AuthContext";
+import ScrollToTop from "./components/ScrollToTop";
 
 export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -48,6 +49,8 @@ export default function App() {
   return (
     <AuthProvider>
       <CartProvider>
+        <ScrollToTop />
+
         {/* NAVBAR */}
         <Navbar
           onOpenCart={() =>
