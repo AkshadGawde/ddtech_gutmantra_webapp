@@ -92,7 +92,7 @@ export default function Navbar({ onOpenCart }: NavbarProps) {
               className="flex-shrink-0 text-white text-[11px] font-bold uppercase tracking-widest"
               animate={{ x: ["0%", "-100%"] }}
               transition={{
-                x: { duration: 32, ease: "linear", repeat: Infinity, delay: i === 1 ? -16 : 0 },
+                x: { duration: 70, ease: "linear", repeat: Infinity, delay: i === 1 ? -16 : 0 },
               }}
               aria-hidden={i === 1}
             >
@@ -118,7 +118,7 @@ export default function Navbar({ onOpenCart }: NavbarProps) {
           {/* ── LOGO ── */}
           <NavLink to="/" className="flex items-center flex-shrink-0 z-10">
             <img
-              src="https://res.cloudinary.com/dk7ynv44a/image/upload/v1779118947/GUT-MANTRA-LOGO-transfer-background.png"
+              src="https://res.cloudinary.com/dk7ynv44a/image/upload/v1779879308/kup9jkswy7abbal9xdov.png"
               alt="GutMantra"
               className="h-10 md:h-12 w-auto object-contain"
             />

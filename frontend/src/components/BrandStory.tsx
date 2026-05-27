@@ -78,7 +78,7 @@ export default function BrandStory() {
                 },
                 { 
                   title: "Community First", 
-                  desc: "We source directly from local farmers in Maharashtra, ensuring fair prices and fresh produce.",
+                  desc: "We source directly from local farmers in Madhya Pradesh, ensuring fair prices and fresh produce.",
                   icon: <Users className="text-accent" size={24} />
                 },
                 { 
