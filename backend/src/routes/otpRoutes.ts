@@ -250,29 +250,89 @@ router.post('/verify-otp', async (req: Request, res: Response) => {
     });
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // STEP 6: Find or create user in auth collection
+    // STEP 6: Find or create user — one phone = one account
     // ═══════════════════════════════════════════════════════════════════════════
 
     const usersRef = db.collection('users');
-    const userQuery = await usersRef.where('phone', '==', normalizedPhone).limit(1).get();
-
     let userId: string;
     let isNewUser = false;
 
-    if (!userQuery.empty) {
-      // User exists — update last login and mark phone verified
-      userId = userQuery.docs[0].id;
-      console.log(`👤 Existing user found: ${userId}`);
+    // 1) Check Firebase Auth for an existing user with this phone number
+    //    (covers accounts created via Google/email that later linked a phone)
+    let authUid: string | null = null;
+    try {
+      const authUser = await getAuth().getUserByPhoneNumber(normalizedPhone);
+      authUid = authUser.uid;
+      console.log(`🔍 Firebase Auth user found by phone: ${authUid}`);
+    } catch (e: any) {
+      if (e.code !== 'auth/user-not-found') throw e;
+    }
+
+    // 2) Check Firestore — try both +91XXXXXXXXXX and raw 10-digit formats
+    const rawDigits = normalizedPhone.replace(/\D/g, ''); // e.g. 919820141554
+    const tenDigit = rawDigits.length === 12 ? rawDigits.slice(2) : rawDigits; // e.g. 9820141554
+
+    const [exactSnap, tenDigitSnap] = await Promise.all([
+      usersRef.where('phone', '==', normalizedPhone).limit(1).get(),
+      usersRef.where('phone', '==', tenDigit).limit(1).get(),
+    ]);
+
+    const firestoreDoc = !exactSnap.empty
+      ? exactSnap.docs[0]
+      : !tenDigitSnap.empty
+      ? tenDigitSnap.docs[0]
+      : null;
+
+    if (authUid) {
+      // Firebase Auth account exists — always use its UID as source of truth
+      userId = authUid;
+      const docSnap = await usersRef.doc(userId).get();
+      if (docSnap.exists) {
+        await usersRef.doc(userId).update({
+          lastLoginAt: FieldValue.serverTimestamp(),
+          phoneVerified: true,
+          phone: normalizedPhone, // normalise stored format
+        });
+        console.log(`👤 Existing Auth+Firestore user: ${userId}`);
+      } else if (firestoreDoc) {
+        // Firestore doc was stored under a different UID — migrate reference
+        userId = firestoreDoc.id;
+        await usersRef.doc(userId).update({
+          lastLoginAt: FieldValue.serverTimestamp(),
+          phoneVerified: true,
+          phone: normalizedPhone,
+        });
+        console.log(`👤 Existing Firestore user (auth mismatch resolved): ${userId}`);
+      } else {
+        // Auth account exists but no Firestore doc — create it
+        await usersRef.doc(userId).set({
+          phone: normalizedPhone,
+          email: null,
+          name: '',
+          profileImage: '',
+          role: 'user',
+          authMode: 'phone',
+          phoneVerified: true,
+          address: { firstName: '', lastName: '', streetAddress: '', apartment: '', city: '', state: '', pinCode: '', country: 'India', fullAddress: '' },
+          createdAt: FieldValue.serverTimestamp(),
+          lastLoginAt: FieldValue.serverTimestamp(),
+        });
+        console.log(`👤 Created Firestore doc for existing Auth user: ${userId}`);
+      }
+    } else if (firestoreDoc) {
+      // No Auth account but Firestore record exists — log in to that account
+      userId = firestoreDoc.id;
+      console.log(`👤 Existing Firestore-only user: ${userId}`);
       await usersRef.doc(userId).update({
         lastLoginAt: FieldValue.serverTimestamp(),
         phoneVerified: true,
+        phone: normalizedPhone, // normalise stored format
       });
     } else {
-      // Create new user
+      // Truly new user — create Firestore doc (Firebase Auth user created on first signInWithCustomToken)
       isNewUser = true;
       const newUserRef = usersRef.doc();
       userId = newUserRef.id;
-
       await newUserRef.set({
         phone: normalizedPhone,
         email: email && EMAIL_RE.test(email) ? email : null,
@@ -281,10 +341,7 @@ router.post('/verify-otp', async (req: Request, res: Response) => {
         role: 'user',
         authMode: 'phone',
         phoneVerified: true,
-        address: {
-          firstName: '', lastName: '', streetAddress: '', apartment: '',
-          city: '', state: '', pinCode: '', country: 'India', fullAddress: '',
-        },
+        address: { firstName: '', lastName: '', streetAddress: '', apartment: '', city: '', state: '', pinCode: '', country: 'India', fullAddress: '' },
         createdAt: FieldValue.serverTimestamp(),
         lastLoginAt: FieldValue.serverTimestamp(),
       });

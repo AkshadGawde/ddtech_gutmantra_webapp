@@ -18,7 +18,7 @@ export default function SocialReel({ onNavigate }: SocialReelProps) {
               className="inline-flex items-center gap-2 px-4 py-2 bg-pink-50 rounded-full mb-6"
             >
               <Instagram size={16} className="text-pink-600" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-pink-600">Follow us @GutMantra</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-pink-600">Follow us @GutMantra.in</span>
             </motion.div>
             <motion.h2
               initial={{ opacity: 0, y: 20 }}
@@ -128,8 +128,8 @@ export default function SocialReel({ onNavigate }: SocialReelProps) {
 
             <div className="grid grid-cols-2 gap-6">
               {[
-                "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&q=80&w=400",
-                "https://images.unsplash.com/photo-1596040033229-a9821ebe058d?auto=format&fit=crop&q=80&w=400"
+                "https://res.cloudinary.com/dk7ynv44a/image/upload/v1779983860/vwko9754blf6kk87jlsj.png",
+                "https://res.cloudinary.com/dk7ynv44a/image/upload/v1779983931/dk697dzdcv6vl6fpaxc2.png"
               ].map((img, i) => (
                 <motion.div
                   key={i}

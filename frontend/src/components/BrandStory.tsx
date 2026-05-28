@@ -14,7 +14,7 @@ export default function BrandStory() {
           >
             <div className="relative z-10 rounded-[3rem] overflow-hidden shadow-2xl">
               <img 
-                src="https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&q=80&w=1000" 
+                src="https://res.cloudinary.com/dk7ynv44a/image/upload/v1779984052/htvkyqrq2n3c4oj6o2qr.png" 
                 alt="Our Heritage" 
                 className="w-full h-[600px] object-cover"
                 referrerPolicy="no-referrer"
@@ -50,7 +50,7 @@ export default function BrandStory() {
               transition={{ delay: 0.1 }}
               className="text-4xl md:text-6xl font-bold tracking-tighter mb-8 leading-tight"
             >
-             The Hear of <span className="italic font-serif font-normal">
+             The Heart of <span className="italic font-serif font-normal">
 <br/>
   <span className="text-orange-500">G</span>
   <span className="text-black">ut</span>

@@ -120,7 +120,7 @@ export default function ProductGrid({ onNavigate }: ProductGridProps) {
                 }
                 className="overflow-hidden bg-white rounded-3xl border border-black/5 flex flex-col items-center text-center hover:shadow-lg transition-all cursor-pointer"
               >
-                <div className="w-full h-36 overflow-hidden">
+                <div className="w-full h-36 md:h-60 overflow-hidden">
                   <img
                     src={cat.image}
                     alt={cat.name}

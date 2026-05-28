@@ -105,11 +105,7 @@ export default function Footer() {
 
         <div className="pt-12 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-8 text-[10px] font-bold uppercase tracking-widest text-white/30">
           <p>© 2026 GutMantra Flour Mill Store. All Rights Reserved.</p>
-          <div className="flex gap-8">
-            <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
-            <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
-            <a href="#" className="hover:text-white transition-colors">Shipping Info</a>
-          </div>
+          
         </div>
       </div>
     </footer>
