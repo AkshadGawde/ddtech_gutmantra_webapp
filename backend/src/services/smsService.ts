@@ -13,6 +13,7 @@ let zavuClient: any = null;
 export async function initializeSmsClient(apiKey: string) {
   try {
     // Dynamic import for ES modules
+    // @ts-ignore — no type declarations for this package
     const zavuModule = await import('@zavudev/sdk');
     const Zavudev = zavuModule.default;
 
