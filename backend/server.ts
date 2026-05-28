@@ -102,6 +102,8 @@ async function startServer() {
 
       "https://ddtech-gutmantra-webb.vercel.app",
 
+      "https://ddtechgutmantrawebapp-sage.vercel.app",
+
       "https://gutmantra.in",
 
       "https://www.gutmantra.in",
