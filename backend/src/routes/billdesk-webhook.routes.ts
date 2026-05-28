@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import crypto from 'crypto';
 import { getFirestoreDb } from '../services/firebaseAdmin.js';
+import { syncOrderToPetpooja } from './billdeskRoutes.js';
 
 const router = express.Router();
 
@@ -159,6 +160,24 @@ router.post('/callback', async (req: Request, res: Response) => {
         });
 
         console.log(`[WEBHOOK] ✅ Updated order ${orderId} to status: ${orderStatus}`);
+
+        // AUTO-SYNC TO PETPOOJA ON SUCCESSFUL PAYMENT
+        if (auth_status === '0300') {
+          console.log(`[WEBHOOK] 🔄 Payment success — auto-syncing order ${orderId} to PetPooja...`);
+          try {
+            // Mark payment_status so syncOrderToPetpooja can proceed
+            await db.collection('orders').doc(orderId).update({ payment_status: '0300', updatedAt: new Date() });
+
+            const syncResult = await syncOrderToPetpooja(orderId);
+            if (syncResult.success) {
+              console.log(`[WEBHOOK] ✅ Auto-synced to PetPooja: ${syncResult.petpooja_order_id}`);
+            } else {
+              console.warn(`[WEBHOOK] ⚠️ PetPooja sync failed: ${syncResult.error} — frontend polling will retry`);
+            }
+          } catch (syncErr) {
+            console.error('[WEBHOOK] PetPooja sync error:', syncErr);
+          }
+        }
       }
     }
 

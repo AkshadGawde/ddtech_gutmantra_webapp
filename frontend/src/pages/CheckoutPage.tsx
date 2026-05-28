@@ -446,161 +446,174 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
     try {
       setLoading(true);
 
-      const orderID = `${user.uid}_${Date.now()}`;
-
       const formattedItems = items.map((item: any) => {
         const variantSuffix =
-          item.variant && !item.name.includes(item.variant)
-            ? ` (${item.variant})`
-            : "";
+          item.variant && !item.name.includes(item.variant) ? ` (${item.variant})` : "";
         return {
-          base_id:
-            item.base_id ||
-            item.sku ||
-            (item.petpoojaId ? String(item.petpoojaId).replace(/^V/, "") : ""),
-          variation_id:
-            item.variation_id ||
-            (item.petpoojaId ? String(item.petpoojaId).replace(/^V/, "") : ""),
+          base_id: item.base_id || item.sku || (item.petpoojaId ? String(item.petpoojaId).replace(/^V/, "") : ""),
+          variation_id: item.variation_id || (item.petpoojaId ? String(item.petpoojaId).replace(/^V/, "") : ""),
           name: `${item.name}${variantSuffix}`,
           price: String(item.price),
           quantity: String(item.quantity),
         };
       });
 
-      // Read coordinates from `validated` (the returned DeliveryResult),
-      // NOT from shippingAddress state. React state updates are async — by the
-      // time this runs, setShippingAddress from geocodeAndValidate may not have
-      // settled yet.
-
-      const fullAddress = buildFullAddress(shippingAddress);
-
-if (!fullAddress) {
-
-  alert("Address missing");
-
-  return;
-
-}
-
-const payload = {
-  orderID,
-  paymentMode,
-  shippingAddress: {
-    firstName: shippingAddress.firstName,
-    lastName: shippingAddress.lastName,
-    phone: shippingAddress.phone,
-    email: shippingAddress.email,
-    streetAddress: shippingAddress.streetAddress,
-    apartment: shippingAddress.apartment,
-    city: shippingAddress.city,
-    state: shippingAddress.state,
-    pinCode: shippingAddress.pinCode,
-    country: shippingAddress.country,
-    fullAddress,
-  },
-  items: formattedItems,
-};
-
-console.log(
-  "🚀 FINAL CHECKOUT PAYLOAD",
-  JSON.stringify(payload, null, 2)
-);
-console.log(
-  "🚀 FINAL CHECKOUT ITEMS",
-  JSON.stringify(formattedItems, null, 2)
-);
-
-      // 🔴 CRITICAL: Verify NO null base_id in payload
       const nullBaseIds = formattedItems.filter((item: any) => !item.base_id);
       if (nullBaseIds.length > 0) {
-        console.error("🔴 CRITICAL: Items with null/empty base_id:", nullBaseIds);
-        throw new Error(`Invalid items in cart: ${nullBaseIds.map((i: any) => i.name).join(", ")} missing SKU`);
-      } else {
-        console.log("✅ All items have valid base_id");
+        throw new Error(`Items missing SKU: ${nullBaseIds.map((i: any) => i.name).join(", ")}`);
       }
 
-      console.log("💳 PAYMENT MODE", paymentMode);
-      console.log(
-        "🚀 Sending order",
-        JSON.stringify(payload, null, 2)
-      );
+      const fullAddress = buildFullAddress(shippingAddress);
+      if (!fullAddress) { alert("Address missing"); return; }
 
-      const response = await fetch(`${API_BASE}/create-order`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      console.log("💳 PAYMENT MODE:", paymentMode);
 
-      const data = await response.json();
-      console.log("📡 RESPONSE", data);
-
-      if (!data.success) {
-        throw new Error(data.message || "Order failed");
-      }
-
-      console.log("✅ Order placed:", data);
-
-      // ── ONLINE PAYMENT FLOW ──────────────────────────────────────────────
+      // ── ONLINE PAYMENT FLOW (BillDesk) ──────────────────────────────────
       if (paymentMode === "ONLINE") {
         const onlinePayload = {
-          orderId: orderID,
-          amount: totalWithDelivery,
-          customerEmail: shippingAddress.email,
-          customerPhone: shippingAddress.phone,
+          userid: user.uid,
+          items: formattedItems,
+          paymentmethod: "card",
+          payment_type: "ONLINE",
+          shippingAddress: {
+            firstName: shippingAddress.firstName,
+            lastName: shippingAddress.lastName,
+            phone: shippingAddress.phone,
+            email: shippingAddress.email,
+            streetAddress: shippingAddress.streetAddress,
+            apartment: shippingAddress.apartment,
+            city: shippingAddress.city,
+            state: shippingAddress.state,
+            pinCode: shippingAddress.pinCode,
+            country: shippingAddress.country,
+            fullAddress,
+            latitude: validated!.latitude || shippingAddress.latitude,
+            longitude: validated!.longitude || shippingAddress.longitude,
+          },
+          buyerEmail: shippingAddress.email,
+          buyerPhone: shippingAddress.phone,
+          deliveryCharge,
+          discount,
         };
 
-        console.log("🚀 ONLINE PAYMENT PAYLOAD", onlinePayload);
+        console.log("📦 Online payload:", JSON.stringify(onlinePayload, null, 2));
 
-        const paymentResponse = await fetch(`${API_BASE}/create-online-order`, {
+        const response = await fetch(`${API_BASE}/orders/create-order`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(onlinePayload),
         });
 
-        const paymentData = await paymentResponse.json();
+        const data = await response.json();
+        console.log("📡 BillDesk create-order response:", data);
 
-        console.log("📡 ONLINE PAYMENT RESPONSE", paymentData);
+        if (!data.success) throw new Error(data.error || "Failed to create order");
 
-        if (!paymentData.success) {
-          throw new Error(
-            paymentData.message || "Payment initialization failed"
-          );
+        const { orderid, payment_link } = data;
+
+        if (!payment_link) throw new Error("No payment link returned from BillDesk");
+
+        console.log("✅ BillDesk order created:", { orderid, payment_link });
+
+        // Open BillDesk payment gateway in new window
+        const paymentWindow = window.open(payment_link, "BillDeskPayment", "width=950,height=700,scrollbars=yes");
+        if (!paymentWindow) {
+          alert("Popup blocked. Please allow popups for this site and try again.");
+          return;
         }
 
-        if (paymentData.next_step !== "redirect") {
-          throw new Error("Payment initialization did not return redirect instructions");
-        }
+        // Poll for payment status every 3 seconds (fallback if webhook fires first)
+        let pollCount = 0;
+        const maxPolls = 100; // 5 minutes
 
-        const redirectLink = paymentData.links?.find(
-          (link: any) => link.rel === "redirect" && link.method === "POST"
-        );
+        const pollInterval = setInterval(async () => {
+          pollCount++;
+          try {
+            const statusRes = await fetch(`${API_BASE}/orders/status/${orderid}`);
+            const statusData = await statusRes.json();
+            const paymentStatus = statusData.order?.payment_status;
 
-        if (!redirectLink || !redirectLink.href || !redirectLink.parameters) {
-          throw new Error("Invalid payment redirect payload");
-        }
+            console.log(`[Poll ${pollCount}/${maxPolls}] status: ${paymentStatus}, petpooja_synced: ${statusData.order?.petpooja_synced}`);
 
-        const form = document.createElement("form");
-        form.method = "POST";
-        form.action = redirectLink.href;
-        form.target = "_top";
-        form.acceptCharset = "UTF-8";
+            if (paymentStatus === "0300") {
+              clearInterval(pollInterval);
+              paymentWindow?.close();
 
-        console.log("📤 Submitting BillDesk form", redirectLink.href, redirectLink.parameters);
+              // Trigger PetPooja sync as fallback (webhook may have already done it)
+              if (!statusData.order?.petpooja_synced) {
+                try {
+                  await fetch(`${API_BASE}/orders/sync-to-petpooja/${orderid}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                  });
+                  console.log("✅ PetPooja sync triggered from frontend");
+                } catch (syncErr) {
+                  console.warn("PetPooja sync fallback error:", syncErr);
+                }
+              }
 
-        Object.entries(redirectLink.parameters).forEach(([key, value]) => {
-          const input = document.createElement("input");
-          input.type = "hidden";
-          input.name = key;
-          input.value = String(value);
-          form.appendChild(input);
-        });
+              clearCart();
+              navigate(`/success?orderId=${orderid}`);
+              return;
+            }
 
-        document.body.appendChild(form);
-        form.submit();
+            if (paymentStatus === "0399" || paymentStatus === "0001") {
+              clearInterval(pollInterval);
+              paymentWindow?.close();
+              alert("Payment failed or was cancelled. Please try again.");
+              return;
+            }
+
+            if (pollCount >= maxPolls) {
+              clearInterval(pollInterval);
+              alert("Payment is taking longer than expected. We'll notify you by email once confirmed.");
+              navigate("/");
+            }
+          } catch (pollErr) {
+            console.warn("Poll error:", pollErr);
+          }
+        }, 3000);
 
         return;
       }
-      // ── COD FLOW ────────────────────────────────────────────────────────
+
+      // ── COD FLOW (existing endpoint) ─────────────────────────────────────
+      const orderID = `${user.uid}_${Date.now()}`;
+      const codPayload = {
+        orderID,
+        paymentMode,
+        shippingAddress: {
+          firstName: shippingAddress.firstName,
+          lastName: shippingAddress.lastName,
+          phone: shippingAddress.phone,
+          email: shippingAddress.email,
+          streetAddress: shippingAddress.streetAddress,
+          apartment: shippingAddress.apartment,
+          city: shippingAddress.city,
+          state: shippingAddress.state,
+          pinCode: shippingAddress.pinCode,
+          country: shippingAddress.country,
+          fullAddress,
+          latitude: validated!.latitude || shippingAddress.latitude,
+          longitude: validated!.longitude || shippingAddress.longitude,
+        },
+        items: formattedItems,
+        couponCode: couponApplied ? couponCode : undefined,
+      };
+
+      console.log("📦 COD payload:", JSON.stringify(codPayload, null, 2));
+
+      const codResponse = await fetch(`${API_BASE}/create-order`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(codPayload),
+      });
+
+      const codData = await codResponse.json();
+      console.log("📡 COD response:", codData);
+
+      if (!codData.success) throw new Error(codData.message || "Order failed");
+
       clearCart();
       onNext ? onNext() : navigate("/success");
     } catch (error: any) {
