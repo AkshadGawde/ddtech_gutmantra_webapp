@@ -12,6 +12,8 @@ import { FieldValue } from "firebase-admin/firestore";
 
 import paymentRoutes from "./src/routes/paymentRoutes.js";
 import orderStatusRoutes from "./src/routes/orderStatusRoutes.js";
+import billDeskOrderRoutes from "./src/routes/billdeskRoutes.js";
+import billDeskWebhookRoutes from "./src/routes/billdesk-webhook.routes.js";
 
 dotenv.config();
 
@@ -51,6 +53,7 @@ const PP_CANCEL_URL = process.env.PETPOOJA_CANCEL_URL || "https://pponlineorderc
 const PP_CALLBACK_URL = process.env.PETPOOJA_CALLBACK_URL || "https://api.gutmantra.in/api/webhook";
 
 console.log("🔥 USING REST ID:", PP_REST_ID);
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -323,7 +326,11 @@ async function startServer() {
     }
   });
 
-  // ── BillDesk ────────────────────────────────────────────────────────────────────
+  // ── BillDesk Payment Routes ─────────────────────────────────────────────────
+  app.use("/api/orders", billDeskOrderRoutes);
+  app.use("/api/billdesk", billDeskWebhookRoutes);
+
+  // ── Legacy Payment Routes ───────────────────────────────────────────────────
   app.use("/api", paymentRoutes);
   app.use("/api", orderStatusRoutes);
 

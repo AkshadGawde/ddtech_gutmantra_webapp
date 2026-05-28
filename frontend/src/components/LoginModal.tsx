@@ -1,7 +1,8 @@
 import { motion, AnimatePresence } from "motion/react";
-import { X, ArrowLeft } from "lucide-react";
+import { X, ArrowLeft, Mail, Lock } from "lucide-react";
 import { useState, useEffect } from "react";
 import { WhatsAppUser } from "../types/auth";
+import { useAuth } from "../context/AuthContext";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -28,6 +29,14 @@ interface LoginModalProps {
 }
 
 export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
+  const { loginWithEmail, signupWithEmail } = useAuth();
+
+  const [mode, setMode] = useState<"whatsapp" | "email">("whatsapp");
+  const [emailStep, setEmailStep] = useState<"signin" | "signup">("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
@@ -39,9 +48,11 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
   const [canResend, setCanResend] = useState(false);
   const [attemptsLeft, setAttemptsLeft] = useState(5);
 
-  // Reset when modal opens
   useEffect(() => {
     if (isOpen) {
+      setMode("whatsapp");
+      setEmailStep("signin");
+      setEmail(""); setPassword(""); setName("");
       setStep("phone");
       setPhone("");
       setOtp("");
@@ -185,6 +196,38 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
     }
   };
 
+  /* ── Email Auth ── */
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(""); setSuccess("");
+    if (!email || !password) { setError("Email and password are required."); return; }
+    if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
+    setIsLoading(true);
+    try {
+      if (emailStep === "signin") {
+        await loginWithEmail(email, password);
+      } else {
+        if (!name.trim()) { setError("Name is required."); setIsLoading(false); return; }
+        await signupWithEmail(email, password, name.trim());
+      }
+      setSuccess(emailStep === "signin" ? "Signed in!" : "Account created!");
+      setTimeout(() => onClose(), 700);
+    } catch (err: any) {
+      const code = err?.code || "";
+      if (code === "auth/user-not-found" || code === "auth/wrong-password" || code === "auth/invalid-credential") {
+        setError("Incorrect email or password.");
+      } else if (code === "auth/email-already-in-use") {
+        setError("An account with this email already exists. Sign in instead.");
+      } else if (code === "auth/invalid-email") {
+        setError("Invalid email address.");
+      } else {
+        setError(err?.message || "Authentication failed. Please try again.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -211,8 +254,8 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
             </button>
 
             {/* HEADER */}
-            <div className="bg-[#25D366] px-8 pt-10 pb-8 text-center">
-              {step === "otp" && (
+            <div className={`px-8 pt-10 pb-6 text-center ${mode === "whatsapp" ? "bg-[#25D366]" : "bg-primary"}`}>
+              {step === "otp" && mode === "whatsapp" && (
                 <button
                   onClick={() => { setStep("phone"); setOtp(""); setError(""); setSuccess(""); }}
                   className="absolute top-4 left-4 z-20 flex items-center gap-1 text-white/80 hover:text-white text-xs font-bold transition"
@@ -220,15 +263,39 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                   <ArrowLeft size={14} /> Back
                 </button>
               )}
-              <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow">
-                <svg viewBox="0 0 24 24" className="w-8 h-8 fill-[#25D366]">
-                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                </svg>
+              <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 shadow ${mode === "whatsapp" ? "bg-white" : "bg-white/20"}`}>
+                {mode === "whatsapp" ? (
+                  <svg viewBox="0 0 24 24" className="w-8 h-8 fill-[#25D366]">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                  </svg>
+                ) : (
+                  <Mail size={28} className="text-white" />
+                )}
               </div>
               <h1 className="text-xl font-bold text-white">GutMantra</h1>
               <p className="text-white/80 text-sm mt-0.5">
-                {step === "phone" ? "Sign in with WhatsApp OTP" : `Code sent to ${phone}`}
+                {mode === "whatsapp"
+                  ? (step === "phone" ? "Sign in with WhatsApp OTP" : `Code sent to ${phone}`)
+                  : (emailStep === "signin" ? "Sign in with email" : "Create an account")}
               </p>
+
+              {/* Mode tabs */}
+              <div className="flex mt-5 rounded-xl overflow-hidden bg-white/20 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => { setMode("whatsapp"); setError(""); setSuccess(""); }}
+                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${mode === "whatsapp" ? "bg-white text-[#25D366]" : "text-white/80 hover:text-white"}`}
+                >
+                  WhatsApp
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setMode("email"); setError(""); setSuccess(""); }}
+                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${mode === "email" ? "bg-white text-primary" : "text-white/80 hover:text-white"}`}
+                >
+                  Email
+                </button>
+              </div>
             </div>
 
             {/* BODY */}
@@ -244,8 +311,80 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                 </div>
               )}
 
+              {/* ── EMAIL MODE ── */}
+              {mode === "email" && (
+                <form onSubmit={handleEmailAuth} noValidate className="space-y-4">
+                  {emailStep === "signup" && (
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Full Name</label>
+                      <input
+                        type="text"
+                        placeholder="Your name"
+                        value={name}
+                        onChange={(e) => { setName(e.target.value); setError(""); }}
+                        disabled={isLoading}
+                        className="w-full px-4 py-3.5 rounded-xl border-2 border-gray-200 focus:border-primary outline-none text-sm transition-colors disabled:opacity-50"
+                        autoFocus
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Email</label>
+                    <div className="flex rounded-xl border-2 border-gray-200 focus-within:border-primary overflow-hidden transition-colors">
+                      <span className="flex items-center px-3 bg-gray-50 border-r-2 border-gray-200">
+                        <Mail size={16} className="text-gray-400" />
+                      </span>
+                      <input
+                        type="email"
+                        placeholder="you@example.com"
+                        value={email}
+                        onChange={(e) => { setEmail(e.target.value); setError(""); }}
+                        disabled={isLoading}
+                        className="flex-1 px-4 py-3.5 text-sm outline-none bg-white disabled:opacity-50"
+                        autoFocus={emailStep === "signin"}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Password</label>
+                    <div className="flex rounded-xl border-2 border-gray-200 focus-within:border-primary overflow-hidden transition-colors">
+                      <span className="flex items-center px-3 bg-gray-50 border-r-2 border-gray-200">
+                        <Lock size={16} className="text-gray-400" />
+                      </span>
+                      <input
+                        type="password"
+                        placeholder={emailStep === "signup" ? "Min. 6 characters" : "Your password"}
+                        value={password}
+                        onChange={(e) => { setPassword(e.target.value); setError(""); }}
+                        disabled={isLoading}
+                        className="flex-1 px-4 py-3.5 text-sm outline-none bg-white disabled:opacity-50"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isLoading || !email || !password}
+                    className="w-full py-4 bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2 text-sm uppercase tracking-widest"
+                  >
+                    {isLoading ? (
+                      <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> {emailStep === "signin" ? "Signing in…" : "Creating account…"}</>
+                    ) : (emailStep === "signin" ? "Sign In" : "Create Account")}
+                  </button>
+                  <p className="text-center text-xs text-gray-500">
+                    {emailStep === "signin" ? "Don't have an account?" : "Already have an account?"}{" "}
+                    <button
+                      type="button"
+                      onClick={() => { setEmailStep(emailStep === "signin" ? "signup" : "signin"); setError(""); setSuccess(""); }}
+                      className="font-bold text-primary hover:underline"
+                    >
+                      {emailStep === "signin" ? "Sign up" : "Sign in"}
+                    </button>
+                  </p>
+                </form>
+              )}
+
               {/* ── PHONE STEP ── */}
-              {step === "phone" && (
+              {mode === "whatsapp" && step === "phone" && (
                 <form onSubmit={handleSendOtp} noValidate className="space-y-5">
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">
@@ -286,7 +425,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
               )}
 
               {/* ── OTP STEP ── */}
-              {step === "otp" && (
+              {mode === "whatsapp" && step === "otp" && (
                 <form onSubmit={handleVerifyOtp} noValidate className="space-y-5">
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">

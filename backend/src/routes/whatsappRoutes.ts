@@ -1,8 +1,9 @@
 import express, { Request, Response } from 'express';
 import axios from 'axios';
 import jwt from 'jsonwebtoken';
-import { db } from '../config/firebase';
-import { validatePhoneNumber, generateOTP, hashOTP } from '../utils/otpUtils';
+import { getFirestoreDb } from '../services/firebaseAdmin.js';
+import { validatePhoneNumber, generateOTP, hashOTP } from '../utils/otpUtils.js';
+
 
 const router = express.Router();
 
@@ -63,7 +64,7 @@ router.post('/send-otp', async (req: Request, res: Response) => {
     };
 
     // Store OTP in Firestore under 'otpVerifications' collection
-    const otpDocRef = db.collection('otpVerifications').doc(phone);
+    const otpDocRef = getFirestoreDb().collection('otpVerifications').doc(phone);
     await otpDocRef.set(otpData, { merge: true });
 
     // Send OTP via WhatsApp Business API
@@ -162,7 +163,7 @@ router.post('/verify-otp', async (req: Request, res: Response) => {
     }
 
     // Retrieve OTP data from Firestore
-    const otpDocRef = db.collection('otpVerifications').doc(phone);
+    const otpDocRef = getFirestoreDb().collection('otpVerifications').doc(phone);
     const otpDoc = await otpDocRef.get();
 
     if (!otpDoc.exists) {
@@ -222,7 +223,7 @@ router.post('/verify-otp', async (req: Request, res: Response) => {
     });
 
     // Check if user exists in Firestore 'users' collection
-    const userRef = db.collection('users');
+    const userRef = getFirestoreDb().collection('users');
     const userSnapshot = await userRef.where('phone', '==', phone).get();
 
     let userId: string;
@@ -252,14 +253,14 @@ router.post('/verify-otp', async (req: Request, res: Response) => {
     } else {
       // Existing user — mark phone as verified
       userId = userSnapshot.docs[0].id;
-      await db.collection('users').doc(userId).update({
+      await getFirestoreDb().collection('users').doc(userId).update({
         verified: true,
         updatedAt: new Date(),
       });
     }
 
     // Generate JWT token
-    const token = jwt.sign(
+    const token = (jwt as any).sign(
       {
         userId,
         phone,
@@ -272,7 +273,7 @@ router.post('/verify-otp', async (req: Request, res: Response) => {
     );
 
     // Get user data to return
-    const userDoc = await db.collection('users').doc(userId).get();
+    const userDoc = await getFirestoreDb().collection('users').doc(userId).get();
     const userData = userDoc.data();
 
     return res.status(200).json({
@@ -315,7 +316,7 @@ router.post('/resend-otp', async (req: Request, res: Response) => {
     }
 
     // Check if there's a recent OTP (to prevent abuse)
-    const otpDocRef = db.collection('otpVerifications').doc(phone);
+    const otpDocRef = getFirestoreDb().collection('otpVerifications').doc(phone);
     const otpDoc = await otpDocRef.get();
 
     if (otpDoc.exists) {
