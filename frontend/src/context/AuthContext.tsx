@@ -5,6 +5,7 @@ import {
   signInWithPopup,
   signOut,
   signInWithEmailAndPassword,
+  signInWithCustomToken,
   createUserWithEmailAndPassword,
   User as FirebaseUser,
 } from "firebase/auth";
@@ -44,6 +45,11 @@ interface AuthContextType {
     password: string,
     name: string
   ) => Promise<void>;
+
+  loginWithPhone: (
+    phone: string,
+    otp: string
+  ) => Promise<{ isNewUser: boolean }>;
 
   logout: () => Promise<void>;
 
@@ -314,6 +320,25 @@ export const AuthProvider: React.FC<{
   };
 
   /* =========================================================
+      PHONE OTP LOGIN
+  ========================================================= */
+
+  const loginWithPhone = async (phone: string, otp: string): Promise<{ isNewUser: boolean }> => {
+    const API_BASE = import.meta.env.VITE_API_URL || "https://api.gutmantra.in";
+    const res = await fetch(`${API_BASE}/api/auth/verify-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone, otp }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw Object.assign(new Error(data.error || "OTP verification failed"), { status: res.status });
+    }
+    await signInWithCustomToken(auth, data.customToken);
+    return { isNewUser: data.isNewUser };
+  };
+
+  /* =========================================================
       WHATSAPP LOGIN EVENT
   ========================================================= */
 
@@ -354,6 +379,8 @@ export const AuthProvider: React.FC<{
         loginWithEmail,
 
         signupWithEmail,
+
+        loginWithPhone,
 
         logout,
 

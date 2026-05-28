@@ -1,10 +1,9 @@
 import { motion, AnimatePresence } from "motion/react";
-import { X, ArrowLeft, Mail, Lock } from "lucide-react";
+import { X, ArrowLeft, Mail, Lock, Phone } from "lucide-react";
 import { useState, useEffect } from "react";
-import { WhatsAppUser } from "../types/auth";
 import { useAuth } from "../context/AuthContext";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "https://api.gutmantra.in";
 
 function formatPhone(value: string): string {
   const cleaned = value.replace(/[^\d]/g, "");
@@ -17,21 +16,15 @@ function isValidPhone(phone: string): boolean {
   return /^\+91[6-9]\d{9}$/.test(phone);
 }
 
-const WA_ICON = (
-  <svg viewBox="0 0 24 24" className="w-5 h-5 fill-[#25D366] shrink-0">
-    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-  </svg>
-);
-
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
 export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
-  const { loginWithEmail, signupWithEmail } = useAuth();
+  const { loginWithEmail, signupWithEmail, loginWithPhone } = useAuth();
 
-  const [mode, setMode] = useState<"whatsapp" | "email">("whatsapp");
+  const [mode, setMode] = useState<"phone" | "email">("phone");
   const [emailStep, setEmailStep] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -43,14 +36,14 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [otpTimer, setOtpTimer] = useState(120);
+  const [otpTimer, setOtpTimer] = useState(300);
   const [resendTimer, setResendTimer] = useState(0);
   const [canResend, setCanResend] = useState(false);
   const [attemptsLeft, setAttemptsLeft] = useState(5);
 
   useEffect(() => {
     if (isOpen) {
-      setMode("whatsapp");
+      setMode("phone");
       setEmailStep("signin");
       setEmail(""); setPassword(""); setName("");
       setStep("phone");
@@ -58,7 +51,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
       setOtp("");
       setError("");
       setSuccess("");
-      setOtpTimer(120);
+      setOtpTimer(300);
       setResendTimer(0);
       setAttemptsLeft(5);
     }
@@ -93,7 +86,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
   }, [resendTimer]);
 
   const displayPhone = phone.replace("+91", "");
-  const timerPct = (otpTimer / 120) * 100;
+  const timerPct = (otpTimer / 300) * 100;
   const fmtTimer = `${Math.floor(otpTimer / 60)}:${String(otpTimer % 60).padStart(2, "0")}`;
 
   /* ── Send OTP ── */
@@ -106,21 +99,27 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
     }
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/whatsapp/send-otp`, {
+      const res = await fetch(`${API_BASE_URL}/api/auth/send-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        setError(data.message || "Failed to send OTP. Please try again.");
+        const wait = data.retryAfter;
+        if (res.status === 429) {
+          setError(data.error || `Too many requests. Please wait ${wait ?? 60}s.`);
+          if (wait) setResendTimer(wait);
+          return;
+        }
+        setError(data.error || "Failed to send OTP. Please try again.");
         return;
       }
-      setSuccess("OTP sent to your WhatsApp!");
+      setSuccess("OTP sent via SMS!");
       setStep("otp");
-      setOtpTimer(120);
-      setAttemptsLeft(5);
-      setResendTimer(30);
+      setOtpTimer(300);
+      setAttemptsLeft(3);
+      setResendTimer(60);
     } catch {
       setError("Network error. Please check your connection.");
     } finally {
@@ -135,33 +134,27 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
     if (otp.length !== 6) { setError("OTP must be 6 digits."); return; }
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/whatsapp/verify-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, otp }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        if (res.status === 429) { setError("Too many attempts. Please request a new OTP."); return; }
-        const remaining = data.attemptsRemaining;
-        if (remaining !== undefined) setAttemptsLeft(remaining);
-        if (remaining === 0) { setError("Too many incorrect attempts. Please request a new OTP."); setStep("phone"); return; }
-        setError(
-          data.message ||
-          (remaining !== undefined
-            ? `Incorrect OTP. ${remaining} attempt${remaining !== 1 ? "s" : ""} remaining.`
-            : "Failed to verify OTP.")
-        );
-        return;
-      }
-      const { token, user }: { token: string; user: WhatsAppUser } = data;
-      localStorage.setItem("authToken", token);
-      localStorage.setItem("userData", JSON.stringify(user));
-      window.dispatchEvent(new Event("whatsapp-login"));
-      setSuccess("Logged in successfully!");
+      const { isNewUser } = await loginWithPhone(phone, otp);
+      setSuccess(isNewUser ? "Account created! Welcome to GutMantra!" : "Logged in successfully!");
       setTimeout(() => onClose(), 700);
-    } catch {
-      setError("Network error. Please check your connection.");
+    } catch (err: any) {
+      const status = err?.status;
+      if (status === 429) {
+        setError("Too many incorrect attempts. Please request a new OTP.");
+        setStep("phone");
+      } else if (status === 410) {
+        setError("OTP has expired. Please request a new one.");
+        setStep("phone");
+      } else if (status === 401) {
+        const msg: string = err?.message || "";
+        const match = msg.match(/(\d+) attempt/);
+        const remaining = match ? parseInt(match[1]) : undefined;
+        if (remaining !== undefined) setAttemptsLeft(remaining);
+        if (remaining === 0) { setStep("phone"); return; }
+        setError(msg || "Incorrect OTP. Please try again.");
+      } else {
+        setError(err?.message || "Failed to verify OTP. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -172,23 +165,23 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
     setError(""); setSuccess("");
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/whatsapp/resend-otp`, {
+      const res = await fetch(`${API_BASE_URL}/api/auth/send-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        const wait = data.retryAfter ?? 30;
+        const wait = data.retryAfter ?? 60;
         setResendTimer(wait);
-        setError(data.message || `Please wait ${wait}s before requesting another OTP.`);
+        setError(data.error || `Please wait ${wait}s before requesting another OTP.`);
         return;
       }
-      setSuccess("New OTP sent to your WhatsApp!");
-      setOtpTimer(120);
-      setAttemptsLeft(5);
+      setSuccess("New OTP sent via SMS!");
+      setOtpTimer(300);
+      setAttemptsLeft(3);
       setOtp("");
-      setResendTimer(30);
+      setResendTimer(60);
     } catch {
       setError("Network error. Please check your connection.");
     } finally {
@@ -254,8 +247,8 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
             </button>
 
             {/* HEADER */}
-            <div className={`px-8 pt-10 pb-6 text-center ${mode === "whatsapp" ? "bg-[#25D366]" : "bg-primary"}`}>
-              {step === "otp" && mode === "whatsapp" && (
+            <div className={`px-8 pt-10 pb-6 text-center ${mode === "phone" ? "bg-primary" : "bg-primary"}`}>
+              {step === "otp" && mode === "phone" && (
                 <button
                   onClick={() => { setStep("phone"); setOtp(""); setError(""); setSuccess(""); }}
                   className="absolute top-4 left-4 z-20 flex items-center gap-1 text-white/80 hover:text-white text-xs font-bold transition"
@@ -263,19 +256,17 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                   <ArrowLeft size={14} /> Back
                 </button>
               )}
-              <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 shadow ${mode === "whatsapp" ? "bg-white" : "bg-white/20"}`}>
-                {mode === "whatsapp" ? (
-                  <svg viewBox="0 0 24 24" className="w-8 h-8 fill-[#25D366]">
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                  </svg>
+              <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 shadow bg-white/20">
+                {mode === "phone" ? (
+                  <Phone size={28} className="text-white" />
                 ) : (
                   <Mail size={28} className="text-white" />
                 )}
               </div>
               <h1 className="text-xl font-bold text-white">GutMantra</h1>
               <p className="text-white/80 text-sm mt-0.5">
-                {mode === "whatsapp"
-                  ? (step === "phone" ? "Sign in with WhatsApp OTP" : `Code sent to ${phone}`)
+                {mode === "phone"
+                  ? (step === "phone" ? "Sign in with SMS OTP" : `OTP sent to ${displayPhone}`)
                   : (emailStep === "signin" ? "Sign in with email" : "Create an account")}
               </p>
 
@@ -283,10 +274,10 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
               <div className="flex mt-5 rounded-xl overflow-hidden bg-white/20 p-0.5">
                 <button
                   type="button"
-                  onClick={() => { setMode("whatsapp"); setError(""); setSuccess(""); }}
-                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${mode === "whatsapp" ? "bg-white text-[#25D366]" : "text-white/80 hover:text-white"}`}
+                  onClick={() => { setMode("phone"); setError(""); setSuccess(""); }}
+                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${mode === "phone" ? "bg-white text-primary" : "text-white/80 hover:text-white"}`}
                 >
-                  WhatsApp
+                  Phone OTP
                 </button>
                 <button
                   type="button"
@@ -384,13 +375,13 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
               )}
 
               {/* ── PHONE STEP ── */}
-              {mode === "whatsapp" && step === "phone" && (
+              {mode === "phone" && step === "phone" && (
                 <form onSubmit={handleSendOtp} noValidate className="space-y-5">
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">
-                      WhatsApp Number
+                      Mobile Number
                     </label>
-                    <div className="flex rounded-xl border-2 border-gray-200 focus-within:border-[#25D366] overflow-hidden transition-colors">
+                    <div className="flex rounded-xl border-2 border-gray-200 focus-within:border-primary overflow-hidden transition-colors">
                       <span className="flex items-center px-4 bg-gray-50 text-gray-600 font-semibold text-sm border-r-2 border-gray-200 shrink-0">
                         🇮🇳 +91
                       </span>
@@ -406,26 +397,26 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                       />
                     </div>
                     <p className="text-[11px] text-gray-400 mt-1.5">
-                      You'll receive a 6-digit code on WhatsApp
+                      You'll receive a 6-digit OTP via SMS
                     </p>
                   </div>
 
                   <button
                     type="submit"
                     disabled={isLoading || !isValidPhone(phone)}
-                    className="w-full py-4 bg-[#25D366] hover:bg-[#1ebe5d] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2 text-sm uppercase tracking-widest"
+                    className="w-full py-4 bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2 text-sm uppercase tracking-widest"
                   >
                     {isLoading ? (
                       <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Sending…</>
                     ) : (
-                      <>{WA_ICON} Send OTP</>
+                      <><Phone size={16} /> Send OTP</>
                     )}
                   </button>
                 </form>
               )}
 
               {/* ── OTP STEP ── */}
-              {mode === "whatsapp" && step === "otp" && (
+              {mode === "phone" && step === "otp" && (
                 <form onSubmit={handleVerifyOtp} noValidate className="space-y-5">
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">
@@ -439,7 +430,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                       onChange={(e) => { setOtp(e.target.value.replace(/\D/g, "").slice(0, 6)); setError(""); }}
                       disabled={isLoading}
                       maxLength={6}
-                      className="w-full px-5 py-4 text-2xl font-bold text-center tracking-[0.5em] rounded-xl border-2 border-gray-200 focus:border-[#25D366] outline-none transition-colors disabled:opacity-50"
+                      className="w-full px-5 py-4 text-2xl font-bold text-center tracking-[0.5em] rounded-xl border-2 border-gray-200 focus:border-primary outline-none transition-colors disabled:opacity-50"
                       autoFocus
                     />
 
@@ -447,17 +438,17 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                     <div className="mt-3">
                       <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                         <div
-                          className={`h-full rounded-full transition-all duration-1000 ${otpTimer < 30 ? "bg-red-500" : "bg-[#25D366]"}`}
+                          className={`h-full rounded-full transition-all duration-1000 ${otpTimer < 60 ? "bg-red-500" : "bg-primary"}`}
                           style={{ width: `${timerPct}%` }}
                         />
                       </div>
-                      <p className={`text-xs mt-1 font-semibold ${otpTimer < 30 ? "text-red-500" : "text-gray-400"}`}>
+                      <p className={`text-xs mt-1 font-semibold ${otpTimer < 60 ? "text-red-500" : "text-gray-400"}`}>
                         Expires in {fmtTimer}
                       </p>
                     </div>
                   </div>
 
-                  {attemptsLeft < 5 && attemptsLeft > 0 && (
+                  {attemptsLeft < 3 && attemptsLeft > 0 && (
                     <p className="text-xs text-orange-500 font-semibold text-center">
                       {attemptsLeft} attempt{attemptsLeft !== 1 ? "s" : ""} remaining
                     </p>
@@ -466,7 +457,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                   <button
                     type="submit"
                     disabled={isLoading || otp.length !== 6}
-                    className="w-full py-4 bg-[#25D366] hover:bg-[#1ebe5d] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2 text-sm uppercase tracking-widest"
+                    className="w-full py-4 bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2 text-sm uppercase tracking-widest"
                   >
                     {isLoading ? (
                       <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Verifying…</>
@@ -479,7 +470,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                         type="button"
                         onClick={handleResendOtp}
                         disabled={isLoading}
-                        className="text-sm font-bold text-[#25D366] hover:underline disabled:opacity-50"
+                        className="text-sm font-bold text-primary hover:underline disabled:opacity-50"
                       >
                         Resend OTP
                       </button>
@@ -493,7 +484,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
               )}
 
               <p className="text-[11px] text-center text-gray-400 border-t pt-4">
-                🌾 GutMantra · No password needed
+                🌾 GutMantra · Phone OTP or Email login
               </p>
             </div>
           </motion.div>

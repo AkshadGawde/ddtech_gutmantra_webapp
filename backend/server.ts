@@ -16,6 +16,8 @@ import paymentRoutes from "./src/routes/paymentRoutes.js";
 import orderStatusRoutes from "./src/routes/orderStatusRoutes.js";
 import billDeskOrderRoutes from "./src/routes/billdeskRoutes.js";
 import billDeskWebhookRoutes from "./src/routes/billdesk-webhook.routes.js";
+import otpRoutes from "./src/routes/otpRoutes.js";
+import { initializeSmsClient } from "./src/services/smsService.js";
 
 // ─── WooCommerce ──────────────────────────────────────────────────────────────
 
@@ -123,6 +125,20 @@ async function startServer() {
   initializeFirebaseAdmin();
   const db = getFirestoreDb();
 
+  // ── Initialize SMS Client ────────────────────────────────────────────────────
+  const zavuApiKey = process.env.ZAVUDEV_API_KEY;
+  if (zavuApiKey) {
+    try {
+      initializeSmsClient(zavuApiKey);
+      console.log("📱 SMS service initialized successfully");
+    } catch (error) {
+      console.error("❌ Failed to initialize SMS service:", error);
+      console.warn("⚠️ SMS OTP feature will not be available");
+    }
+  } else {
+    console.warn("⚠️ ZAVUDEV_API_KEY not found in environment - SMS OTP disabled");
+  }
+
   // ── Health ──────────────────────────────────────────────────────────────────
 
   app.get("/api/health", (_req: Request, res: Response) => {
@@ -130,6 +146,7 @@ async function startServer() {
   });
 
   app.use("/api/auth", authRoutes);
+  app.use("/api/auth", otpRoutes);
   app.use("/api", couponRoutes);
   app.use("/api", deliveryRoutes);
   app.use("/api", paymentRoutes);
