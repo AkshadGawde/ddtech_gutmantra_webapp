@@ -97,7 +97,12 @@ export async function createPetpoojaOrder(order: PetpoojaOrderPayload) {
           },
         },
         OrderItem: {
-          details: order.items,
+          details: order.items.map((item: any) => ({
+            itemid: item.variation_id && item.variation_id !== item.id ? item.variation_id : item.id,
+            name: item.name,
+            quantity: parseInt(item.quantity, 10),
+            item_price: parseFloat(item.price),
+          })),
         },
         Tax: {
           details: [],
