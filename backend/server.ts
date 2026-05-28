@@ -1,6 +1,8 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express, { Request, Response } from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import { initializeFirebaseAdmin, getFirestoreDb } from "./src/services/firebaseAdmin.js";
 import authRoutes from "./src/routes/authRoutes.js";
 import couponRoutes from "./src/routes/couponRoutes.js";
@@ -14,8 +16,6 @@ import paymentRoutes from "./src/routes/paymentRoutes.js";
 import orderStatusRoutes from "./src/routes/orderStatusRoutes.js";
 import billDeskOrderRoutes from "./src/routes/billdeskRoutes.js";
 import billDeskWebhookRoutes from "./src/routes/billdesk-webhook.routes.js";
-
-dotenv.config();
 
 // ─── WooCommerce ──────────────────────────────────────────────────────────────
 

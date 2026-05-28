@@ -13,6 +13,12 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ORDER_ID_RE = /^[\w_]+$/;
 const PIN_RE = /^[0-9]{6}$/;
 
+function normalizePhone(raw: unknown): string {
+  const digits = String(raw || "").replace(/\D/g, "");
+  // Strip leading 91 country code (India) if number is 12 digits
+  return digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits;
+}
+
 function validationError(res: Response, errors: string[]) {
   return res.status(400).json({
     success: false,
@@ -41,7 +47,7 @@ function validateCreateOrder(req: Request, res: Response, next: NextFunction) {
     if (!a.state?.trim()) errors.push("shippingAddress.state is required");
     if (!PIN_RE.test(String(a.pinCode || ""))) errors.push("shippingAddress.pinCode must be 6 digits");
     if (!a.country?.trim()) errors.push("shippingAddress.country is required");
-    if (!INDIAN_PHONE_RE.test(String(a.phone || "").replace(/\D/g, "")))
+    if (!INDIAN_PHONE_RE.test(normalizePhone(a.phone)))
       errors.push("shippingAddress.phone must be a valid 10-digit Indian mobile number");
     if (!EMAIL_RE.test(String(a.email || ""))) errors.push("shippingAddress.email is invalid");
   }
@@ -68,7 +74,7 @@ function validateCreateOnlineOrder(req: Request, res: Response, next: NextFuncti
   }
 
   if (!EMAIL_RE.test(String(customerEmail || ""))) errors.push("customerEmail is invalid");
-  if (!INDIAN_PHONE_RE.test(String(customerPhone || "").replace(/\D/g, "")))
+  if (!INDIAN_PHONE_RE.test(normalizePhone(customerPhone)))
     errors.push("customerPhone must be a valid 10-digit Indian mobile number");
 
   if (errors.length > 0) {

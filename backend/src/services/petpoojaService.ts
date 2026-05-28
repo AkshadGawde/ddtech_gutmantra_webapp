@@ -1,16 +1,5 @@
 const PP_CREATE_URL = process.env.PETPOOJA_CREATE_URL || "https://pponlineordercb.petpooja.com/save_order";
-const PP_CANCEL_URL = process.env.PETPOOJA_CANCEL_URL || "https://pponlineordercb.petpooja.com/update_order_status";
-const PP_APP_KEY = process.env.PETPOOJA_APP_KEY || "";
-const PP_APP_SECRET = process.env.PETPOOJA_APP_SECRET || "";
-const PP_ACCESS_TOKEN = process.env.PETPOOJA_ACCESS_TOKEN || "";
-const PP_REST_ID = process.env.PETPOOJA_REST_ID || "";
 const PP_CALLBACK_URL = process.env.PETPOOJA_CALLBACK_URL || "https://api.gutmantra.in/api/webhook";
-
-if (!PP_APP_KEY || !PP_APP_SECRET || !PP_ACCESS_TOKEN || !PP_REST_ID) {
-
-  console.warn("⚠️ Petpooja credentials missing — running in local/dev mode");
-
-}
 
 export interface PetpoojaOrderPayload {
   orderId: string;
@@ -26,6 +15,15 @@ export interface PetpoojaOrderPayload {
 }
 
 export async function createPetpoojaOrder(order: PetpoojaOrderPayload) {
+  const PP_APP_KEY = process.env.PETPOOJA_APP_KEY || "";
+  const PP_APP_SECRET = process.env.PETPOOJA_APP_SECRET || "";
+  const PP_ACCESS_TOKEN = process.env.PETPOOJA_ACCESS_TOKEN || "";
+  const PP_REST_ID = process.env.PETPOOJA_REST_ID || "";
+
+  if (!PP_APP_KEY || !PP_APP_SECRET || !PP_ACCESS_TOKEN || !PP_REST_ID) {
+    console.warn("⚠️ Petpooja credentials missing — order will fail");
+  }
+
   const payload = {
     app_key: PP_APP_KEY,
     app_secret: PP_APP_SECRET,

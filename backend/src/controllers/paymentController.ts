@@ -173,7 +173,7 @@ export async function createOrder(req: Request, res: Response) {
           petpoojaResponse: petpoojaResult.data,
         });
 
-        return res.status(502).json({
+        return res.status(500).json({
           success: false,
           message: "Petpooja COD order failed",
           petpooja: petpoojaResult.data,
