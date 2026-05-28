@@ -138,9 +138,10 @@ export async function sendLoginSMS(userPhoneNumber: string, otpCode: string): Pr
       // Optionally: senderId: 'kd71wx4apzpmr0fmdaq857t6h187hecp', // Your Zavu sender ID
     });
 
-    // Zavu SDK may wrap the response in a .data property
-    const resData = response?.data ?? response;
-    console.log(`📡 Zavu raw response:`, JSON.stringify(resData));
+    // Zavu SDK wraps response in { message: {...} }, fallback to .data or raw
+    const resData = response?.message ?? response?.data ?? response;
+    console.log(`📡 Zavu raw response:`, JSON.stringify(response));
+    console.log(`📡 Zavu unwrapped data:`, JSON.stringify(resData));
 
     const isSuccess = resData && (
       resData.id ||
