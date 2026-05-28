@@ -31,7 +31,7 @@ export default function CategorySection({ onNavigate }: CategorySectionProps) {
               Curated for your <span className="text-secondary italic font-serif font-normal">Gut Health</span>.
             </motion.h2>
           </div>
-          <motion.p
+          {/* <motion.p
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -39,7 +39,7 @@ export default function CategorySection({ onNavigate }: CategorySectionProps) {
             className="text-base text-accent/60 max-w-sm font-medium"
           >
             From stone-ground flours to wood-pressed oils, every GutMantra product is a testament to our commitment to Pune's health and traditional Maharashtrian flavors.
-          </motion.p>
+          </motion.p> */}
         </div>
 
         <div className="grid md:grid-cols-3 gap-8">
@@ -76,7 +76,7 @@ export default function CategorySection({ onNavigate }: CategorySectionProps) {
                   playsInline
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-80 mix-blend-multiply"
                 >
-                  <source src="https://assets.mixkit.co/videos/preview/mixkit-pouring-oil-into-a-pan-4243-large.mp4" type="video/mp4" />
+                  <source src="https://res.cloudinary.com/dk7ynv44a/video/upload/v1779975657/ndd4wv5lzjjwpucsvjaq.mp4" type="video/mp4" />
                 </video>
               ) : index === 2 ? (
                 <video 
@@ -86,7 +86,7 @@ export default function CategorySection({ onNavigate }: CategorySectionProps) {
                   playsInline
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-80 mix-blend-multiply"
                 >
-                  <source src="https://assets.mixkit.co/videos/preview/mixkit-spices-falling-on-a-wooden-table-4244-large.mp4" type="video/mp4" />
+                  <source src="https://res.cloudinary.com/dk7ynv44a/video/upload/v1779975742/bjufcpmb0btaceussr8q.mp4" type="video/mp4" />
                 </video>
               ) : (
                 <img 

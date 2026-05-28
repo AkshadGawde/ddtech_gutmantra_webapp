@@ -418,6 +418,25 @@ export default function Navbar({ onOpenCart }: NavbarProps) {
                   Our Story
                   <ChevronRight size={16} className="opacity-50" />
                 </NavLink>
+
+                {/* Profile — logged-in only */}
+                {user && (
+                  <NavLink
+                    to="/profile"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={({ isActive }) =>
+                      cn(
+                        "flex items-center justify-between w-full px-4 py-3.5 rounded-2xl mb-1 font-bold text-sm transition-all",
+                        isActive
+                          ? "bg-primary text-white shadow-md shadow-primary/25"
+                          : "hover:bg-white text-accent"
+                      )
+                    }
+                  >
+                    My Profile
+                    <ChevronRight size={16} className="opacity-50" />
+                  </NavLink>
+                )}
               </nav>
 
               {/* Drawer footer — user / login */}

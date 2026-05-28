@@ -966,6 +966,13 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
                   </div>
                 )}
 
+                {/* GMFIRST first-order hint */}
+                {couponCode.replace(/\s/g, "").toUpperCase() === "GMFIRST" && !couponApplied && (
+                  <p className="text-xs text-blue-600 mt-2 font-medium">
+                    ℹ️ GMFIRST is only valid for your first order.
+                  </p>
+                )}
+
                 {/* Coupon feedback message */}
                 {couponMessage && !couponApplied && (
                   <p className="text-xs text-red-600 mt-2">{couponMessage}</p>

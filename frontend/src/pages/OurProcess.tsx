@@ -58,7 +58,12 @@ export default function OurProcess() {
             transition={{ delay: 0.1 }}
             className="text-4xl md:text-6xl font-bold tracking-tighter"
           >
-            The <span className="text-primary italic font-serif font-normal">GutMantra</span> Process.
+           The <span className="italic font-serif font-normal">
+  <span className="text-orange-500">G</span>
+  <span className="text-black">ut</span>
+  <span className="text-green-600">Man</span>
+  <span className="text-black">tra</span>
+</span> Process.
           </motion.h2>
         </div>
 

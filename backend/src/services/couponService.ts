@@ -25,14 +25,24 @@ export function findCouponConfig(couponCode: string): CouponConfig | undefined {
 
 export async function userHasSuccessfulOrder(userId: string): Promise<boolean> {
   const db = getFirestoreDb();
-  const snapshot = await db
+
+  // Online payment success
+  const onlineSnap = await db
     .collection("orders")
     .where("userId", "==", userId)
     .where("paymentStatus", "==", "SUCCESS")
     .limit(1)
     .get();
+  if (!onlineSnap.empty) return true;
 
-  return !snapshot.empty;
+  // COD orders count as prior orders regardless of payment status
+  const codSnap = await db
+    .collection("orders")
+    .where("userId", "==", userId)
+    .where("paymentMode", "==", "COD")
+    .limit(1)
+    .get();
+  return !codSnap.empty;
 }
 
 export async function validateCoupon(

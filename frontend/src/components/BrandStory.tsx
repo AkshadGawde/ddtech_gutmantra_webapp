@@ -50,8 +50,13 @@ export default function BrandStory() {
               transition={{ delay: 0.1 }}
               className="text-4xl md:text-6xl font-bold tracking-tighter mb-8 leading-tight"
             >
-              The Heart of <br />
-              <span className="text-primary italic font-serif font-normal">GutMantra</span>.
+             The Hear of <span className="italic font-serif font-normal">
+<br/>
+  <span className="text-orange-500">G</span>
+  <span className="text-black">ut</span>
+  <span className="text-green-600">Man</span>
+  <span className="text-black">tra</span>
+</span> 
             </motion.h2>
 
             <motion.p
@@ -115,13 +120,13 @@ export default function BrandStory() {
             >
               <h4 className="text-xl font-bold mb-4">Our Commitment to Pune</h4>
               <p className="text-sm text-accent/60 leading-relaxed font-medium">
-                GutMantra isn't just a business; it's a movement to bring back the "Ghar ka Khana" feeling. We understand the busy lives of Pune's families, and we're here to ensure that even in a fast-paced world, your health never takes a backseat. From the fields of Sehore to your doorstep in Kothrud, Baner, or Hadapsar, we maintain a strict cold-chain and hygiene protocol.
+                GutMantra isn't just a business; it's a movement to bring back the "Ghar ka Khana" feeling. We understand the busy lives of Pune's families, and we're here to ensure that even in a fast-paced world, your health never takes a backseat. From the fields of Sehore to your doorstep in Dhanori, Charoli or Hadapsar, we maintain a strict cold-chain and hygiene protocol.
               </p>
             </motion.div>
 
             <div className="mt-12 grid grid-cols-2 gap-4">
               <div className="p-6 bg-secondary/5 rounded-2xl border border-secondary/10">
-                <h5 className="font-bold text-secondary mb-2">5,000+</h5>
+                <h5 className="font-bold text-secondary mb-2">500+</h5>
                 <p className="text-[10px] font-bold uppercase tracking-widest opacity-50">Happy Families</p>
               </div>
               <div className="p-6 bg-primary/5 rounded-2xl border border-primary/10">

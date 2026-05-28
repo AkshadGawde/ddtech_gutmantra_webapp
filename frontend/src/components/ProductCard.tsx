@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "motion/react";
-import { ShoppingBag, Star, Heart, Eye } from "lucide-react";
+import { ShoppingBag, Heart, Eye } from "lucide-react";
 import { Product } from "../services/productService";
 import { useCart } from "../context/CartContext";
 import { useNavigate } from "react-router-dom";
@@ -162,21 +162,6 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
         </div>
 
         {/* DETAILS */}
-        <div className="flex items-center gap-1 mb-3">
-          {[...Array(5)].map((_, i) => (
-            <Star
-              key={i}
-              size={10}
-              className={cn(
-                i < 4 ? "text-primary fill-primary" : "text-black/10"
-              )}
-            />
-          ))}
-          <span className="text-[10px] font-bold opacity-30 ml-2 uppercase tracking-widest">
-            4.8 (120)
-          </span>
-        </div>
-
         <div className="flex justify-between items-start gap-4 mb-4">
           <div>
             <h3 className="text-xl font-bold tracking-tight mb-1 line-clamp-1">

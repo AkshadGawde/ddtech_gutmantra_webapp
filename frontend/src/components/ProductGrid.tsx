@@ -118,13 +118,16 @@ export default function ProductGrid({ onNavigate }: ProductGridProps) {
                 onClick={() =>
                   onNavigate("category", { category: cat.slug })
                 }
-                className="p-6 bg-white rounded-3xl border border-black/5 flex flex-col items-center text-center gap-4 hover:shadow-lg transition-all cursor-pointer"
+                className="overflow-hidden bg-white rounded-3xl border border-black/5 flex flex-col items-center text-center hover:shadow-lg transition-all cursor-pointer"
               >
-                <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
-                  <span className="text-2xl">🌿</span>
+                <div className="w-full h-36 overflow-hidden">
+                  <img
+                    src={cat.image}
+                    alt={cat.name}
+                    className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                  />
                 </div>
-
-                <div>
+                <div className="p-4">
                   <h4 className="font-bold text-sm uppercase tracking-widest">
                     {cat.name}
                   </h4>
