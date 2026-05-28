@@ -330,8 +330,7 @@ async function startServer() {
   app.use("/api/orders", billDeskOrderRoutes);
   app.use("/api/billdesk", billDeskWebhookRoutes);
 
-  // ── Legacy Payment Routes ───────────────────────────────────────────────────
-  app.use("/api", paymentRoutes);
+  // ── Order Status Routes ─────────────────────────────────────────────────────
   app.use("/api", orderStatusRoutes);
 
   // ── Root ────────────────────────────────────────────────────────────────────

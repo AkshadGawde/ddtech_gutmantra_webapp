@@ -383,6 +383,7 @@ export async function billdeskCallback(req: BillDeskRequest, res: Response) {
       console.log(`❌ Payment failed for order ${orderId}: auth_status=${authStatus}`);
       await updateOrderRecord(orderId, {
         paymentStatus: failedState,
+        payment_status: authStatus,   // raw code for polling
         orderStatus: "PAYMENT_FAILED",
         paymentResponse: body,
         billdeskTransactionId: transactionId,
@@ -422,6 +423,7 @@ export async function billdeskCallback(req: BillDeskRequest, res: Response) {
 
     await updateOrderRecord(orderId, {
       paymentStatus: "payment_success",
+      payment_status: "0300",       // raw BillDesk code — used by polling
       orderStatus: "PLACED",
       billdeskTransactionId: transactionId,
       bdorderid: String(body.bdorderid || ""),

@@ -75,7 +75,6 @@ export async function createOrder(orderData: {
 }) {
   const traceId = generateTraceId();
   const timestamp = getBillDeskTimestamp();
-  console.log('[BillDesk] Create Order — BD-Timestamp:', timestamp, '| BD-Traceid:', traceId);
 
   const payload = {
     mercid: CONFIG.MERCHANT_ID,
@@ -92,6 +91,37 @@ export async function createOrder(orderData: {
   };
 
   const signature = generateBillDeskSignature(payload, CONFIG.MERCHANT_KEY);
+
+  // ═══════════════════════════════════════════════════════════════════
+  // DETAILED LOGGING - EXACT PAYLOAD BEING SENT
+  // ═══════════════════════════════════════════════════════════════════
+  console.log('\n');
+  console.log('╔════════════════════════════════════════════════════════════════════╗');
+  console.log('║                    BILLDESK CREATE ORDER REQUEST                    ║');
+  console.log('╚════════════════════════════════════════════════════════════════════╝');
+  
+  console.log('\n📤 EXACT PAYLOAD (JSON):');
+  console.log(JSON.stringify(payload, null, 2));
+  
+  console.log('\n⏰ TIMESTAMP DETAILS:');
+  console.log('  Value:', timestamp);
+  console.log('  Format: YYYY-MM-DDThh:mm:ss+05:30');
+  console.log('  Length:', timestamp.length);
+  
+  console.log('\n📋 REQUEST HEADERS:');
+  console.log('  Content-Type: application/json');
+  console.log('  Accept: application/jose');
+  console.log('  BD-Traceid:', traceId);
+  console.log('  BD-Timestamp:', timestamp);
+  console.log('  BD-Signature:', signature.substring(0, 32) + '...');
+  
+  console.log('\n🔗 REQUEST DETAILS:');
+  console.log('  URL:', `${CONFIG.BASE_URL}/payments/ve1_2/orders/create`);
+  console.log('  Method: POST');
+  console.log('  Environment:', ENV);
+  console.log('  Merchant ID:', CONFIG.MERCHANT_ID);
+  
+  console.log('\n════════════════════════════════════════════════════════════════════\n');
 
   try {
     const response = await axios.post(
@@ -117,6 +147,10 @@ export async function createOrder(orderData: {
       timestamp,
     };
   } catch (error: any) {
+    console.log('\n❌ BILLDESK ERROR RESPONSE:');
+    console.log(JSON.stringify(error.response?.data, null, 2));
+    console.log('════════════════════════════════════════════════════════════════════\n');
+    
     console.error('BillDesk Create Order Error:', error.response?.data || error.message);
     throw {
       success: false,
