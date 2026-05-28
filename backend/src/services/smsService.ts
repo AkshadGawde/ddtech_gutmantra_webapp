@@ -10,10 +10,11 @@ let zavuClient: any = null;
  *
  * Usage: initializeSmsClient(process.env.ZAVUDEV_API_KEY!)
  */
-export function initializeSmsClient(apiKey: string) {
+export async function initializeSmsClient(apiKey: string) {
   try {
-    // Import Zavu SDK
-    const Zavudev = require('@zavudev/sdk').default;
+    // Dynamic import for ES modules
+    const zavuModule = await import('@zavudev/sdk');
+    const Zavudev = zavuModule.default;
 
     // Initialize with your API key
     zavuClient = new Zavudev({

@@ -129,7 +129,7 @@ async function startServer() {
   const zavuApiKey = process.env.ZAVUDEV_API_KEY;
   if (zavuApiKey) {
     try {
-      initializeSmsClient(zavuApiKey);
+      await initializeSmsClient(zavuApiKey);
       console.log("📱 SMS service initialized successfully");
     } catch (error) {
       console.error("❌ Failed to initialize SMS service:", error);
