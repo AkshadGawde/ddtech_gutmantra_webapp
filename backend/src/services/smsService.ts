@@ -138,32 +138,29 @@ export async function sendLoginSMS(userPhoneNumber: string, otpCode: string): Pr
       // Optionally: senderId: 'kd71wx4apzpmr0fmdaq857t6h187hecp', // Your Zavu sender ID
     });
 
-    // Check response status
-    // Zavu returns success with various response formats
-    if (
-      response &&
-      (response.status === 'sent' ||
-        response.status === 'queued' ||
-        response.statusCode === 200 ||
-        response.statusCode === 201 ||
-        response.success === true ||
-        response.message_id)
-    ) {
-      console.log(`✅ SMS sent successfully to ${normalizedPhone}`, response);
+    // Zavu SDK may wrap the response in a .data property
+    const resData = response?.data ?? response;
+    console.log(`📡 Zavu raw response:`, JSON.stringify(resData));
+
+    const isSuccess = resData && (
+      resData.id ||
+      resData.status === 'sent' ||
+      resData.status === 'queued' ||
+      resData.status === 'pending'
+    );
+
+    if (isSuccess) {
+      console.log(`✅ SMS sent successfully to ${normalizedPhone}`);
       return {
         success: true,
         message: 'OTP sent successfully',
-        requestId:
-          response.message_id ||
-          response.requestId ||
-          response.id ||
-          'unknown',
+        requestId: resData.id || resData.message_id || 'unknown',
       };
     } else {
-      console.error(`❌ SMS send failed:`, response);
+      console.error(`❌ SMS send failed:`, resData);
       return {
         success: false,
-        error: response?.message || response?.error || 'Failed to send SMS',
+        error: resData?.message || resData?.error || 'Failed to send SMS',
         message: 'SMS delivery failed',
       };
     }
