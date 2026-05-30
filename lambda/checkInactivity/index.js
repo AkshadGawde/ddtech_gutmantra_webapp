@@ -19,7 +19,8 @@ const INACTIVITY_THRESHOLD_MS = (parseInt(process.env.INACTIVITY_THRESHOLD_MINUT
 
 // ── AWS singleton ─────────────────────────────────────────────────────────────
 
-const ec2 = new EC2Client({ region: process.env.AWS_REGION || 'ap-south-1' });
+// EC2_REGION = region where your EC2 instance lives (may differ from Lambda region)
+const ec2 = new EC2Client({ region: process.env.EC2_REGION || process.env.AWS_REGION });
 
 // ── Firebase singleton ────────────────────────────────────────────────────────
 

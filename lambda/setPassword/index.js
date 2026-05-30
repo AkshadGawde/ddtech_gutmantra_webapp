@@ -7,8 +7,9 @@ const { EventBridgeClient, PutEventsCommand } = require('@aws-sdk/client-eventbr
 
 // ── AWS singletons ────────────────────────────────────────────────────────────
 
-const ec2 = new EC2Client({ region: process.env.AWS_REGION || 'ap-south-1' });
-const evBridge = new EventBridgeClient({ region: process.env.AWS_REGION || 'ap-south-1' });
+// EC2_REGION = region where your EC2 instance lives (may differ from Lambda region)
+const ec2 = new EC2Client({ region: process.env.EC2_REGION || process.env.AWS_REGION });
+const evBridge = new EventBridgeClient({ region: process.env.AWS_REGION });
 
 // ── Firebase singleton ────────────────────────────────────────────────────────
 
@@ -35,17 +36,16 @@ async function getEC2State() {
   return state || 'unknown';
 }
 
-async function startEC2() {
+async function startEC2(db) {
   const state = await getEC2State();
   console.log(`EC2 current state: ${state}`);
 
   if (state === 'running') {
     console.log('EC2 already running — skipping start');
-    return false; // already up, no wait needed
+    return false;
   }
 
   if (state === 'stopping') {
-    // Wait briefly then start — EC2 can't start while stopping
     console.log('EC2 is stopping — will start after it fully stops');
     await new Promise(r => setTimeout(r, 15000));
   }
@@ -57,7 +57,15 @@ async function startEC2() {
   const cmd = new StartInstancesCommand({ InstanceIds: [process.env.EC2_INSTANCE_ID] });
   await ec2.send(cmd);
   console.log('EC2 start command sent');
-  return true; // wait needed
+
+  // Stamp activity NOW so checkInactivity doesn't see a stale timestamp
+  // and stop EC2 the moment it finishes booting
+  await db.collection('system').doc('ec2_activity').set(
+    { lastActivityAt: admin.firestore.FieldValue.serverTimestamp(), updatedAt: admin.firestore.FieldValue.serverTimestamp() },
+    { merge: true }
+  ).catch(err => console.warn('Activity stamp failed (non-critical):', err.message));
+
+  return true;
 }
 
 async function publishAuthEvent(detailType, phone) {
@@ -174,7 +182,7 @@ exports.handler = async (event) => {
 
     // ⚡️ CRITICAL: Start EC2 and publish to EventBridge
     const [ec2Started] = await Promise.all([
-      startEC2(),
+      startEC2(db),
       publishAuthEvent('signup-success', userPhone),
     ]);
 

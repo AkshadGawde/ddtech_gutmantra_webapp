@@ -7,8 +7,9 @@ const { EventBridgeClient, PutEventsCommand } = require('@aws-sdk/client-eventbr
 
 // ── AWS singletons ────────────────────────────────────────────────────────────
 
-const ec2 = new EC2Client({ region: process.env.AWS_REGION || 'ap-south-1' });
-const evBridge = new EventBridgeClient({ region: process.env.AWS_REGION || 'ap-south-1' });
+// EC2_REGION = region where your EC2 instance lives (may differ from Lambda region)
+const ec2 = new EC2Client({ region: process.env.EC2_REGION || process.env.AWS_REGION });
+const evBridge = new EventBridgeClient({ region: process.env.AWS_REGION });
 
 // ── Firebase singleton ────────────────────────────────────────────────────────
 
@@ -62,7 +63,7 @@ async function getEC2State() {
   return result.Reservations?.[0]?.Instances?.[0]?.State?.Name || 'unknown';
 }
 
-async function startEC2() {
+async function startEC2(db) {
   const state = await getEC2State();
   console.log(`EC2 current state: ${state}`);
 
@@ -78,6 +79,14 @@ async function startEC2() {
   const cmd = new StartInstancesCommand({ InstanceIds: [process.env.EC2_INSTANCE_ID] });
   await ec2.send(cmd);
   console.log('EC2 start command sent');
+
+  // Stamp activity NOW so checkInactivity doesn't see a stale timestamp
+  // and stop EC2 the moment it finishes booting
+  await db.collection('system').doc('ec2_activity').set(
+    { lastActivityAt: admin.firestore.FieldValue.serverTimestamp(), updatedAt: admin.firestore.FieldValue.serverTimestamp() },
+    { merge: true }
+  ).catch(err => console.warn('Activity stamp failed (non-critical):', err.message));
+
   return true;
 }
 
@@ -171,7 +180,7 @@ exports.handler = async (event) => {
 
     // ⚡️ CRITICAL: Start EC2 + publish to EventBridge (parallel for speed)
     const [ec2Started] = await Promise.all([
-      startEC2(),
+      startEC2(db),
       publishAuthEvent('login-success', normalizedPhone),
     ]);
 
