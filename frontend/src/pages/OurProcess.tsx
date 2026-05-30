@@ -63,7 +63,7 @@ export default function OurProcess() {
   <span className="text-black">ut</span>
   <span className="text-green-600">Man</span>
   <span className="text-black">tra</span>
-</span> Process.
+</span> Process
           </motion.h2>
         </div>
 

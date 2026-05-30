@@ -99,7 +99,7 @@ export default function OurStory() {
                 className="text-5xl md:text-6xl font-bold tracking-tighter mb-6 leading-[1.05]"
               >
                 Food for{" "}
-                <span className="text-primary italic font-serif font-normal">Soul.</span>
+                <span className="text-primary italic font-serif font-normal">Soul</span>
               </motion.h1>
 
               <motion.p
@@ -260,7 +260,7 @@ export default function OurStory() {
             </div>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tighter text-white mb-5">
               Join Our Growing{" "}
-              <span className="italic font-serif font-normal">Community.</span>
+              <span className="italic font-serif font-normal">Community</span>
             </h2>
             <p className="text-white/85 text-lg mb-10 max-w-xl mx-auto leading-relaxed">
               Be part of 5,000+ families in Pune who have rediscovered the joy of authentic, stone-ground nutrition delivered to their doorstep.

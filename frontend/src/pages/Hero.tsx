@@ -13,7 +13,7 @@ const SLIDES = [
   {
     src: "https://res.cloudinary.com/dk7ynv44a/image/upload/v1779797272/u9ursrutcvgpeh8wapm4.png",
     headline: "Pure Nutrition,",
-    subheadline: "Traditional Taste.",
+    subheadline: "Traditional Taste",
     description: "Stone-ground flours & cold-pressed oils, delivered fresh to your Pune home.",
     cta: "Shop Atta",
     ctaCategory: "atta",
@@ -23,7 +23,7 @@ const SLIDES = [
   {
     src: "https://res.cloudinary.com/dk7ynv44a/image/upload/v1779797283/ooogfdudi56zxwlpfx86.jpg",
     headline: "Cold-Pressed",
-    subheadline: "Pure Oils.",
+    subheadline: "Pure Oils",
     description: "Extracted slowly without heat to preserve every drop of natural goodness.",
     cta: "Shop Oils",
     ctaCategory: "oils",
@@ -33,7 +33,7 @@ const SLIDES = [
   {
     src: "https://res.cloudinary.com/dk7ynv44a/image/upload/v1779797844/mcbjonldlewd0pei18zv.png",
     headline: "Farm to",
-    subheadline: "Your Kitchen.",
+    subheadline: "Your Kitchen",
     description: "Sourced directly from trusted farms. No middlemen. No compromises.",
     cta: "Explore All",
     ctaCategory: "all",
@@ -43,7 +43,7 @@ const SLIDES = [
   {
     src: "https://res.cloudinary.com/dk7ynv44a/image/upload/v1779797844/ikpfhvcm14hsx8itfmkt.png",
     headline: "Doorstep Delivery",
-    subheadline: "Fresh Everyday.",
+    subheadline: "Fresh Everyday",
     description: "Freshly ground atta, oils & spices delivered straight to your doorstep with purity, speed and traditional goodness.",
     cta: "Shop Now",
     ctaCategory: "all",

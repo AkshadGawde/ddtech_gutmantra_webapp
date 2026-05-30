@@ -73,7 +73,7 @@ export default function ProductGrid({ onNavigate }: ProductGridProps) {
               <span className="text-primary italic font-serif font-normal">
                 Pantry Essentials
               </span>
-              .
+              
             </motion.h2>
           </div>
 

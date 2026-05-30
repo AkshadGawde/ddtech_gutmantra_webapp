@@ -28,7 +28,7 @@ export default function CategorySection({ onNavigate }: CategorySectionProps) {
               transition={{ delay: 0.1 }}
               className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight tracking-tighter"
             >
-              Curated for your <span className="text-secondary italic font-serif font-normal">Gut Health</span>.
+              Curated for your <span className="text-secondary italic font-serif font-normal">Gut Health</span>
             </motion.h2>
           </div>
           {/* <motion.p

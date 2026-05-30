@@ -27,7 +27,7 @@ export default function SocialReel({ onNavigate }: SocialReelProps) {
               transition={{ delay: 0.1 }}
               className="text-4xl md:text-6xl font-bold tracking-tighter"
             >
-              See us in <span className="text-primary italic font-serif font-normal">Action</span>.
+              See us in <span className="text-primary italic font-serif font-normal">Action</span>
             </motion.h2>
           </div>
           <motion.p

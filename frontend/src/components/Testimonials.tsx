@@ -122,7 +122,7 @@ export default function Testimonials() {
             transition={{ delay: 0.1 }}
             className="text-4xl md:text-6xl font-bold tracking-tighter"
           >
-            Trusted by <span className="text-secondary italic font-serif font-normal">Pune Families</span>.
+            Trusted by <span className="text-secondary italic font-serif font-normal">Pune Families</span>
           </motion.h2>
         </div>
 
