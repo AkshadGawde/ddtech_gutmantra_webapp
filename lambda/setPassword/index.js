@@ -21,7 +21,12 @@ async function getFirebaseCredentials() {
   const result = await secretsClient.send(new GetSecretValueCommand({
     SecretId: process.env.FIREBASE_SECRET_NAME || 'firebase-credentials',
   }));
-  cachedSecret = JSON.parse(result.SecretString);
+  let parsed = JSON.parse(result.SecretString);
+  if (typeof parsed === 'string') parsed = JSON.parse(parsed);
+  if (!parsed.project_id  && parsed.projectId)   parsed.project_id  = parsed.projectId;
+  if (!parsed.private_key && parsed.privateKey)   parsed.private_key = parsed.privateKey;
+  if (!parsed.client_email && parsed.clientEmail) parsed.client_email = parsed.clientEmail;
+  cachedSecret = parsed;
   return cachedSecret;
 }
 

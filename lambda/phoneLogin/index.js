@@ -21,7 +21,18 @@ async function getFirebaseCredentials() {
   const result = await secretsClient.send(new GetSecretValueCommand({
     SecretId: process.env.FIREBASE_SECRET_NAME || 'firebase-credentials',
   }));
-  cachedSecret = JSON.parse(result.SecretString);
+
+  // Parse — handle double-encoded strings
+  let creds = JSON.parse(result.SecretString);
+  if (typeof creds === 'string') creds = JSON.parse(creds);
+
+  // Normalise camelCase → snake_case so Firebase Admin is happy
+  // (Secrets Manager sometimes stores camelCase: projectId, privateKey, clientEmail)
+  if (!creds.project_id  && creds.projectId)   creds.project_id  = creds.projectId;
+  if (!creds.private_key && creds.privateKey)   creds.private_key = creds.privateKey;
+  if (!creds.client_email && creds.clientEmail) creds.client_email = creds.clientEmail;
+
+  cachedSecret = creds;
   return cachedSecret;
 }
 
