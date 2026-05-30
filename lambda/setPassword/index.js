@@ -88,18 +88,31 @@ function corsHeaders() {
   };
 }
 
+// Handles both REST API v1 and HTTP API v2 event formats
+// v2 lowercases all headers, so we check both cases
+function parseEvent(event) {
+  const method = event.httpMethod || event.requestContext?.http?.method || 'POST';
+  const body = typeof event.body === 'string'
+    ? JSON.parse(event.body || '{}')
+    : (event.body || {});
+  const getHeader = (name) =>
+    event.headers?.[name] || event.headers?.[name.toLowerCase()] || '';
+  return { method, body, getHeader };
+}
+
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 exports.handler = async (event) => {
   const headers = corsHeaders();
+  const { method, body, getHeader } = parseEvent(event);
 
-  if (event.httpMethod === 'OPTIONS') {
+  if (method === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
   }
 
   try {
-    // Extract Firebase ID token from Authorization header
-    const authHeader = event.headers?.Authorization || event.headers?.authorization || '';
+    // Extract Firebase ID token — getHeader handles both 'Authorization' (v1) and 'authorization' (v2)
+    const authHeader = getHeader('Authorization');
     const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
     if (!idToken) {
@@ -116,14 +129,12 @@ exports.handler = async (event) => {
     try {
       const decoded = await auth.verifyIdToken(idToken);
       userId = decoded.uid;
-      // Get phone from Firestore since it may not be in the token
       const userDoc = await db.collection('users').doc(userId).get();
       userPhone = userDoc.exists ? userDoc.data()?.phone : null;
     } catch {
       return { statusCode: 401, headers, body: JSON.stringify({ success: false, error: 'Invalid or expired token' }) };
     }
 
-    const body = JSON.parse(event.body || '{}');
     const { password, confirmPassword, name } = body;
 
     if (!password || typeof password !== 'string') {

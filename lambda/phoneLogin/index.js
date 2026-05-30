@@ -45,6 +45,17 @@ function corsHeaders() {
   };
 }
 
+// Handles both REST API v1 and HTTP API v2 event formats
+function parseEvent(event) {
+  const method = event.httpMethod || event.requestContext?.http?.method || 'POST';
+  const body = typeof event.body === 'string'
+    ? JSON.parse(event.body || '{}')
+    : (event.body || {});
+  const getHeader = (name) =>
+    event.headers?.[name] || event.headers?.[name.toLowerCase()] || '';
+  return { method, body, getHeader };
+}
+
 async function getEC2State() {
   const cmd = new DescribeInstancesCommand({ InstanceIds: [process.env.EC2_INSTANCE_ID] });
   const result = await ec2.send(cmd);
@@ -89,13 +100,13 @@ async function publishAuthEvent(detailType, phone) {
 
 exports.handler = async (event) => {
   const headers = corsHeaders();
+  const { method, body } = parseEvent(event);
 
-  if (event.httpMethod === 'OPTIONS') {
+  if (method === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
   }
 
   try {
-    const body = JSON.parse(event.body || '{}');
     const { phone, password } = body;
 
     if (!phone || !password) {

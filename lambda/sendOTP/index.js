@@ -44,8 +44,8 @@ function generateOTP() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
-function cors(res) {
-  res.headers = {
+function corsHeaders() {
+  return {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -53,27 +53,38 @@ function cors(res) {
   };
 }
 
+// Handles both REST API v1 (event.httpMethod) and HTTP API v2 (event.requestContext.http.method)
+// Also normalises body (string → object) and lowercases header lookup
+function parseEvent(event) {
+  const method = event.httpMethod || event.requestContext?.http?.method || 'POST';
+  const body = typeof event.body === 'string'
+    ? JSON.parse(event.body || '{}')
+    : (event.body || {});
+  const getHeader = (name) =>
+    event.headers?.[name] || event.headers?.[name.toLowerCase()] || '';
+  return { method, body, getHeader };
+}
+
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 exports.handler = async (event) => {
-  const res = { statusCode: 200 };
-  cors(res);
+  const headers = corsHeaders();
+  const { method, body } = parseEvent(event);
 
-  if (event.httpMethod === 'OPTIONS') {
-    return { ...res, body: '' };
+  if (method === 'OPTIONS') {
+    return { statusCode: 200, headers, body: '' };
   }
 
   try {
-    const body = JSON.parse(event.body || '{}');
     const { phone } = body;
 
     if (!phone || typeof phone !== 'string') {
-      return { ...res, statusCode: 400, body: JSON.stringify({ success: false, error: 'Phone number is required' }) };
+      return { statusCode: 400, headers, body: JSON.stringify({ success: false, error: 'Phone number is required' }) };
     }
 
     const normalizedPhone = normalizePhone(phone);
     if (!normalizedPhone) {
-      return { ...res, statusCode: 400, body: JSON.stringify({ success: false, error: 'Invalid phone number. Enter a valid 10-digit Indian mobile number.' }) };
+      return { statusCode: 400, headers, body: JSON.stringify({ success: false, error: 'Invalid phone number. Enter a valid 10-digit Indian mobile number.' }) };
     }
 
     const app = getFirebase();
@@ -87,7 +98,7 @@ exports.handler = async (event) => {
       const createdAt = data?.createdAt?.toDate?.() || new Date(0);
       const secondsAgo = (Date.now() - createdAt.getTime()) / 1000;
       if (secondsAgo < 30) {
-        return { ...res, statusCode: 429, body: JSON.stringify({ success: false, error: 'Please wait before requesting another OTP.', retryAfter: Math.ceil(30 - secondsAgo) }) };
+        return { statusCode: 429, headers, body: JSON.stringify({ success: false, error: 'Please wait before requesting another OTP.', retryAfter: Math.ceil(30 - secondsAgo) }) };
       }
     }
 
@@ -110,11 +121,12 @@ exports.handler = async (event) => {
 
     if (!smsResult?.success) {
       await db.collection('otp_requests').doc(otpDocId).delete();
-      return { ...res, statusCode: 500, body: JSON.stringify({ success: false, error: 'Failed to send OTP via SMS' }) };
+      return { statusCode: 500, headers, body: JSON.stringify({ success: false, error: 'Failed to send OTP via SMS' }) };
     }
 
     return {
-      ...res,
+      statusCode: 200,
+      headers,
       body: JSON.stringify({
         success: true,
         message: 'OTP sent successfully',
@@ -124,6 +136,6 @@ exports.handler = async (event) => {
     };
   } catch (error) {
     console.error('sendOTP error:', error);
-    return { ...res, statusCode: 500, body: JSON.stringify({ success: false, error: error.message || 'Internal server error' }) };
+    return { statusCode: 500, headers: corsHeaders(), body: JSON.stringify({ success: false, error: error.message || 'Internal server error' }) };
   }
 };

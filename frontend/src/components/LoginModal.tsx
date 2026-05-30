@@ -3,13 +3,11 @@ import { X, ArrowLeft, Phone, Lock, User, Eye, EyeOff } from "lucide-react";
 import { useState, useEffect } from "react";
 import { signInWithCustomToken } from "firebase/auth";
 import { auth } from "../lib/firebase";
-import { useAuth } from "../context/AuthContext";
 import EC2LoadingScreen from "./EC2LoadingScreen";
 
-// Lambda API Gateway for auth (always available, even when EC2 is sleeping)
-// EC2 API for everything else (orders, payments, etc.)
+// Auth calls → Lambda (always available, wakes EC2 on login/signup)
+// All other EC2 calls (cart, orders, payments) use VITE_API_URL
 const LAMBDA_BASE = import.meta.env.VITE_LAMBDA_API_URL || "https://api.gutmantra.in";
-const API_BASE = import.meta.env.VITE_API_URL || "https://api.gutmantra.in";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -58,7 +56,6 @@ export default function LoginModal({
   onClose,
   sessionExpired = false,
 }: LoginModalProps) {
-  const { loginWithPhonePassword } = useAuth();
 
   const [mode, setMode] = useState<ModalMode>("login");
   const [phone, setPhone] = useState("");
@@ -224,7 +221,6 @@ export default function LoginModal({
 
     setIsLoading(true);
     try {
-      // ⚡️ Lambda set-password: sets password + triggers EC2 start on signup
       const res = await fetch(`${LAMBDA_BASE}/api/auth/set-password`, {
         method: "POST",
         headers: {
@@ -259,7 +255,6 @@ export default function LoginModal({
     if (!password) { setError("Password is required."); return; }
     setIsLoading(true);
     try {
-      // ⚡️ Lambda phone-login: only wakes EC2 on correct password
       const res = await fetch(`${LAMBDA_BASE}/api/auth/phone-login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
