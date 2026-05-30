@@ -14,26 +14,33 @@
 
 const admin = require('firebase-admin');
 const { EC2Client, StopInstancesCommand, DescribeInstancesCommand } = require('@aws-sdk/client-ec2');
+const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
 
 const INACTIVITY_THRESHOLD_MS = (parseInt(process.env.INACTIVITY_THRESHOLD_MINUTES) || 15) * 60 * 1000;
 
-// ── AWS singleton ─────────────────────────────────────────────────────────────
+// ── AWS singletons ────────────────────────────────────────────────────────────
 
 // EC2_REGION = region where your EC2 instance lives (may differ from Lambda region)
 const ec2 = new EC2Client({ region: process.env.EC2_REGION || process.env.AWS_REGION });
+const secretsClient = new SecretsManagerClient({ region: process.env.AWS_REGION });
 
-// ── Firebase singleton ────────────────────────────────────────────────────────
+// ── Firebase singleton (credentials from Secrets Manager) ─────────────────────
+
+let cachedSecret = null;
+async function getFirebaseCredentials() {
+  if (cachedSecret) return cachedSecret;
+  const result = await secretsClient.send(new GetSecretValueCommand({
+    SecretId: process.env.FIREBASE_SECRET_NAME || 'firebase-credentials',
+  }));
+  cachedSecret = JSON.parse(result.SecretString);
+  return cachedSecret;
+}
 
 let firebaseApp;
-function getFirebase() {
+async function getFirebase() {
   if (!firebaseApp) {
-    firebaseApp = admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      }),
-    });
+    const creds = await getFirebaseCredentials();
+    firebaseApp = admin.initializeApp({ credential: admin.credential.cert(creds) });
   }
   return firebaseApp;
 }
@@ -71,7 +78,7 @@ exports.handler = async () => {
     }
 
     // 2) Read last global activity timestamp from Firestore
-    const app = getFirebase();
+    const app = await getFirebase();
     const db = admin.firestore(app);
 
     const activityDoc = await db.collection('system').doc('ec2_activity').get();

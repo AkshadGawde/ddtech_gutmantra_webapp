@@ -2,19 +2,27 @@
 
 const admin = require('firebase-admin');
 const { SdkManager } = require('@zavudev/sdk');
+const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
 
-// ── Firebase singleton ────────────────────────────────────────────────────────
+const secretsClient = new SecretsManagerClient({ region: process.env.AWS_REGION });
+
+// ── Firebase singleton (credentials from Secrets Manager) ─────────────────────
+
+let cachedSecret = null;
+async function getFirebaseCredentials() {
+  if (cachedSecret) return cachedSecret;
+  const result = await secretsClient.send(new GetSecretValueCommand({
+    SecretId: process.env.FIREBASE_SECRET_NAME || 'firebase-credentials',
+  }));
+  cachedSecret = JSON.parse(result.SecretString);
+  return cachedSecret;
+}
 
 let firebaseApp;
-function getFirebase() {
+async function getFirebase() {
   if (!firebaseApp) {
-    firebaseApp = admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      }),
-    });
+    const creds = await getFirebaseCredentials();
+    firebaseApp = admin.initializeApp({ credential: admin.credential.cert(creds) });
   }
   return firebaseApp;
 }
@@ -87,7 +95,7 @@ exports.handler = async (event) => {
       return { statusCode: 400, headers, body: JSON.stringify({ success: false, error: 'Invalid phone number. Enter a valid 10-digit Indian mobile number.' }) };
     }
 
-    const app = getFirebase();
+    const app = await getFirebase();
     const db = admin.firestore(app);
 
     // Check rate limit: max 5 OTPs per phone per hour
