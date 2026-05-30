@@ -41,8 +41,19 @@ export default function Navbar({ onOpenCart }: NavbarProps) {
   const location = useLocation();
 
   const { totalItems } = useCart();
-  const { user, userData, logout, isAdmin } = useAuth();
+  const { user, userData, logout, isAdmin, sessionExpired } = useAuth();
   const navigate = useNavigate();
+
+  // Open login modal when cart triggers require-login event or session expires
+  useEffect(() => {
+    const handler = () => setIsLoginModalOpen(true);
+    window.addEventListener("require-login", handler);
+    return () => window.removeEventListener("require-login", handler);
+  }, []);
+
+  useEffect(() => {
+    if (sessionExpired) setIsLoginModalOpen(true);
+  }, [sessionExpired]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -492,7 +503,11 @@ export default function Navbar({ onOpenCart }: NavbarProps) {
         )}
       </AnimatePresence>
 
-      <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        sessionExpired={sessionExpired}
+      />
     </>
   );
 }

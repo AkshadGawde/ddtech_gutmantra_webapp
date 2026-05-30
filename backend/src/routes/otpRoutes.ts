@@ -1,4 +1,5 @@
 import express, { Request, Response } from 'express';
+import bcrypt from 'bcrypt';
 import { generateSecureOTP, sendLoginSMS, normalizePhoneNumber } from '../services/smsService.js';
 import { rateLimitSMS } from '../middleware/rateLimitSMS.js';
 import { getFirestoreDb, getAuth } from '../services/firebaseAdmin.js';
@@ -371,6 +372,135 @@ router.post('/verify-otp', async (req: Request, res: Response) => {
       success: false,
       error: error instanceof Error ? error.message : 'An error occurred during verification',
     });
+  }
+});
+
+/**
+ * POST /api/auth/set-password
+ *
+ * Sets a password for an authenticated user (called after OTP signup).
+ * Requires Firebase ID token in Authorization header.
+ *
+ * Body: { password, confirmPassword, name? }
+ */
+router.post('/set-password', async (req: Request, res: Response) => {
+  try {
+    const db = getFirestoreDb();
+    const token = req.headers.authorization?.split('Bearer ')[1];
+
+    if (!token) {
+      return res.status(401).json({ success: false, error: 'Authentication required' });
+    }
+
+    let userId: string;
+    try {
+      const decoded = await getAuth().verifyIdToken(token);
+      userId = decoded.uid;
+    } catch {
+      return res.status(401).json({ success: false, error: 'Invalid or expired token' });
+    }
+
+    const { password, confirmPassword, name } = req.body;
+
+    if (!password || typeof password !== 'string') {
+      return res.status(400).json({ success: false, error: 'Password is required' });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({ success: false, error: 'Passwords do not match' });
+    }
+
+    const PASSWORD_RE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
+    if (!PASSWORD_RE.test(password)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Password must be at least 8 characters and include uppercase, lowercase, number, and special character',
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const updateData: Record<string, any> = {
+      passwordHash,
+      passwordSetAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+
+    if (name && typeof name === 'string' && name.trim()) {
+      updateData.name = name.trim();
+    }
+
+    await db.collection('users').doc(userId).update(updateData);
+
+    console.log(`✅ Password set for user: ${userId}`);
+
+    return res.json({ success: true, message: 'Password set successfully' });
+  } catch (error) {
+    console.error('❌ Set password error:', error);
+    return res.status(500).json({ success: false, error: 'Failed to set password' });
+  }
+});
+
+/**
+ * POST /api/auth/verify-password
+ *
+ * Verifies an existing user's password after OTP login (Option A - returning users).
+ * Used to confirm identity after phone OTP verification.
+ *
+ * Body: { phone, password }
+ */
+router.post('/verify-password', async (req: Request, res: Response) => {
+  try {
+    const db = getFirestoreDb();
+    const { phone, password } = req.body;
+
+    if (!phone || !password) {
+      return res.status(400).json({ success: false, error: 'Phone and password are required' });
+    }
+
+    const normalizedPhone = normalizePhoneNumber(phone);
+    if (!normalizedPhone) {
+      return res.status(400).json({ success: false, error: 'Invalid phone number' });
+    }
+
+    const rawDigits = normalizedPhone.replace(/\D/g, '');
+    const tenDigit = rawDigits.length === 12 ? rawDigits.slice(2) : rawDigits;
+
+    const [exactSnap, tenDigitSnap] = await Promise.all([
+      db.collection('users').where('phone', '==', normalizedPhone).limit(1).get(),
+      db.collection('users').where('phone', '==', tenDigit).limit(1).get(),
+    ]);
+
+    const userDoc = !exactSnap.empty
+      ? exactSnap.docs[0]
+      : !tenDigitSnap.empty
+      ? tenDigitSnap.docs[0]
+      : null;
+
+    if (!userDoc) {
+      return res.status(404).json({ success: false, error: 'Phone not found' });
+    }
+
+    const userData = userDoc.data();
+
+    if (!userData.passwordHash) {
+      return res.status(400).json({
+        success: false,
+        error: 'No password set for this account',
+        code: 'NO_PASSWORD',
+      });
+    }
+
+    const isValid = await bcrypt.compare(password, userData.passwordHash);
+
+    if (!isValid) {
+      return res.status(401).json({ success: false, error: 'Incorrect password' });
+    }
+
+    return res.json({ success: true, message: 'Password verified' });
+  } catch (error) {
+    console.error('❌ Verify password error:', error);
+    return res.status(500).json({ success: false, error: 'Failed to verify password' });
   }
 });
 

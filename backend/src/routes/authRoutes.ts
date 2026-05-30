@@ -1,5 +1,7 @@
 import { Router, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
+import bcrypt from "bcrypt";
+import { FieldValue } from "firebase-admin/firestore";
 import {
   legacyLogin,
   firebaseLogin,
@@ -7,6 +9,7 @@ import {
   AuthError,
 } from "../services/authService.js";
 import { getAuth, getFirestoreDb } from "../services/firebaseAdmin.js";
+import { normalizePhoneNumber } from "../services/smsService.js";
 
 const router = Router();
 
@@ -201,6 +204,92 @@ router.post("/logout", (req: Request, res: Response) => {
     success: true,
     message: "Logged out successfully",
   });
+});
+
+/* ---------------- PHONE + PASSWORD LOGIN ---------------- */
+
+router.post("/phone-login", loginLimiter, async (req: Request, res: Response): Promise<any> => {
+  try {
+    const db = getFirestoreDb();
+    const auth = getAuth();
+    const { phone, password } = req.body;
+
+    if (!phone || !password) {
+      return res.status(400).json({ success: false, error: "Phone and password are required" });
+    }
+
+    const normalizedPhone = normalizePhoneNumber(phone);
+    if (!normalizedPhone) {
+      return res.status(400).json({ success: false, error: "Invalid phone number format" });
+    }
+
+    const rawDigits = normalizedPhone.replace(/\D/g, "");
+    const tenDigit = rawDigits.length === 12 ? rawDigits.slice(2) : rawDigits;
+
+    const [exactSnap, tenDigitSnap] = await Promise.all([
+      db.collection("users").where("phone", "==", normalizedPhone).limit(1).get(),
+      db.collection("users").where("phone", "==", tenDigit).limit(1).get(),
+    ]);
+
+    const userDoc = !exactSnap.empty
+      ? exactSnap.docs[0]
+      : !tenDigitSnap.empty
+      ? tenDigitSnap.docs[0]
+      : null;
+
+    if (!userDoc) {
+      return res.status(401).json({
+        success: false,
+        error: "Phone number not registered",
+        code: "PHONE_NOT_FOUND",
+      });
+    }
+
+    const userData = userDoc.data();
+
+    if (!userData.phoneVerified) {
+      return res.status(403).json({
+        success: false,
+        error: "Phone number not verified. Please verify via OTP first.",
+        code: "PHONE_NOT_VERIFIED",
+      });
+    }
+
+    if (!userData.passwordHash) {
+      return res.status(400).json({
+        success: false,
+        error: "No password set for this account. Please login via OTP.",
+        code: "NO_PASSWORD",
+      });
+    }
+
+    const isValid = await bcrypt.compare(password, userData.passwordHash);
+    if (!isValid) {
+      return res.status(401).json({
+        success: false,
+        error: "Incorrect password",
+        code: "WRONG_PASSWORD",
+      });
+    }
+
+    await db.collection("users").doc(userDoc.id).update({
+      lastLoginAt: FieldValue.serverTimestamp(),
+    });
+
+    const customToken = await auth.createCustomToken(userDoc.id, {
+      phone: normalizedPhone,
+    });
+
+    return res.json({
+      success: true,
+      message: "Login successful",
+      userId: userDoc.id,
+      customToken,
+    });
+  } catch (error) {
+    console.error("❌ Phone login error:", error);
+    return res.status(500).json({ success: false, error: "Login failed" });
+  }
 });
 
 /* ---------------- HEALTH ---------------- */

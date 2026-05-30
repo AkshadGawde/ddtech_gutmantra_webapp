@@ -32,6 +32,7 @@ interface AuthContextType {
   whatsappUser: WhatsAppUser | null;
   loading: boolean;
   isAdmin: boolean;
+  sessionExpired: boolean;
 
   login: () => Promise<void>;
 
@@ -51,6 +52,11 @@ interface AuthContextType {
     otp: string
   ) => Promise<{ isNewUser: boolean }>;
 
+  loginWithPhonePassword: (
+    phone: string,
+    password: string
+  ) => Promise<void>;
+
   logout: () => Promise<void>;
 
   refreshUserData: () => Promise<void>;
@@ -64,6 +70,7 @@ export const AuthProvider: React.FC<{
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userData, setUserData] = useState<FirestoreUserDocument | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   const loadWhatsappUser = (): WhatsAppUser | null => {
     try {
@@ -339,6 +346,39 @@ export const AuthProvider: React.FC<{
   };
 
   /* =========================================================
+      INACTIVITY SESSION TIMER (20 minutes)
+  ========================================================= */
+
+  useEffect(() => {
+    if (!user) return;
+
+    let lastActivity = Date.now();
+    const INACTIVITY_MS = 20 * 60 * 1000;
+
+    const resetTimer = () => {
+      lastActivity = Date.now();
+    };
+
+    const events = ["mousemove", "keydown", "click", "touchstart", "scroll"];
+    events.forEach((e) => window.addEventListener(e, resetTimer, { passive: true }));
+
+    const intervalId = setInterval(() => {
+      if (Date.now() - lastActivity > INACTIVITY_MS) {
+        signOut(auth).catch(console.error);
+        localStorage.removeItem("authToken");
+        localStorage.removeItem("userData");
+        setWhatsappUser(null);
+        setSessionExpired(true);
+      }
+    }, 60_000);
+
+    return () => {
+      events.forEach((e) => window.removeEventListener(e, resetTimer));
+      clearInterval(intervalId);
+    };
+  }, [user]);
+
+  /* =========================================================
       WHATSAPP LOGIN EVENT
   ========================================================= */
 
@@ -351,6 +391,31 @@ export const AuthProvider: React.FC<{
   }, []);
 
   /* =========================================================
+      PHONE + PASSWORD LOGIN
+  ========================================================= */
+
+  const loginWithPhonePassword = async (
+    phone: string,
+    password: string
+  ) => {
+    const API_BASE = import.meta.env.VITE_API_URL || "https://api.gutmantra.in";
+    const res = await fetch(`${API_BASE}/api/auth/phone-login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone, password }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw Object.assign(
+        new Error(data.error || "Login failed"),
+        { code: data.code, status: res.status }
+      );
+    }
+    setSessionExpired(false);
+    await signInWithCustomToken(auth, data.customToken);
+  };
+
+  /* =========================================================
       LOGOUT
   ========================================================= */
 
@@ -360,6 +425,7 @@ export const AuthProvider: React.FC<{
       localStorage.removeItem("authToken");
       localStorage.removeItem("userData");
       setWhatsappUser(null);
+      setSessionExpired(false);
     } catch (error) {
       console.error("Logout failed:", error);
     }
@@ -373,6 +439,7 @@ export const AuthProvider: React.FC<{
         whatsappUser,
         loading,
         isAdmin,
+        sessionExpired,
 
         login,
 
@@ -381,6 +448,8 @@ export const AuthProvider: React.FC<{
         signupWithEmail,
 
         loginWithPhone,
+
+        loginWithPhonePassword,
 
         logout,
 

@@ -10,9 +10,13 @@ import {
   Loader,
   Edit2,
   Save,
+  Lock,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";
+import { auth } from "@/lib/firebase";
 import { useState, useEffect, useMemo } from "react";
 import {
   formatAddress,
@@ -77,6 +81,15 @@ export default function UserProfile({ onNavigate }: UserProfileProps) {
   const [loading, setLoading] = useState(true);
 
   const [isEditing, setIsEditing] = useState(false);
+
+  // Change-password form state
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [pwData, setPwData] = useState({ newPassword: "", confirmPassword: "" });
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
+  const [pwLoading, setPwLoading] = useState(false);
+  const [pwError, setPwError] = useState("");
+  const [pwSuccess, setPwSuccess] = useState("");
 
   const [editData, setEditData] = useState({
   name: "",
@@ -294,6 +307,44 @@ export default function UserProfile({ onNavigate }: UserProfileProps) {
 
     onNavigate("home");
 
+  };
+
+  const API_BASE = import.meta.env.VITE_API_URL || "https://api.gutmantra.in";
+
+  const validatePassword = (pw: string): string | null => {
+    if (pw.length < 8) return "At least 8 characters required.";
+    if (!/[A-Z]/.test(pw)) return "Must include an uppercase letter.";
+    if (!/[a-z]/.test(pw)) return "Must include a lowercase letter.";
+    if (!/\d/.test(pw)) return "Must include a number.";
+    if (!/[!@#$%^&*()\-_=+\[\]{};':"\\|,.<>/?]/.test(pw)) return "Must include a special character.";
+    return null;
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPwError(""); setPwSuccess("");
+    const validationErr = validatePassword(pwData.newPassword);
+    if (validationErr) { setPwError(validationErr); return; }
+    if (pwData.newPassword !== pwData.confirmPassword) { setPwError("Passwords do not match."); return; }
+    const idToken = await auth.currentUser?.getIdToken();
+    if (!idToken) { setPwError("Authentication error. Please re-login."); return; }
+    setPwLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/set-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ password: pwData.newPassword, confirmPassword: pwData.confirmPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) { setPwError(data.error || "Failed to update password."); return; }
+      setPwSuccess("Password updated successfully!");
+      setPwData({ newPassword: "", confirmPassword: "" });
+      setTimeout(() => { setIsChangingPassword(false); setPwSuccess(""); }, 2000);
+    } catch {
+      setPwError("Network error. Please try again.");
+    } finally {
+      setPwLoading(false);
+    }
   };
 
   const getInitials = (name: string) => getUserInitials(name);
@@ -627,6 +678,136 @@ onChange={(e) =>
                       </div>
                     )}
                   </div>
+                )}
+              </motion.div>
+
+              {/* Change Password Card */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.35 }}
+                className="bg-white rounded-2xl border-2 border-primary/10 p-6 shadow-md"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-primary flex items-center gap-2">
+                    <Lock size={22} />
+                    Password
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setIsChangingPassword(!isChangingPassword);
+                      setPwError(""); setPwSuccess("");
+                      setPwData({ newPassword: "", confirmPassword: "" });
+                    }}
+                    className="flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-xl hover:bg-primary/20 transition-all font-bold uppercase text-xs tracking-wider"
+                  >
+                    {isChangingPassword ? "Cancel" : "Change Password"}
+                  </button>
+                </div>
+
+                {!isChangingPassword ? (
+                  <p className="text-sm text-gray-500">
+                    Use a strong password to keep your account secure.
+                  </p>
+                ) : (
+                  <form onSubmit={handleChangePassword} noValidate className="space-y-4">
+                    {pwError && (
+                      <div className="flex items-start gap-2 bg-red-50 text-red-700 text-sm rounded-xl px-4 py-3">
+                        <span className="shrink-0 mt-0.5">⚠</span> {pwError}
+                      </div>
+                    )}
+                    {pwSuccess && (
+                      <div className="flex items-start gap-2 bg-green-50 text-green-700 text-sm rounded-xl px-4 py-3">
+                        <span className="shrink-0 mt-0.5">✓</span> {pwSuccess}
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">
+                        New Password
+                      </label>
+                      <div className="flex rounded-xl border-2 border-gray-200 focus-within:border-primary overflow-hidden transition-colors">
+                        <span className="flex items-center px-3 bg-gray-50 border-r-2 border-gray-200">
+                          <Lock size={16} className="text-gray-400" />
+                        </span>
+                        <input
+                          type={showNewPw ? "text" : "password"}
+                          placeholder="Min 8 chars, upper, lower, number, symbol"
+                          value={pwData.newPassword}
+                          onChange={(e) => { setPwData({ ...pwData, newPassword: e.target.value }); setPwError(""); }}
+                          disabled={pwLoading}
+                          className="flex-1 px-4 py-3 text-sm outline-none bg-white disabled:opacity-50"
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPw(!showNewPw)}
+                          className="px-3 bg-gray-50 border-l-2 border-gray-200 text-gray-400"
+                        >
+                          {showNewPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">
+                        Confirm Password
+                      </label>
+                      <div className="flex rounded-xl border-2 border-gray-200 focus-within:border-primary overflow-hidden transition-colors">
+                        <span className="flex items-center px-3 bg-gray-50 border-r-2 border-gray-200">
+                          <Lock size={16} className="text-gray-400" />
+                        </span>
+                        <input
+                          type={showConfirmPw ? "text" : "password"}
+                          placeholder="Repeat your new password"
+                          value={pwData.confirmPassword}
+                          onChange={(e) => { setPwData({ ...pwData, confirmPassword: e.target.value }); setPwError(""); }}
+                          disabled={pwLoading}
+                          className="flex-1 px-4 py-3 text-sm outline-none bg-white disabled:opacity-50"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPw(!showConfirmPw)}
+                          className="px-3 bg-gray-50 border-l-2 border-gray-200 text-gray-400"
+                        >
+                          {showConfirmPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <ul className="text-[11px] text-gray-400 space-y-0.5 pl-1">
+                      {([
+                        [/.{8,}/, "At least 8 characters"],
+                        [/[A-Z]/, "One uppercase letter"],
+                        [/[a-z]/, "One lowercase letter"],
+                        [/\d/, "One number"],
+                        [/[!@#$%^&*()\-_=+\[\]{};':"\\|,.<>/?]/, "One special character"],
+                      ] as [RegExp, string][]).map(([re, label]) => (
+                        <li
+                          key={label}
+                          className={`flex items-center gap-1.5 ${re.test(pwData.newPassword) ? "text-green-600" : ""}`}
+                        >
+                          <span>{re.test(pwData.newPassword) ? "✓" : "·"}</span> {label}
+                        </li>
+                      ))}
+                    </ul>
+
+                    <button
+                      type="submit"
+                      disabled={
+                        pwLoading ||
+                        !pwData.newPassword ||
+                        !pwData.confirmPassword ||
+                        !!validatePassword(pwData.newPassword) ||
+                        pwData.newPassword !== pwData.confirmPassword
+                      }
+                      className="w-full py-3 bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2 text-sm uppercase tracking-widest"
+                    >
+                      {pwLoading ? (
+                        <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Saving…</>
+                      ) : "Update Password"}
+                    </button>
+                  </form>
                 )}
               </motion.div>
 
