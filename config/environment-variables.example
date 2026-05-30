@@ -1,0 +1,103 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# ENVIRONMENT VARIABLES — EC2 Wake-Up System
+# Copy this file and fill in real values before deploying.
+# NEVER commit the file with real credentials.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+# ── Lambda Functions (all 5 share these) ──────────────────────────────────────
+
+# Firebase service account (same credentials as EC2 backend)
+FIREBASE_PROJECT_ID=your-firebase-project-id
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@your-project.iam.gserviceaccount.com
+# Paste the private key exactly as shown in the service account JSON.
+# The Lambda runtime replaces \\n → \n automatically from env vars.
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvQIBAD...\n-----END PRIVATE KEY-----\n"
+
+# AWS — only needed by setPassword, phoneLogin, checkInactivity
+AWS_REGION=ap-south-1
+EC2_INSTANCE_ID=i-0123456789abcdef0
+
+# Zavu SMS — only needed by sendOTP
+ZAVUDEV_API_KEY=your_zavu_api_key
+
+# Inactivity threshold — only needed by checkInactivity
+INACTIVITY_THRESHOLD_MINUTES=15
+
+
+# ── EC2 Backend (.env) ────────────────────────────────────────────────────────
+
+FIREBASE_PROJECT_ID=your-firebase-project-id
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@your-project.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+
+ZAVUDEV_API_KEY=your_zavu_api_key
+JWT_SECRET=your_jwt_secret_at_least_32_chars
+
+PETPOOJA_APP_KEY=your_petpooja_app_key
+PETPOOJA_APP_SECRET=your_petpooja_app_secret
+PETPOOJA_ACCESS_TOKEN=your_petpooja_access_token
+PETPOOJA_REST_ID=your_petpooja_rest_id
+
+WC_CONSUMER_KEY=ck_xxxx
+WC_CONSUMER_SECRET=cs_xxxx
+
+PORT=5000
+
+
+# ── Frontend (.env) ───────────────────────────────────────────────────────────
+
+# Lambda API Gateway URL — auth endpoints (always available, even when EC2 sleeping)
+# Set this to your API Gateway base URL AFTER deploying Lambda functions.
+# Example: https://abc123xyz.execute-api.ap-south-1.amazonaws.com/prod
+VITE_LAMBDA_API_URL=https://YOUR_API_GATEWAY_ID.execute-api.ap-south-1.amazonaws.com/prod
+
+# EC2 backend URL — orders, payments, menu, cart
+VITE_API_URL=https://api.gutmantra.in
+
+# Firebase web config
+VITE_FIREBASE_API_KEY=AIzaSy...
+VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your-firebase-project-id
+VITE_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
+VITE_FIREBASE_APP_ID=1:123456789:web:abcdef
+
+VITE_ADMIN_EMAIL=admin@gutmantra.in
+
+# How long the frontend waits for EC2 to boot after auth (seconds)
+# Must match what Lambda functions return in wait_seconds
+VITE_EC2_BOOT_WAIT_SECONDS=30
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# QUICK DEPLOYMENT CHECKLIST
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# 1. Deploy Lambda functions:
+#    cd lambda/sendOTP && npm install && zip -r function.zip .
+#    aws lambda create-function --function-name sendOTP --runtime nodejs20.x \
+#      --handler index.handler --zip-file fileb://function.zip \
+#      --role arn:aws:iam::ACCOUNT_ID:role/LambdaSendOTPRole
+#    (repeat for verifyOTP, setPassword, phoneLogin, checkInactivity)
+#
+# 2. Set environment variables on each Lambda:
+#    aws lambda update-function-configuration --function-name phoneLogin \
+#      --environment "Variables={FIREBASE_PROJECT_ID=...,EC2_INSTANCE_ID=i-xxxx,...}"
+#
+# 3. Create API Gateway HTTP API and route to Lambda functions:
+#    POST /api/auth/send-otp      → sendOTP
+#    POST /api/auth/verify-otp    → verifyOTP
+#    POST /api/auth/set-password  → setPassword
+#    POST /api/auth/phone-login   → phoneLogin
+#
+# 4. Create EventBridge rules (see iac/eventbridge-rules.json):
+#    aws events put-rule --name ec2-inactivity-check-every-minute \
+#      --schedule-expression "rate(1 minute)" --state ENABLED
+#    aws events put-targets --rule ec2-inactivity-check-every-minute \
+#      --targets "Id=CheckInactivity,Arn=arn:aws:lambda:...:checkInactivity"
+#
+# 5. Set VITE_LAMBDA_API_URL in frontend .env to the API Gateway URL
+#
+# 6. Deploy frontend and backend
+# ═══════════════════════════════════════════════════════════════════════════════

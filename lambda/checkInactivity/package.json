@@ -1,0 +1,10 @@
+{
+  "name": "lambda-check-inactivity",
+  "version": "1.0.0",
+  "description": "Lambda function: CloudWatch scheduled check — stops EC2 after 15 min inactivity",
+  "main": "index.js",
+  "dependencies": {
+    "@aws-sdk/client-ec2": "^3.0.0",
+    "firebase-admin": "^12.7.0"
+  }
+}

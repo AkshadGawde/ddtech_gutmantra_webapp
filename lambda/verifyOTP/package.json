@@ -1,0 +1,9 @@
+{
+  "name": "lambda-verify-otp",
+  "version": "1.0.0",
+  "description": "Lambda function: verify OTP and find/create user (no EC2 wake)",
+  "main": "index.js",
+  "dependencies": {
+    "firebase-admin": "^12.7.0"
+  }
+}

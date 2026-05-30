@@ -1,0 +1,12 @@
+{
+  "name": "lambda-phone-login",
+  "version": "1.0.0",
+  "description": "Lambda function: phone + password login + EC2 WAKE trigger (wrong password = no wake)",
+  "main": "index.js",
+  "dependencies": {
+    "@aws-sdk/client-ec2": "^3.0.0",
+    "@aws-sdk/client-eventbridge": "^3.0.0",
+    "bcrypt": "^6.0.0",
+    "firebase-admin": "^12.7.0"
+  }
+}

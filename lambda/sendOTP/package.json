@@ -1,0 +1,10 @@
+{
+  "name": "lambda-send-otp",
+  "version": "1.0.0",
+  "description": "Lambda function: send OTP via Zavu SMS (no EC2 wake)",
+  "main": "index.js",
+  "dependencies": {
+    "@zavudev/sdk": "^0.43.0",
+    "firebase-admin": "^12.7.0"
+  }
+}

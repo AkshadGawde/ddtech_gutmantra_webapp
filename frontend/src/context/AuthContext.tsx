@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useCallback, useEffect, useState } from "react";
 
 import {
   onAuthStateChanged,
@@ -23,6 +23,8 @@ import {
   FirestoreUserDocument,
   normalizeFirestoreUserDoc,
 } from "../utils/userHelpers";
+
+import { useActivityTracker } from "../hooks/useActivityTracker";
 
 import { WhatsAppUser } from "../types/auth";
 
@@ -346,37 +348,18 @@ export const AuthProvider: React.FC<{
   };
 
   /* =========================================================
-      INACTIVITY SESSION TIMER (20 minutes)
+      INACTIVITY SESSION TIMER (15 minutes — matches EC2 auto-stop)
   ========================================================= */
 
-  useEffect(() => {
-    if (!user) return;
+  const handleInactive = useCallback(() => {
+    signOut(auth).catch(console.error);
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("userData");
+    setWhatsappUser(null);
+    setSessionExpired(true);
+  }, []);
 
-    let lastActivity = Date.now();
-    const INACTIVITY_MS = 20 * 60 * 1000;
-
-    const resetTimer = () => {
-      lastActivity = Date.now();
-    };
-
-    const events = ["mousemove", "keydown", "click", "touchstart", "scroll"];
-    events.forEach((e) => window.addEventListener(e, resetTimer, { passive: true }));
-
-    const intervalId = setInterval(() => {
-      if (Date.now() - lastActivity > INACTIVITY_MS) {
-        signOut(auth).catch(console.error);
-        localStorage.removeItem("authToken");
-        localStorage.removeItem("userData");
-        setWhatsappUser(null);
-        setSessionExpired(true);
-      }
-    }, 60_000);
-
-    return () => {
-      events.forEach((e) => window.removeEventListener(e, resetTimer));
-      clearInterval(intervalId);
-    };
-  }, [user]);
+  useActivityTracker({ enabled: !!user, onInactive: handleInactive });
 
   /* =========================================================
       WHATSAPP LOGIN EVENT

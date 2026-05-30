@@ -19,6 +19,7 @@ import billDeskWebhookRoutes from "./src/routes/billdesk-webhook.routes.js";
 import otpRoutes from "./src/routes/otpRoutes.js";
 import cartRoutes from "./src/routes/cartRoutes.js";
 import { initializeSmsClient } from "./src/services/smsService.js";
+import { trackActivity } from "./src/middleware/activityTracker.js";
 
 // ─── WooCommerce ──────────────────────────────────────────────────────────────
 
@@ -123,6 +124,7 @@ async function startServer() {
 
   app.use(express.json({ limit: "10mb" }));
   app.use(express.urlencoded({ extended: true }));
+  app.use(trackActivity);
 
   console.log("🔥 Initializing Firebase...");
   initializeFirebaseAdmin();

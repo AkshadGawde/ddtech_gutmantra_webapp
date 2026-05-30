@@ -4,7 +4,11 @@ import { useState, useEffect } from "react";
 import { signInWithCustomToken } from "firebase/auth";
 import { auth } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
+import EC2LoadingScreen from "./EC2LoadingScreen";
 
+// Lambda API Gateway for auth (always available, even when EC2 is sleeping)
+// EC2 API for everything else (orders, payments, etc.)
+const LAMBDA_BASE = import.meta.env.VITE_LAMBDA_API_URL || "https://api.gutmantra.in";
 const API_BASE = import.meta.env.VITE_API_URL || "https://api.gutmantra.in";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -70,6 +74,8 @@ export default function LoginModal({
   const [otpTimer, setOtpTimer] = useState(300);
   const [resendTimer, setResendTimer] = useState(0);
   const [attemptsLeft, setAttemptsLeft] = useState(3);
+  // EC2 boot screen: set to wait_seconds when Lambda triggers EC2 start
+  const [ec2BootSeconds, setEc2BootSeconds] = useState<number | null>(null);
 
   // Reset state when modal opens/closes
   useEffect(() => {
@@ -130,7 +136,7 @@ export default function LoginModal({
     }
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/auth/send-otp`, {
+      const res = await fetch(`${LAMBDA_BASE}/api/auth/send-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone }),
@@ -167,7 +173,7 @@ export default function LoginModal({
     }
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/auth/verify-otp`, {
+      const res = await fetch(`${LAMBDA_BASE}/api/auth/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone, otp }),
@@ -207,17 +213,19 @@ export default function LoginModal({
 
   // ── Shared: save password after verification ───────────────────────────────
 
-  const savePassword = async (pw: string, confirm: string, userName?: string): Promise<boolean> => {
+  // Returns wait_seconds (> 0 means EC2 is booting), or -1 on failure
+  const savePassword = async (pw: string, confirm: string, userName?: string): Promise<number> => {
     const pwError = validatePassword(pw);
-    if (pwError) { setError(pwError); return false; }
-    if (pw !== confirm) { setError("Passwords do not match."); return false; }
+    if (pwError) { setError(pwError); return -1; }
+    if (pw !== confirm) { setError("Passwords do not match."); return -1; }
 
     const idToken = await auth.currentUser?.getIdToken();
-    if (!idToken) { setError("Authentication error. Please try again."); return false; }
+    if (!idToken) { setError("Authentication error. Please try again."); return -1; }
 
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/auth/set-password`, {
+      // ⚡️ Lambda set-password: sets password + triggers EC2 start on signup
+      const res = await fetch(`${LAMBDA_BASE}/api/auth/set-password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -228,12 +236,12 @@ export default function LoginModal({
       const data = await res.json();
       if (!res.ok || !data.success) {
         setError(data.error || "Failed to save password.");
-        return false;
+        return -1;
       }
-      return true;
+      return data.wait_seconds ?? 0;
     } catch {
       setError("Network error. Please check your connection.");
-      return false;
+      return -1;
     } finally {
       setIsLoading(false);
     }
@@ -251,22 +259,33 @@ export default function LoginModal({
     if (!password) { setError("Password is required."); return; }
     setIsLoading(true);
     try {
-      await loginWithPhonePassword(phone, password);
-      setSuccess("Logged in successfully!");
-      setTimeout(onClose, 700);
-    } catch (err: any) {
-      const code = err?.code;
-      if (code === "PHONE_NOT_FOUND") {
-        setError("This phone number is not registered. Please sign up.");
-      } else if (code === "PHONE_NOT_VERIFIED") {
-        setError("Phone not verified. Please sign up again.");
-      } else if (code === "NO_PASSWORD") {
-        setError("No password set. Use 'Forgot Password' to set one.");
-      } else if (code === "WRONG_PASSWORD") {
-        setError("Incorrect password. Please try again.");
-      } else {
-        setError(err?.message || "Login failed. Please try again.");
+      // ⚡️ Lambda phone-login: only wakes EC2 on correct password
+      const res = await fetch(`${LAMBDA_BASE}/api/auth/phone-login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, password }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        const code = data.code;
+        if (code === "PHONE_NOT_FOUND") setError("This phone number is not registered. Please sign up.");
+        else if (code === "PHONE_NOT_VERIFIED") setError("Phone not verified. Please sign up again.");
+        else if (code === "NO_PASSWORD") setError("No password set. Use 'Forgot Password' to set one.");
+        else if (code === "WRONG_PASSWORD") setError("Incorrect password. Please try again.");
+        else setError(data.error || "Login failed. Please try again.");
+        return;
       }
+      // Sign into Firebase with the custom token
+      await signInWithCustomToken(auth, data.customToken);
+      if (data.wait_seconds > 0) {
+        // EC2 is booting — show countdown before closing modal
+        setEc2BootSeconds(data.wait_seconds);
+      } else {
+        setSuccess("Logged in successfully!");
+        setTimeout(onClose, 700);
+      }
+    } catch {
+      setError("Network error. Please check your connection.");
     } finally {
       setIsLoading(false);
     }
@@ -298,10 +317,15 @@ export default function LoginModal({
   const handleSignupSetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(""); setSuccess("");
-    const ok = await savePassword(password, confirmPassword, name.trim());
-    if (ok) {
-      setSuccess("Account created! Welcome to GutMantra!");
-      setTimeout(onClose, 900);
+    const waitSeconds = await savePassword(password, confirmPassword, name.trim());
+    if (waitSeconds >= 0) {
+      if (waitSeconds > 0) {
+        // EC2 is booting — show countdown screen
+        setEc2BootSeconds(waitSeconds);
+      } else {
+        setSuccess("Account created! Welcome to GutMantra!");
+        setTimeout(onClose, 900);
+      }
     }
   };
 
@@ -330,10 +354,14 @@ export default function LoginModal({
   const handleForgotResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(""); setSuccess("");
-    const ok = await savePassword(password, confirmPassword);
-    if (ok) {
-      setSuccess("Password reset successfully!");
-      setTimeout(onClose, 900);
+    const waitSeconds = await savePassword(password, confirmPassword);
+    if (waitSeconds >= 0) {
+      if (waitSeconds > 0) {
+        setEc2BootSeconds(waitSeconds);
+      } else {
+        setSuccess("Password reset successfully!");
+        setTimeout(onClose, 900);
+      }
     }
   };
 
@@ -382,6 +410,19 @@ export default function LoginModal({
   };
 
   const isOtpMode = mode === "signup-otp" || mode === "forgot-otp";
+
+  // EC2 boot screen — shown after successful auth when EC2 is starting
+  if (ec2BootSeconds !== null) {
+    return (
+      <EC2LoadingScreen
+        seconds={ec2BootSeconds}
+        onComplete={() => {
+          setEc2BootSeconds(null);
+          onClose();
+        }}
+      />
+    );
+  }
 
   return (
     <AnimatePresence>

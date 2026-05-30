@@ -1,0 +1,72 @@
+{
+  "_comment": "Deploy these EventBridge rules via AWS CLI or CloudFormation. Replace EC2_INSTANCE_ID and ACCOUNT_ID with real values.",
+
+  "rules": [
+    {
+      "Name": "signup-success-triggers-ec2-start",
+      "Description": "Start EC2 when a user completes signup (Lambda setPassword publishes this event)",
+      "EventPattern": {
+        "source": ["lambda.auth"],
+        "detail-type": ["signup-success"]
+      },
+      "State": "ENABLED",
+      "Targets": [
+        {
+          "Id": "StartEC2OnSignup",
+          "Arn": "arn:aws:ec2:REGION:ACCOUNT_ID:instance/EC2_INSTANCE_ID",
+          "RoleArn": "arn:aws:iam::ACCOUNT_ID:role/EventBridgeEC2StartRole"
+        }
+      ]
+    },
+    {
+      "Name": "login-success-triggers-ec2-start",
+      "Description": "Start EC2 when a user logs in with correct password (Lambda phoneLogin publishes this event)",
+      "EventPattern": {
+        "source": ["lambda.auth"],
+        "detail-type": ["login-success"]
+      },
+      "State": "ENABLED",
+      "Targets": [
+        {
+          "Id": "StartEC2OnLogin",
+          "Arn": "arn:aws:ec2:REGION:ACCOUNT_ID:instance/EC2_INSTANCE_ID",
+          "RoleArn": "arn:aws:iam::ACCOUNT_ID:role/EventBridgeEC2StartRole"
+        }
+      ]
+    },
+    {
+      "Name": "ec2-auto-sleep-daily-backup",
+      "Description": "Backup: stop EC2 daily at midnight UTC (6:30 AM IST) in case inactivity check misses",
+      "ScheduleExpression": "cron(0 0 * * ? *)",
+      "State": "ENABLED",
+      "Targets": [
+        {
+          "Id": "StopEC2Daily",
+          "Arn": "arn:aws:ec2:REGION:ACCOUNT_ID:instance/EC2_INSTANCE_ID",
+          "RoleArn": "arn:aws:iam::ACCOUNT_ID:role/EventBridgeEC2StopRole"
+        }
+      ]
+    },
+    {
+      "Name": "ec2-inactivity-check-every-minute",
+      "Description": "Trigger checkInactivity Lambda every 1 minute — Lambda reads Firestore and stops EC2 if idle for 15+ min",
+      "ScheduleExpression": "rate(1 minute)",
+      "State": "ENABLED",
+      "Targets": [
+        {
+          "Id": "CheckInactivityLambda",
+          "Arn": "arn:aws:lambda:REGION:ACCOUNT_ID:function:checkInactivity"
+        }
+      ]
+    }
+  ],
+
+  "deploy_commands": {
+    "_comment": "Run these commands to create the rules (replace all PLACEHOLDERS first)",
+    "rule_1": "aws events put-rule --name signup-success-triggers-ec2-start --event-pattern '{\"source\":[\"lambda.auth\"],\"detail-type\":[\"signup-success\"]}' --state ENABLED",
+    "rule_2": "aws events put-rule --name login-success-triggers-ec2-start --event-pattern '{\"source\":[\"lambda.auth\"],\"detail-type\":[\"login-success\"]}' --state ENABLED",
+    "rule_3": "aws events put-rule --name ec2-auto-sleep-daily-backup --schedule-expression 'cron(0 0 * * ? *)' --state ENABLED",
+    "rule_4": "aws events put-rule --name ec2-inactivity-check-every-minute --schedule-expression 'rate(1 minute)' --state ENABLED",
+    "grant_lambda": "aws lambda add-permission --function-name checkInactivity --statement-id EventBridgeTrigger --action lambda:InvokeFunction --principal events.amazonaws.com --source-arn arn:aws:events:REGION:ACCOUNT_ID:rule/ec2-inactivity-check-every-minute"
+  }
+}

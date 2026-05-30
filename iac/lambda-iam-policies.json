@@ -1,0 +1,114 @@
+{
+  "_comment": "IAM policies required for each Lambda function. Attach to Lambda execution roles.",
+
+  "policies": {
+    "sendOTP": {
+      "PolicyName": "LambdaSendOTPPolicy",
+      "Description": "sendOTP Lambda only needs Firestore (via Firebase Admin) — no AWS resource access needed",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
+          "Resource": "arn:aws:logs:*:*:*"
+        }
+      ]
+    },
+
+    "verifyOTP": {
+      "PolicyName": "LambdaVerifyOTPPolicy",
+      "Description": "verifyOTP Lambda — Firestore only, no EC2 access",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
+          "Resource": "arn:aws:logs:*:*:*"
+        }
+      ]
+    },
+
+    "setPassword": {
+      "PolicyName": "LambdaSetPasswordPolicy",
+      "Description": "setPassword Lambda — needs EC2 start + EventBridge publish",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
+          "Resource": "arn:aws:logs:*:*:*"
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "ec2:StartInstances",
+            "ec2:DescribeInstances",
+            "ec2:DescribeInstanceStatus"
+          ],
+          "Resource": "arn:aws:ec2:REGION:ACCOUNT_ID:instance/EC2_INSTANCE_ID"
+        },
+        {
+          "Effect": "Allow",
+          "Action": "events:PutEvents",
+          "Resource": "arn:aws:events:REGION:ACCOUNT_ID:event-bus/default"
+        }
+      ]
+    },
+
+    "phoneLogin": {
+      "PolicyName": "LambdaPhoneLoginPolicy",
+      "Description": "phoneLogin Lambda — needs EC2 start + EventBridge publish",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
+          "Resource": "arn:aws:logs:*:*:*"
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "ec2:StartInstances",
+            "ec2:DescribeInstances",
+            "ec2:DescribeInstanceStatus"
+          ],
+          "Resource": "arn:aws:ec2:REGION:ACCOUNT_ID:instance/EC2_INSTANCE_ID"
+        },
+        {
+          "Effect": "Allow",
+          "Action": "events:PutEvents",
+          "Resource": "arn:aws:events:REGION:ACCOUNT_ID:event-bus/default"
+        }
+      ]
+    },
+
+    "checkInactivity": {
+      "PolicyName": "LambdaCheckInactivityPolicy",
+      "Description": "checkInactivity Lambda — needs EC2 stop + describe",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
+          "Resource": "arn:aws:logs:*:*:*"
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "ec2:StopInstances",
+            "ec2:DescribeInstances",
+            "ec2:DescribeInstanceStatus"
+          ],
+          "Resource": "arn:aws:ec2:REGION:ACCOUNT_ID:instance/EC2_INSTANCE_ID"
+        }
+      ]
+    }
+  },
+
+  "trust_policy": {
+    "_comment": "All Lambda functions use this trust policy for their execution role",
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Principal": { "Service": "lambda.amazonaws.com" },
+        "Action": "sts:AssumeRole"
+      }
+    ]
+  }
+}
