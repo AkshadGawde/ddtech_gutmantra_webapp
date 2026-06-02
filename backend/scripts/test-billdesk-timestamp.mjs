@@ -5,8 +5,10 @@ const MERCHANT_ID = 'KANAKV2';
 const MERCHANT_KEY = 'to8pJnluXU43FPzhC2P2YLlbmylW4NEm';
 const BASE_URL = 'https://uat1.billdesk.com/u2';
 
-function generateSignature(payload) {
-  return crypto.createHmac('sha256', MERCHANT_KEY).update(JSON.stringify(payload)).digest('hex');
+function generateSignature(payload, traceId, timestamp) {
+  const bodyHash = crypto.createHash('sha256').update(JSON.stringify(payload)).digest('hex');
+  const message = `${traceId}|${timestamp}|${bodyHash}`;
+  return crypto.createHmac('sha256', MERCHANT_KEY).update(message).digest('base64');
 }
 
 // BillDesk requires YYYYMMDDHHmmss — ISO 8601 triggers error GNIDE0001
@@ -33,10 +35,10 @@ async function probe(label, overrideHeaders = {}, overridePayload = {}) {
     ...overridePayload,
   };
 
-  const sig = generateSignature(payload);
+  const sig = generateSignature(payload, traceId, timestamp);
 
   const headers = {
-    'Content-Type': 'application/json',
+    'Content-Type': 'application/jose',
     Accept: 'application/jose',
     'BD-Traceid': traceId,
     'BD-Timestamp': timestamp,
@@ -81,7 +83,7 @@ async function main() {
   try {
     console.log('\n--- [Empty payload] ---');
     const r = await axios.post(`${BASE_URL}/payments/ve1_2/orders/create`, {}, {
-      headers: { 'Content-Type': 'application/json', Accept: 'application/jose', 'BD-Traceid': traceId2, 'BD-Timestamp': ts2, 'BD-Signature': 'invalid' },
+      headers: { 'Content-Type': 'application/jose', Accept: 'application/jose', 'BD-Traceid': traceId2, 'BD-Timestamp': ts2, 'BD-Signature': 'invalid' },
       timeout: 10000,
     });
     console.log('Response:', JSON.stringify(r.data).substring(0, 300));

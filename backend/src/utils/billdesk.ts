@@ -20,15 +20,20 @@ const ENV = process.env.NODE_ENV === 'production' ? 'PRODUCTION' : 'UAT';
 const CONFIG = BILLDESK_CONFIG[ENV as keyof typeof BILLDESK_CONFIG];
 
 /**
- * Generate HMAC-SHA256 signature for BillDesk API requests
+ * Generate BD-Signature for BillDesk API requests.
+ * Formula: Base64(HMAC-SHA256(merchantKey, traceid|timestamp|SHA256hex(body)))
+ * Signing the traceid+timestamp prevents replay attacks; BillDesk rejects plain-body HMAC (GNAUE0003).
  */
-export function generateBillDeskSignature(payload: any, merchantKey: string): string {
-  const payloadString = JSON.stringify(payload);
-  const signature = crypto
-    .createHmac('sha256', merchantKey)
-    .update(payloadString)
-    .digest('hex');
-  return signature;
+export function generateBillDeskSignature(
+  payload: any,
+  merchantKey: string,
+  traceId: string,
+  timestamp: string
+): string {
+  const body = JSON.stringify(payload);
+  const bodyHash = crypto.createHash('sha256').update(body).digest('hex');
+  const message = `${traceId}|${timestamp}|${bodyHash}`;
+  return crypto.createHmac('sha256', merchantKey).update(message).digest('base64');
 }
 
 /**
@@ -89,7 +94,7 @@ export async function createOrder(orderData: {
     },
   };
 
-  const signature = generateBillDeskSignature(payload, CONFIG.MERCHANT_KEY);
+  const signature = generateBillDeskSignature(payload, CONFIG.MERCHANT_KEY, traceId, timestamp);
 
   // ═══════════════════════════════════════════════════════════════════
   // DETAILED LOGGING - EXACT PAYLOAD BEING SENT
@@ -231,7 +236,7 @@ export async function createTransaction(transactionData: {
     }),
   };
 
-  const signature = generateBillDeskSignature(payload, CONFIG.MERCHANT_KEY);
+  const signature = generateBillDeskSignature(payload, CONFIG.MERCHANT_KEY, traceId, timestamp);
 
   try {
     const response = await axios.post(
@@ -308,7 +313,7 @@ export async function updateTransaction(transactionData: {
     },
   };
 
-  const signature = generateBillDeskSignature(payload, CONFIG.MERCHANT_KEY);
+  const signature = generateBillDeskSignature(payload, CONFIG.MERCHANT_KEY, traceId, timestamp);
 
   try {
     const response = await axios.post(
@@ -366,7 +371,7 @@ export async function retrieveTransaction(queryParams: {
     ...(queryParams.refund_details && { refund_details: queryParams.refund_details }),
   };
 
-  const signature = generateBillDeskSignature(payload, CONFIG.MERCHANT_KEY);
+  const signature = generateBillDeskSignature(payload, CONFIG.MERCHANT_KEY, traceId, timestamp);
 
   try {
     const response = await axios.post(
