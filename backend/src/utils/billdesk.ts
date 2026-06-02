@@ -39,14 +39,12 @@ export function generateTraceId(): string {
 }
 
 /**
- * Get current timestamp in BillDesk format
- * Format: YYYY-MM-DDThh:mm:ss+05:30 (IST timezone, colon in offset)
+ * Get current timestamp in BillDesk required format: YYYYMMDDHHmmss
+ * BillDesk rejects ISO 8601 format (error GNIDE0001 "Invalid timestamp header")
  */
-export function getBillDeskTimestamp(): string {
+export function getFormattedTimestamp(): string {
   const now = new Date();
-
-  // BillDesk expects timestamp in IST timezone (UTC+5:30) with offset
-  // Convert UTC to IST by adding 5 hours 30 minutes
+  // Use IST (UTC+5:30) to match BillDesk's expected timezone
   const istTime = new Date(now.getTime() + (5.5 * 60 * 60 * 1000));
 
   const year = istTime.getUTCFullYear();
@@ -56,8 +54,9 @@ export function getBillDeskTimestamp(): string {
   const minutes = String(istTime.getUTCMinutes()).padStart(2, '0');
   const seconds = String(istTime.getUTCSeconds()).padStart(2, '0');
 
-  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}+05:30`;
+  return `${year}${month}${day}${hours}${minutes}${seconds}`;
 }
+
 
 /**
  * Create Order API Call
@@ -74,7 +73,7 @@ export async function createOrder(orderData: {
   orderDate?: string;
 }) {
   const traceId = generateTraceId();
-  const timestamp = getBillDeskTimestamp();
+  const timestamp = getFormattedTimestamp();
 
   const payload = {
     mercid: CONFIG.MERCHANT_ID,
@@ -105,11 +104,11 @@ export async function createOrder(orderData: {
   
   console.log('\n⏰ TIMESTAMP DETAILS:');
   console.log('  Value:', timestamp);
-  console.log('  Format: YYYY-MM-DDThh:mm:ss+05:30');
+  console.log('  Format: YYYYMMDDHHmmss');
   console.log('  Length:', timestamp.length);
-  
+
   console.log('\n📋 REQUEST HEADERS:');
-  console.log('  Content-Type: application/json');
+  console.log('  Content-Type: application/jose');
   console.log('  Accept: application/jose');
   console.log('  BD-Traceid:', traceId);
   console.log('  BD-Timestamp:', timestamp);
@@ -129,7 +128,7 @@ export async function createOrder(orderData: {
       payload,
       {
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/jose',
           Accept: 'application/jose',
           'BD-Traceid': traceId,
           'BD-Timestamp': timestamp,
@@ -191,7 +190,7 @@ export async function createTransaction(transactionData: {
   coft_consent?: boolean;
 }) {
   const traceId = generateTraceId();
-  const timestamp = getBillDeskTimestamp();
+  const timestamp = getFormattedTimestamp();
 
   const payload = {
     mercid: CONFIG.MERCHANT_ID,
@@ -240,7 +239,7 @@ export async function createTransaction(transactionData: {
       payload,
       {
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/jose',
           Accept: 'application/jose',
           'BD-Traceid': traceId,
           'BD-Timestamp': timestamp,
@@ -287,7 +286,7 @@ export async function updateTransaction(transactionData: {
   };
 }) {
   const traceId = generateTraceId();
-  const timestamp = getBillDeskTimestamp();
+  const timestamp = getFormattedTimestamp();
 
   const payload = {
     mercid: CONFIG.MERCHANT_ID,
@@ -317,7 +316,7 @@ export async function updateTransaction(transactionData: {
       payload,
       {
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/jose',
           Accept: 'application/jose',
           'BD-Traceid': traceId,
           'BD-Timestamp': timestamp,
@@ -358,7 +357,7 @@ export async function retrieveTransaction(queryParams: {
   refund_details?: boolean;
 }) {
   const traceId = generateTraceId();
-  const timestamp = getBillDeskTimestamp();
+  const timestamp = getFormattedTimestamp();
 
   const payload = {
     mercid: queryParams.mercid || CONFIG.MERCHANT_ID,
@@ -375,7 +374,7 @@ export async function retrieveTransaction(queryParams: {
       payload,
       {
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/jose',
           Accept: 'application/jose',
           'BD-Traceid': traceId,
           'BD-Timestamp': timestamp,

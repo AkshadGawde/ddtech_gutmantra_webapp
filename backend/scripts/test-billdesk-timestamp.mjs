@@ -9,10 +9,12 @@ function generateSignature(payload) {
   return crypto.createHmac('sha256', MERCHANT_KEY).update(JSON.stringify(payload)).digest('hex');
 }
 
+// BillDesk requires YYYYMMDDHHmmss — ISO 8601 triggers error GNIDE0001
 function nowTimestamp() {
   const now = new Date();
-  const istMs = now.getTime() + (5 * 60 + 30) * 60 * 1000;
-  return new Date(istMs).toISOString().replace(/\.\d{3}Z$/, '+05:30');
+  const ist = new Date(now.getTime() + (5 * 60 + 30) * 60 * 1000);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${ist.getUTCFullYear()}${pad(ist.getUTCMonth() + 1)}${pad(ist.getUTCDate())}${pad(ist.getUTCHours())}${pad(ist.getUTCMinutes())}${pad(ist.getUTCSeconds())}`;
 }
 
 async function probe(label, overrideHeaders = {}, overridePayload = {}) {

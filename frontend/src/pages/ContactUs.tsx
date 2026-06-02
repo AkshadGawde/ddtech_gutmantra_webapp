@@ -121,10 +121,10 @@ export default function ContactUs() {
               </h3>
               <div className="space-y-2 text-gray-700">
                 <p>
-                  <span className="font-semibold">Monday - Saturday:</span> 9:00 AM - 6:00 PM
+                  <span className="font-semibold">Monday - Saturday:</span> 9:30 AM - 9:30 PM
                 </p>
                 <p>
-                  <span className="font-semibold">Sunday:</span> Closed
+                  <span className="font-semibold">Thursday:</span> Closed
                 </p>
               </div>
             </motion.div>
