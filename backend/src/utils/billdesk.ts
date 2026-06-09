@@ -1,412 +1,387 @@
 import crypto from 'crypto';
 import axios from 'axios';
+import { CompactEncrypt, CompactSign, compactDecrypt, compactVerify } from 'jose';
 
-// BillDesk Configuration
-const BILLDESK_CONFIG = {
-  PRODUCTION: {
-    BASE_URL: 'https://api.billdesk.com',
-    MERCHANT_ID: process.env.BILLDESK_MERCHANT_ID || 'KANAKV2',
-    MERCHANT_KEY: process.env.BILLDESK_MERCHANT_KEY || 'to8pJnluXU43FPzhC2P2YLlbmylW4NEm',
-  },
-  UAT: {
-    BASE_URL: 'https://uat1.billdesk.com/u2',
-    MERCHANT_ID: process.env.BILLDESK_MERCHANT_ID || 'KANAKV2',
-    MERCHANT_KEY: process.env.BILLDESK_MERCHANT_KEY || 'to8pJnluXU43FPzhC2P2YLlbmylW4NEm',
-  },
-};
+// ─── Config ───────────────────────────────────────────────────────────────────
 
-// Use production or UAT based on environment
-const ENV = process.env.NODE_ENV === 'production' ? 'PRODUCTION' : 'UAT';
-const CONFIG = BILLDESK_CONFIG[ENV as keyof typeof BILLDESK_CONFIG];
+const MERCHANT_ID    = process.env.BILLDESK_MERCHANT_ID      || '';
+const CLIENT_ID      = process.env.BILLDESK_CLIENT_ID        || '';
+const ENC_KEY        = process.env.BILLDESK_ENCRYPTION_KEY   || '';
+const ENC_KEY_ID     = process.env.BILLDESK_ENCRYPTION_KEY_ID || '';
+const SIGN_KEY       = process.env.BILLDESK_SIGNING_KEY      || '';
+const SIGN_KEY_ID    = process.env.BILLDESK_SIGNING_KEY_ID   || '';
+const BASE_URL       = process.env.BILLDESK_BASE_URL         || 'https://uat1.billdesk.com/u2';
 
-/**
- * Generate BD-Signature for BillDesk API requests.
- * Formula: Base64(HMAC-SHA256(merchantKey, traceid|timestamp|SHA256hex(body)))
- * Signing the traceid+timestamp prevents replay attacks; BillDesk rejects plain-body HMAC (GNAUE0003).
- */
-export function generateBillDeskSignature(
-  payload: any,
-  merchantKey: string,
-  traceId: string,
-  timestamp: string
-): string {
-  const body = JSON.stringify(payload);
-  const bodyHash = crypto.createHash('sha256').update(body).digest('hex');
-  const message = `${traceId}|${timestamp}|${bodyHash}`;
-  return crypto.createHmac('sha256', merchantKey).update(message).digest('base64');
+const REQUIRED = [
+  ['BILLDESK_MERCHANT_ID',       MERCHANT_ID],
+  ['BILLDESK_CLIENT_ID',         CLIENT_ID],
+  ['BILLDESK_ENCRYPTION_KEY',    ENC_KEY],
+  ['BILLDESK_ENCRYPTION_KEY_ID', ENC_KEY_ID],
+  ['BILLDESK_SIGNING_KEY',       SIGN_KEY],
+  ['BILLDESK_SIGNING_KEY_ID',    SIGN_KEY_ID],
+] as const;
+
+const missing = REQUIRED.filter(([, v]) => !v).map(([k]) => k);
+if (missing.length) {
+  console.warn('⚠️  BillDesk: missing env vars:', missing.join(', '));
 }
 
-/**
- * Generate unique BD-Traceid for request idempotency
- */
+// ─── Keys (raw UTF-8 bytes — mirrors Java's String.getBytes()) ────────────────
+
+// jose accepts Uint8Array directly for symmetric algorithms (dir, HS256)
+const encryptionKey = (): Uint8Array => new TextEncoder().encode(ENC_KEY);
+const signingKey    = (): Uint8Array => new TextEncoder().encode(SIGN_KEY);
+
+// ─── Utilities ────────────────────────────────────────────────────────────────
+
 export function generateTraceId(): string {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+  // Alphanumeric only, max 35 chars — BillDesk rejects same traceid within 24h
+  const ts   = Date.now().toString();                          // 13 digits
+  const rand = crypto.randomBytes(8).toString('hex').toUpperCase(); // 16 chars
+  return `${ts}${rand}`.slice(0, 35);
 }
 
-/**
- * Get current timestamp in BillDesk required format: YYYYMMDDHHmmss
- * BillDesk rejects ISO 8601 format (error GNIDE0001 "Invalid timestamp header")
- */
 export function getFormattedTimestamp(): string {
-  const now = new Date();
-  // Use IST (UTC+5:30) to match BillDesk's expected timezone
-  const istTime = new Date(now.getTime() + (5.5 * 60 * 60 * 1000));
-
-  const year = istTime.getUTCFullYear();
-  const month = String(istTime.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(istTime.getUTCDate()).padStart(2, '0');
-  const hours = String(istTime.getUTCHours()).padStart(2, '0');
-  const minutes = String(istTime.getUTCMinutes()).padStart(2, '0');
-  const seconds = String(istTime.getUTCSeconds()).padStart(2, '0');
-
-  return `${year}${month}${day}${hours}${minutes}${seconds}`;
+  // BD-Timestamp: YYYYMMDDHHmmss in IST
+  // Docs example: "20210113180403" = Jan 13 2021 18:04:03 IST
+  const ist = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+  const Y = ist.getUTCFullYear();
+  const M = String(ist.getUTCMonth() + 1).padStart(2, '0');
+  const D = String(ist.getUTCDate()).padStart(2, '0');
+  const h = String(ist.getUTCHours()).padStart(2, '0');
+  const m = String(ist.getUTCMinutes()).padStart(2, '0');
+  const s = String(ist.getUTCSeconds()).padStart(2, '0');
+  return `${Y}${M}${D}${h}${m}${s}`;
 }
 
+function getISTOrderDate(): string {
+  // order_date field: YYYY-MM-DDThh:mm:ss+05:30 (TZD format per API docs)
+  const ist = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+  return ist.toISOString().replace(/\.\d{3}Z$/, '+05:30');
+}
 
-/**
- * Create Order API Call
- * Returns: bdorderid, rdata, payment redirect link
- */
-export async function createOrder(orderData: {
-  orderId: string;
-  amount: string; // e.g., "299.28"
-  currency: string; // "356" for INR
-  itemCode: string;
-  redirectUrl: string;
-  buyerEmail?: string;
-  buyerPhone?: string;
-  orderDate?: string;
-}) {
-  const traceId = generateTraceId();
+// ─── JOSE: Encrypt → Sign ─────────────────────────────────────────────────────
+
+async function encryptPayload(jsonPayload: Record<string, unknown>): Promise<string> {
+  const plaintext = new TextEncoder().encode(JSON.stringify(jsonPayload));
+
+  console.log('\n🔐 [STEP 2] Encrypt  alg=dir  enc=A256GCM');
+  console.log('   kid:', ENC_KEY_ID, '  clientid:', CLIENT_ID);
+  console.log('   plaintext:', plaintext.length, 'bytes');
+
+  const jwe = await new CompactEncrypt(plaintext)
+    .setProtectedHeader({
+      alg:      'dir',
+      enc:      'A256GCM',
+      kid:      ENC_KEY_ID,
+      clientid: CLIENT_ID,
+    } as any)
+    .encrypt(encryptionKey());
+
+  console.log('   ✅ JWE:', jwe.length, 'chars |', jwe.slice(0, 50) + '…');
+  return jwe;
+}
+
+async function signPayload(jweToken: string): Promise<string> {
+  const bytes = new TextEncoder().encode(jweToken);
+
+  console.log('\n✍️  [STEP 3] Sign  alg=HS256');
+  console.log('   kid:', SIGN_KEY_ID, '  clientid:', CLIENT_ID);
+  console.log('   payload:', bytes.length, 'bytes');
+
+  const jws = await new CompactSign(bytes)
+    .setProtectedHeader({
+      alg:      'HS256',
+      kid:      SIGN_KEY_ID,
+      clientid: CLIENT_ID,
+    } as any)
+    .sign(signingKey());
+
+  console.log('   ✅ JWS:', jws.length, 'chars |', jws.slice(0, 50) + '…');
+  return jws;
+}
+
+// ─── JOSE: Verify → Decrypt ───────────────────────────────────────────────────
+
+async function decryptResponse(responseToken: string): Promise<Record<string, unknown>> {
+  console.log('\n🔓 Decrypting BillDesk response…');
+
+  const { payload: jweBytes } = await compactVerify(responseToken, signingKey());
+  console.log('   ✅ JWS verified');
+
+  const { plaintext } = await compactDecrypt(jweBytes, encryptionKey());
+  const json = JSON.parse(new TextDecoder().decode(plaintext));
+  console.log('   ✅ JWE decrypted  objectid:', json.objectid ?? '—');
+
+  return json;
+}
+
+// ─── Core: Build → Encrypt → Sign → POST → Decrypt ───────────────────────────
+
+async function josePost(
+  path: string,
+  payload: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const traceId   = generateTraceId();
   const timestamp = getFormattedTimestamp();
+  const url       = `${BASE_URL}${path}`;
 
-  const payload = {
-    mercid: CONFIG.MERCHANT_ID,
-    orderid: orderData.orderId,
-    amount: orderData.amount,
-    order_date: orderData.orderDate || new Date().toISOString().split('T')[0],
-    currency: orderData.currency || '356',
-    itemcode: orderData.itemCode,
-    ru: orderData.redirectUrl,
-    additional_info: {
-      email: orderData.buyerEmail,
-      mobile: orderData.buyerPhone,
-    },
-  };
-
-  const signature = generateBillDeskSignature(payload, CONFIG.MERCHANT_KEY, traceId, timestamp);
-
-  // ═══════════════════════════════════════════════════════════════════
-  // DETAILED LOGGING - EXACT PAYLOAD BEING SENT
-  // ═══════════════════════════════════════════════════════════════════
-  console.log('\n');
-  console.log('╔════════════════════════════════════════════════════════════════════╗');
-  console.log('║                    BILLDESK CREATE ORDER REQUEST                    ║');
-  console.log('╚════════════════════════════════════════════════════════════════════╝');
-  
-  console.log('\n📤 EXACT PAYLOAD (JSON):');
-  console.log(JSON.stringify(payload, null, 2));
-  
-  console.log('\n⏰ TIMESTAMP DETAILS:');
-  console.log('  Value:', timestamp);
-  console.log('  Format: YYYYMMDDHHmmss');
-  console.log('  Length:', timestamp.length);
-
-  console.log('\n📋 REQUEST HEADERS:');
-  console.log('  Content-Type: application/jose');
-  console.log('  Accept: application/jose');
+  console.log('\n╔══════════════════════════════════════════════════════════════╗');
+  console.log(`║  POST ${url}`);
+  console.log('╚══════════════════════════════════════════════════════════════╝');
   console.log('  BD-Traceid:', traceId);
   console.log('  BD-Timestamp:', timestamp);
-  console.log('  BD-Signature:', signature.substring(0, 32) + '...');
-  
-  console.log('\n🔗 REQUEST DETAILS:');
-  console.log('  URL:', `${CONFIG.BASE_URL}/payments/ve1_2/orders/create`);
-  console.log('  Method: POST');
-  console.log('  Environment:', ENV);
-  console.log('  Merchant ID:', CONFIG.MERCHANT_ID);
-  
-  console.log('\n════════════════════════════════════════════════════════════════════\n');
 
-  try {
-    const response = await axios.post(
-      `${CONFIG.BASE_URL}/payments/ve1_2/orders/create`,
-      payload,
-      {
-        headers: {
-          'Content-Type': 'application/jose',
-          Accept: 'application/jose',
-          'BD-Traceid': traceId,
-          'BD-Timestamp': timestamp,
-          'BD-Signature': signature,
-        },
-      }
-    );
+  // Step 1 — JSON
+  console.log('\n📋 [STEP 1] JSON payload:');
+  console.log(JSON.stringify(payload, null, 2));
 
-    return {
-      success: true,
-      bdorderid: response.data.bdorderid,
-      rdata: response.data.rdata,
-      payment_link: response.data.payment_link,
-      trace_id: traceId,
-      timestamp,
-    };
-  } catch (error: any) {
-    console.log('\n❌ BILLDESK ERROR RESPONSE:');
-    console.log(JSON.stringify(error.response?.data, null, 2));
-    console.log('════════════════════════════════════════════════════════════════════\n');
-    
-    console.error('BillDesk Create Order Error:', error.response?.data || error.message);
-    throw {
-      success: false,
-      error: error.response?.data?.error || error.message,
-      status: error.response?.status,
-    };
-  }
+  // Step 2 — Encrypt
+  const jwe = await encryptPayload(payload);
+
+  // Step 3 — Sign
+  const jws = await signPayload(jwe);
+
+  // Step 4 — Send
+  console.log('\n📤 [STEP 4] Sending');
+  console.log('  Content-Type: application/jose');
+  console.log('  Body preview:', jws.slice(0, 80) + '…');
+
+  const response = await axios.post(url, jws, {
+    headers: {
+      'Content-Type': 'application/jose',
+      'Accept':       'application/jose',
+      'BD-Traceid':   traceId,
+      'BD-Timestamp': timestamp,
+    },
+  });
+
+  console.log('\n📥 HTTP', response.status, '— decrypting…');
+
+  const data: Record<string, unknown> =
+    typeof response.data === 'string'
+      ? await decryptResponse(response.data)
+      : response.data;
+
+  console.log('  Decrypted:', JSON.stringify(data, null, 2));
+  return { ...data, _traceId: traceId, _timestamp: timestamp };
 }
 
-/**
- * Create Transaction API Call
- * Initiates payment charge with card or other payment method
- */
-export async function createTransaction(transactionData: {
-  bdorderid: string;
-  amount: string;
-  deviceInfo: {
-    init_channel: 'web' | 'mobile_app';
-    ip: string;
-    user_agent: string;
-    accept_header: string;
-    browser_language: string;
-    browser_javascript_enabled: boolean;
-    browser_tz?: string;
-    browser_color_depth?: string;
-    browser_java_enabled?: boolean;
-    browser_screen_height?: number;
-    browser_screen_width?: number;
-  };
-  paymentMethod: {
-    type: 'card' | 'emi' | 'nwt' | 'otp';
-    card_token?: string;
-    card_number?: string;
-    card_expiry?: string;
-    card_cvv?: string;
-  };
-  auth_type?: '3ds2' | 'y3ds' | 'otp'; // 3ds2 recommended
-  coft_consent?: boolean;
-}) {
-  const traceId = generateTraceId();
-  const timestamp = getFormattedTimestamp();
+// ─── Public API 1: Create Order ───────────────────────────────────────────────
 
-  const payload = {
-    mercid: CONFIG.MERCHANT_ID,
-    bdorderid: transactionData.bdorderid,
-    amount: transactionData.amount,
-    itemcode: 'TESTITEM',
-    auth_type: transactionData.auth_type || '3ds2',
+export interface CreateOrderInput {
+  orderId:          string;
+  amount:           string;  // two-decimal string e.g. "299.28"
+  redirectUrl:      string;
+  buyerEmail?:      string;
+  buyerPhone?:      string;
+  currency?:        string;  // default "356" (INR)
+  itemCode?:        string;  // default "DIRECT"
+  deviceIp?:        string;
+  deviceUserAgent?: string;
+}
+
+export async function createOrder(input: CreateOrderInput) {
+  const payload: Record<string, unknown> = {
+    mercid:     MERCHANT_ID,
+    orderid:    input.orderId,
+    amount:     input.amount,
+    order_date: getISTOrderDate(),
+    currency:   input.currency  || '356',
+    ru:         input.redirectUrl,
+    itemcode:   input.itemCode  || 'DIRECT',
+    additional_info: {
+      additional_info1: input.buyerEmail || 'NA',
+      additional_info2: input.buyerPhone || 'NA',
+    },
     device: {
-      init_channel: transactionData.deviceInfo.init_channel,
-      ip: transactionData.deviceInfo.ip,
-      user_agent: transactionData.deviceInfo.user_agent,
-      accept_header: transactionData.deviceInfo.accept_header,
-      browser_language: transactionData.deviceInfo.browser_language,
-      browser_javascript_enabled: transactionData.deviceInfo.browser_javascript_enabled,
-      browser_tz: transactionData.deviceInfo.browser_tz || 'UTC',
-      browser_color_depth: transactionData.deviceInfo.browser_color_depth || '32',
-      browser_java_enabled: transactionData.deviceInfo.browser_java_enabled || false,
-      browser_screen_height: transactionData.deviceInfo.browser_screen_height || 1080,
-      browser_screen_width: transactionData.deviceInfo.browser_screen_width || 1920,
+      init_channel:  'internet',
+      ip:            input.deviceIp        || '0.0.0.0',
+      user_agent:    input.deviceUserAgent || 'Mozilla/5.0',
+      accept_header: 'text/html',
     },
-    paymentdetail: {
-      paymentmethod: transactionData.paymentMethod.type,
-      ...(transactionData.paymentMethod.type === 'card' && {
-        card: {
-          cardnumber: transactionData.paymentMethod.card_number,
-          expirydate: transactionData.paymentMethod.card_expiry,
-          cvv: transactionData.paymentMethod.card_cvv,
-        },
-      }),
-      ...(transactionData.paymentMethod.type === 'nwt' && {
-        network_token: transactionData.paymentMethod.card_token,
-      }),
-    },
-    ...(transactionData.coft_consent && {
-      coft: {
-        coft_consent: 'Y',
-      },
-    }),
   };
 
-  const signature = generateBillDeskSignature(payload, CONFIG.MERCHANT_KEY, traceId, timestamp);
-
   try {
-    const response = await axios.post(
-      `${CONFIG.BASE_URL}/payments/ve1_2/transactions/create`,
-      payload,
-      {
-        headers: {
-          'Content-Type': 'application/jose',
-          Accept: 'application/jose',
-          'BD-Traceid': traceId,
-          'BD-Timestamp': timestamp,
-          'BD-Signature': signature,
-        },
-      }
-    );
+    const data = await josePost('/payments/ve1_2/orders/create', payload);
+
+    const links        = (data.links ?? []) as any[];
+    const redirectLink = links.find((l: any) => l.rel === 'redirect');
 
     return {
-      success: true,
-      transactionid: response.data.transactionid,
-      next_step: response.data.next_step, // "redirect", "capture_otp", "3ds2_challenge", "3ds2_frictionless"
-      auth_status: response.data.auth_status, // "0300" (successful), "0002" (pending), "0399" (failed)
-      redirect_url: response.data.redirect_url,
-      challenge_data: response.data.challenge_data, // For 3DS2 challenge
-      trace_id: traceId,
-      timestamp,
+      success:      true,
+      bdorderid:    data.bdorderid    as string,
+      orderid:      data.orderid      as string,
+      rdata:        redirectLink?.parameters?.rdata  as string | undefined,
+      payment_link: redirectLink?.href               as string | undefined,
+      mercid:       data.mercid       as string,
+      next_step:    data.next_step    as string,
+      trace_id:     data._traceId    as string,
+      timestamp:    data._timestamp  as string,
     };
   } catch (error: any) {
-    console.error('BillDesk Create Transaction Error:', error.response?.data || error.message);
-    throw {
-      success: false,
-      error: error.response?.data?.error || error.message,
-      status: error.response?.status,
-    };
+    const status = error.response?.status;
+    const body   = error.response?.data;
+    console.error('\n❌ createOrder failed  HTTP', status);
+    console.error('   Response:', JSON.stringify(body, null, 2));
+    throw { success: false, error: body?.error ?? error.message, status };
   }
 }
 
-/**
- * Update Transaction API Call
- * Authorizes transaction after customer completes authentication
- */
-export async function updateTransaction(transactionData: {
-  transactionid: string;
-  bdorderid: string;
-  responseParameters: {
-    flow_type: '3ds2' | 'otp' | 'rupay';
-    cres?: string; // For 3DS2 flow
-    otp?: string; // For OTP flow
-    AccuResponseCode?: string; // For RuPay
-    session?: string; // For RuPay
-    AccuGuid?: string; // For RuPay
-    AccuRequestId?: string; // For RuPay
-  };
-}) {
-  const traceId = generateTraceId();
-  const timestamp = getFormattedTimestamp();
+// ─── Public API 2: Retrieve Transaction ──────────────────────────────────────
 
-  const payload = {
-    mercid: CONFIG.MERCHANT_ID,
-    transactionid: transactionData.transactionid,
-    bdorderid: transactionData.bdorderid,
-    response_parameters: {
-      ...(transactionData.responseParameters.flow_type === '3ds2' && {
-        cres: transactionData.responseParameters.cres,
-      }),
-      ...(transactionData.responseParameters.flow_type === 'otp' && {
-        otp: transactionData.responseParameters.otp,
-      }),
-      ...(transactionData.responseParameters.flow_type === 'rupay' && {
-        AccuResponseCode: transactionData.responseParameters.AccuResponseCode,
-        session: transactionData.responseParameters.session,
-        AccuGuid: transactionData.responseParameters.AccuGuid,
-        AccuRequestId: transactionData.responseParameters.AccuRequestId,
-      }),
-    },
-  };
-
-  const signature = generateBillDeskSignature(payload, CONFIG.MERCHANT_KEY, traceId, timestamp);
-
-  try {
-    const response = await axios.post(
-      `${CONFIG.BASE_URL}/payments/ve1_2/transactions/update`,
-      payload,
-      {
-        headers: {
-          'Content-Type': 'application/jose',
-          Accept: 'application/jose',
-          'BD-Traceid': traceId,
-          'BD-Timestamp': timestamp,
-          'BD-Signature': signature,
-        },
-      }
-    );
-
-    return {
-      success: true,
-      transactionid: response.data.transactionid,
-      auth_status: response.data.auth_status, // "0300" (successful), "0002" (pending), "0399" (failed)
-      authcode: response.data.authcode,
-      bank_ref_no: response.data.bank_ref_no,
-      rrn: response.data.rrn,
-      mandate_setup_status: response.data.mandate_setup_status,
-      trace_id: traceId,
-      timestamp,
-    };
-  } catch (error: any) {
-    console.error('BillDesk Update Transaction Error:', error.response?.data || error.message);
-    throw {
-      success: false,
-      error: error.response?.data?.error || error.message,
-      status: error.response?.status,
-    };
-  }
-}
-
-/**
- * Retrieve Transaction Status (Official API)
- * Query existing transaction by transactionid or orderid
- */
-export async function retrieveTransaction(queryParams: {
-  transactionid?: string;
-  orderid?: string;
-  mercid?: string;
+export interface RetrieveTransactionInput {
+  orderid?:        string;
+  transactionid?:  string;
   refund_details?: boolean;
-}) {
-  const traceId = generateTraceId();
-  const timestamp = getFormattedTimestamp();
+}
 
-  const payload = {
-    mercid: queryParams.mercid || CONFIG.MERCHANT_ID,
-    ...(queryParams.transactionid && { transactionid: queryParams.transactionid }),
-    ...(queryParams.orderid && { orderid: queryParams.orderid }),
-    ...(queryParams.refund_details && { refund_details: queryParams.refund_details }),
+export async function retrieveTransaction(input: RetrieveTransactionInput) {
+  if (!input.orderid && !input.transactionid) {
+    throw { success: false, error: 'orderid or transactionid is required' };
+  }
+
+  const payload: Record<string, unknown> = {
+    mercid: MERCHANT_ID,
+    ...(input.orderid       && { orderid:       input.orderid }),
+    ...(input.transactionid && { transactionid: input.transactionid }),
+    ...(input.refund_details && { refund_details: input.refund_details }),
   };
 
-  const signature = generateBillDeskSignature(payload, CONFIG.MERCHANT_KEY, traceId, timestamp);
-
   try {
-    const response = await axios.post(
-      `${CONFIG.BASE_URL}/payments/ve1_2/transactions/retrieve`,
-      payload,
-      {
-        headers: {
-          'Content-Type': 'application/jose',
-          Accept: 'application/jose',
-          'BD-Traceid': traceId,
-          'BD-Timestamp': timestamp,
-          'BD-Signature': signature,
-        },
-      }
-    );
+    const data = await josePost('/payments/ve1_2/transactions/get', payload);
 
     return {
-      success: true,
-      transactionid: response.data.transactionid,
-      orderid: response.data.orderid,
-      auth_status: response.data.auth_status,
-      settlement_status: response.data.settlement_status,
-      authcode: response.data.authcode,
-      bank_ref_no: response.data.bank_ref_no,
-      rrn: response.data.rrn,
-      amount: response.data.amount,
-      trace_id: traceId,
-      timestamp,
+      success:           true,
+      orderid:           data.orderid           as string,
+      transactionid:     data.transactionid     as string,
+      auth_status:       data.auth_status        as string,
+      transaction_date:  data.transaction_date   as string,
+      amount:            data.amount             as string,
+      currency:          data.currency           as string,
+      payment_method:    data.payment_method_type as string,
+      transaction_error: data.transaction_error_desc as string,
+      bank_ref_no:       data.bank_ref_no        as string,
+      authcode:          data.authcode           as string,
+      mercid:            data.mercid             as string,
+      trace_id:          data._traceId           as string,
+      timestamp:         data._timestamp         as string,
     };
   } catch (error: any) {
-    console.error('BillDesk Retrieve Transaction Error:', error.response?.data || error.message);
-    throw {
-      success: false,
-      error: error.response?.data?.error || error.message,
-      status: error.response?.status,
+    const status = error.response?.status;
+    const body   = error.response?.data;
+    console.error('\n❌ retrieveTransaction failed  HTTP', status);
+    console.error('   Response:', JSON.stringify(body, null, 2));
+    throw { success: false, error: body?.error ?? error.message, status };
+  }
+}
+
+// ─── Public API 3: Create Refund ─────────────────────────────────────────────
+// POST /payments/ve1_2/refunds/create
+//
+// Required fields per docs:
+//   transactionid, orderid, mercid, transaction_date, txn_amount,
+//   refund_amount, currency, merc_refund_ref_no
+//
+// refund_status in response:
+//   "0799" — refund (original txn already settled)
+//   "0699" — cancellation (original txn not yet settled)
+
+export interface CreateRefundInput {
+  transactionid:      string; // BillDesk transaction ID
+  orderid:            string; // original merchant order ID
+  transaction_date:   string; // original txn date — YYYY-MM-DDThh:mm:ss+05:30
+  txn_amount:         string; // original transaction amount e.g. "299.00"
+  refund_amount:      string; // amount to refund e.g. "100.00"
+  merc_refund_ref_no: string; // unique per refund: alphanumeric + _ : - max 100 chars
+  currency?:          string; // default "356"
+}
+
+export async function createRefund(input: CreateRefundInput) {
+  const payload: Record<string, unknown> = {
+    mercid:             MERCHANT_ID,
+    transactionid:      input.transactionid,
+    orderid:            input.orderid,
+    transaction_date:   input.transaction_date,
+    txn_amount:         input.txn_amount,
+    refund_amount:      input.refund_amount,
+    currency:           input.currency ?? '356',
+    merc_refund_ref_no: input.merc_refund_ref_no,
+  };
+
+  try {
+    const data = await josePost('/payments/ve1_2/refunds/create', payload);
+
+    return {
+      success:            true,
+      refundid:           data.refundid           as string,
+      transactionid:      data.transactionid      as string,
+      orderid:            data.orderid            as string,
+      mercid:             data.mercid             as string,
+      txn_amount:         data.txn_amount         as string,
+      refund_amount:      data.refund_amount      as string,
+      currency:           data.currency           as string,
+      refund_date:        data.refund_date        as string,
+      transaction_date:   data.transaction_date   as string,
+      merc_refund_ref_no: data.merc_refund_ref_no as string,
+      refund_status:      data.refund_status      as '0799' | '0699',
+      trace_id:           data._traceId           as string,
+      timestamp:          data._timestamp         as string,
     };
+  } catch (error: any) {
+    const status = error.response?.status;
+    const body   = error.response?.data;
+    console.error('\n❌ createRefund failed  HTTP', status);
+    console.error('   Response:', JSON.stringify(body, null, 2));
+    throw { success: false, error: body?.error ?? error.message, status };
+  }
+}
+
+// ─── Public API 4: Retrieve Refund ───────────────────────────────────────────
+// POST /payments/ve1_2/refunds/get
+//
+// mercid is always sent; provide ONE of: refundid or merc_refund_ref_no
+
+export interface RetrieveRefundInput {
+  refundid?:           string; // BillDesk-generated refund ID
+  merc_refund_ref_no?: string; // your own refund reference number
+}
+
+export async function retrieveRefund(input: RetrieveRefundInput) {
+  if (!input.refundid && !input.merc_refund_ref_no) {
+    throw { success: false, error: 'refundid or merc_refund_ref_no is required' };
+  }
+
+  const payload: Record<string, unknown> = {
+    mercid: MERCHANT_ID,
+    ...(input.refundid           && { refundid:           input.refundid }),
+    ...(input.merc_refund_ref_no && { merc_refund_ref_no: input.merc_refund_ref_no }),
+  };
+
+  try {
+    const data = await josePost('/payments/ve1_2/refunds/get', payload);
+
+    return {
+      success:            true,
+      refundid:           data.refundid           as string,
+      transactionid:      data.transactionid      as string,
+      orderid:            data.orderid            as string,
+      mercid:             data.mercid             as string,
+      txn_amount:         data.txn_amount         as string,
+      refund_amount:      data.refund_amount      as string,
+      currency:           data.currency           as string,
+      refund_date:        data.refund_date        as string,
+      transaction_date:   data.transaction_date   as string,
+      merc_refund_ref_no: data.merc_refund_ref_no as string,
+      refund_status:      data.refund_status      as '0799' | '0699',
+      trace_id:           data._traceId           as string,
+      timestamp:          data._timestamp         as string,
+    };
+  } catch (error: any) {
+    const status = error.response?.status;
+    const body   = error.response?.data;
+    console.error('\n❌ retrieveRefund failed  HTTP', status);
+    console.error('   Response:', JSON.stringify(body, null, 2));
+    throw { success: false, error: body?.error ?? error.message, status };
   }
 }

@@ -1,10 +1,6 @@
 import express, { Request, Response } from 'express';
 import { getFirestoreDb } from '../services/firebaseAdmin.js';
-import {
-  createOrder,
-  createTransaction,
-  updateTransaction,
-} from '../utils/billdesk.js';
+import { createOrder } from '../utils/billdesk.js';
 
 const router = express.Router();
 
@@ -165,6 +161,8 @@ router.post('/create-order', async (req: Request, res: Response) => {
       redirectUrl: `${process.env.BILLDESK_RETURN_URL || 'https://api.gutmantra.in/api/billdesk/callback'}`,
       buyerEmail: buyerEmail || shippingAddress?.email,
       buyerPhone: String(buyerPhone || shippingAddress?.phone || '').replace(/\D/g, ''),
+      deviceIp: String(req.headers['x-forwarded-for'] || req.ip || '0.0.0.0').split(',')[0].trim(),
+      deviceUserAgent: req.get('user-agent') || 'Mozilla/5.0',
     });
 
     await getFirestoreDb().collection('orders').doc(orderid).set({
@@ -195,6 +193,7 @@ router.post('/create-order', async (req: Request, res: Response) => {
     return res.json({
       success: true,
       orderid,
+      mercid: process.env.BILLDESK_MERCHANT_ID || 'KANAKV2',
       bdorderid: billDeskResponse.bdorderid,
       amount,
       currency: '356',
@@ -204,124 +203,6 @@ router.post('/create-order', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('[BillDesk] Create Order error:', error);
     return res.status(500).json({ success: false, error: error.message || 'Failed to create order' });
-  }
-});
-
-// ─── POST /create-transaction ──────────────────────────────────────────────
-
-router.post('/create-transaction', async (req: Request, res: Response) => {
-  try {
-    const { orderid, bdorderid, amount, cardNumber, cardExpiry, cardCvv, paymentmethod, deviceInfo } = req.body;
-
-    if (!orderid || !bdorderid || !amount) {
-      return res.status(400).json({ success: false, error: 'orderid, bdorderid, and amount are required' });
-    }
-
-    const orderDoc = await getFirestoreDb().collection('orders').doc(orderid).get();
-    if (!orderDoc.exists) return res.status(404).json({ success: false, error: 'Order not found' });
-    if (orderDoc.data()?.bdorderid !== bdorderid) return res.status(400).json({ success: false, error: 'Order/BillDesk ID mismatch' });
-
-    const billDeskResponse: any = await createTransaction({
-      bdorderid,
-      amount,
-      deviceInfo: {
-        init_channel: deviceInfo?.init_channel || 'web',
-        ip: deviceInfo?.ip || req.ip || '0.0.0.0',
-        user_agent: deviceInfo?.userAgent || req.get('user-agent') || 'unknown',
-        accept_header: deviceInfo?.acceptHeader || req.get('accept') || '*/*',
-        browser_language: deviceInfo?.browserLanguage || 'en-US',
-        browser_javascript_enabled: true,
-        browser_tz: deviceInfo?.browserTz || 'Asia/Kolkata',
-        browser_color_depth: deviceInfo?.browserColorDepth || '32',
-        browser_java_enabled: false,
-        browser_screen_height: deviceInfo?.browserScreenHeight || 1080,
-        browser_screen_width: deviceInfo?.browserScreenWidth || 1920,
-      },
-      paymentMethod: {
-        type: paymentmethod || 'card',
-        ...(paymentmethod === 'card' && { card_number: cardNumber, card_expiry: cardExpiry, card_cvv: cardCvv }),
-      },
-      auth_type: '3ds2',
-    });
-
-    await getFirestoreDb().collection('transactions').doc(billDeskResponse.transactionid).set({
-      transactionid: billDeskResponse.transactionid,
-      orderid, bdorderid, amount,
-      auth_status: billDeskResponse.auth_status,
-      next_step: billDeskResponse.next_step,
-      redirect_url: billDeskResponse.redirect_url,
-      challenge_data: billDeskResponse.challenge_data,
-      flow_type: '3ds2',
-      createdAt: new Date(), updatedAt: new Date(),
-    });
-
-    await getFirestoreDb().collection('orders').doc(orderid).update({
-      status: 'pending',
-      transactionid: billDeskResponse.transactionid,
-      updatedAt: new Date(),
-    });
-
-    return res.json({
-      success: true,
-      transactionid: billDeskResponse.transactionid,
-      bdorderid,
-      auth_status: billDeskResponse.auth_status,
-      next_step: billDeskResponse.next_step,
-      redirect_url: billDeskResponse.redirect_url,
-      challenge_data: billDeskResponse.challenge_data,
-    });
-  } catch (error: any) {
-    console.error('[BillDesk] Create Transaction error:', error);
-    return res.status(500).json({ success: false, error: error.message || 'Failed to create transaction' });
-  }
-});
-
-// ─── POST /update-transaction ──────────────────────────────────────────────
-
-router.post('/update-transaction', async (req: Request, res: Response) => {
-  try {
-    const { transactionid, bdorderid, orderid, flowType, cres, otp } = req.body;
-
-    if (!transactionid || !bdorderid || !orderid) {
-      return res.status(400).json({ success: false, error: 'transactionid, bdorderid, and orderid are required' });
-    }
-
-    const billDeskResponse: any = await updateTransaction({
-      transactionid, bdorderid,
-      responseParameters: {
-        flow_type: flowType || '3ds2',
-        ...(flowType === '3ds2' && { cres }),
-        ...(flowType === 'otp' && { otp }),
-      },
-    });
-
-    await getFirestoreDb().collection('transactions').doc(transactionid).update({
-      auth_status: billDeskResponse.auth_status,
-      authcode: billDeskResponse.authcode,
-      bank_ref_no: billDeskResponse.bank_ref_no,
-      rrn: billDeskResponse.rrn,
-      updatedAt: new Date(),
-    });
-
-    await getFirestoreDb().collection('orders').doc(orderid).update({
-      status: billDeskResponse.auth_status === '0300' ? 'completed' : 'failed',
-      payment_status: billDeskResponse.auth_status,
-      authcode: billDeskResponse.authcode,
-      bank_ref_no: billDeskResponse.bank_ref_no,
-      updatedAt: new Date(),
-    });
-
-    return res.json({
-      success: true,
-      transactionid,
-      auth_status: billDeskResponse.auth_status,
-      authcode: billDeskResponse.authcode,
-      bank_ref_no: billDeskResponse.bank_ref_no,
-      rrn: billDeskResponse.rrn,
-    });
-  } catch (error: any) {
-    console.error('[BillDesk] Update Transaction error:', error);
-    return res.status(500).json({ success: false, error: error.message || 'Failed to update transaction' });
   }
 });
 
