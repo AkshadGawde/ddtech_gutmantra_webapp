@@ -2,35 +2,27 @@ import crypto from 'crypto';
 import axios from 'axios';
 import { CompactEncrypt, CompactSign, compactDecrypt, compactVerify } from 'jose';
 
-// ─── Config ───────────────────────────────────────────────────────────────────
+// ─── Config (lazy — read at call time, not at module load) ───────────────────
+//
+// dotenvx injects process.env AFTER ES modules are imported.
+// Module-level constants would capture empty strings.
+// Using functions ensures we read the actual values at request time.
 
-const MERCHANT_ID    = process.env.BILLDESK_MERCHANT_ID      || '';
-const CLIENT_ID      = process.env.BILLDESK_CLIENT_ID        || '';
-const ENC_KEY        = process.env.BILLDESK_ENCRYPTION_KEY   || '';
-const ENC_KEY_ID     = process.env.BILLDESK_ENCRYPTION_KEY_ID || '';
-const SIGN_KEY       = process.env.BILLDESK_SIGNING_KEY      || '';
-const SIGN_KEY_ID    = process.env.BILLDESK_SIGNING_KEY_ID   || '';
-const BASE_URL       = process.env.BILLDESK_BASE_URL         || 'https://uat1.billdesk.com/u2';
-
-const REQUIRED = [
-  ['BILLDESK_MERCHANT_ID',       MERCHANT_ID],
-  ['BILLDESK_CLIENT_ID',         CLIENT_ID],
-  ['BILLDESK_ENCRYPTION_KEY',    ENC_KEY],
-  ['BILLDESK_ENCRYPTION_KEY_ID', ENC_KEY_ID],
-  ['BILLDESK_SIGNING_KEY',       SIGN_KEY],
-  ['BILLDESK_SIGNING_KEY_ID',    SIGN_KEY_ID],
-] as const;
-
-const missing = REQUIRED.filter(([, v]) => !v).map(([k]) => k);
-if (missing.length) {
-  console.warn('⚠️  BillDesk: missing env vars:', missing.join(', '));
-}
+const cfg = () => ({
+  MERCHANT_ID : process.env.BILLDESK_MERCHANT_ID       || '',
+  CLIENT_ID   : process.env.BILLDESK_CLIENT_ID         || '',
+  ENC_KEY     : process.env.BILLDESK_ENCRYPTION_KEY    || '',
+  ENC_KEY_ID  : process.env.BILLDESK_ENCRYPTION_KEY_ID || '',
+  SIGN_KEY    : process.env.BILLDESK_SIGNING_KEY       || '',
+  SIGN_KEY_ID : process.env.BILLDESK_SIGNING_KEY_ID    || '',
+  BASE_URL    : process.env.BILLDESK_BASE_URL          || 'https://uat1.billdesk.com/u2',
+});
 
 // ─── Keys (raw UTF-8 bytes — mirrors Java's String.getBytes()) ────────────────
 
 // jose accepts Uint8Array directly for symmetric algorithms (dir, HS256)
-const encryptionKey = (): Uint8Array => new TextEncoder().encode(ENC_KEY);
-const signingKey    = (): Uint8Array => new TextEncoder().encode(SIGN_KEY);
+const encryptionKey = (): Uint8Array => new TextEncoder().encode(cfg().ENC_KEY);
+const signingKey    = (): Uint8Array => new TextEncoder().encode(cfg().SIGN_KEY);
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
@@ -63,6 +55,7 @@ function getISTOrderDate(): string {
 // ─── JOSE: Encrypt → Sign ─────────────────────────────────────────────────────
 
 async function encryptPayload(jsonPayload: Record<string, unknown>): Promise<string> {
+  const { ENC_KEY_ID, CLIENT_ID } = cfg();
   const plaintext = new TextEncoder().encode(JSON.stringify(jsonPayload));
 
   console.log('\n🔐 [STEP 2] Encrypt  alg=dir  enc=A256GCM');
@@ -83,6 +76,7 @@ async function encryptPayload(jsonPayload: Record<string, unknown>): Promise<str
 }
 
 async function signPayload(jweToken: string): Promise<string> {
+  const { SIGN_KEY_ID, CLIENT_ID } = cfg();
   const bytes = new TextEncoder().encode(jweToken);
 
   console.log('\n✍️  [STEP 3] Sign  alg=HS256');
@@ -124,7 +118,7 @@ async function josePost(
 ): Promise<Record<string, unknown>> {
   const traceId   = generateTraceId();
   const timestamp = getFormattedTimestamp();
-  const url       = `${BASE_URL}${path}`;
+  const url       = `${cfg().BASE_URL}${path}`;
 
   console.log('\n╔══════════════════════════════════════════════════════════════╗');
   console.log(`║  POST ${url}`);
@@ -183,7 +177,7 @@ export interface CreateOrderInput {
 
 export async function createOrder(input: CreateOrderInput) {
   const payload: Record<string, unknown> = {
-    mercid:     MERCHANT_ID,
+    mercid:     cfg().MERCHANT_ID,
     orderid:    input.orderId,
     amount:     input.amount,
     order_date: getISTOrderDate(),
@@ -242,7 +236,7 @@ export async function retrieveTransaction(input: RetrieveTransactionInput) {
   }
 
   const payload: Record<string, unknown> = {
-    mercid: MERCHANT_ID,
+    mercid: cfg().MERCHANT_ID,
     ...(input.orderid       && { orderid:       input.orderid }),
     ...(input.transactionid && { transactionid: input.transactionid }),
     ...(input.refund_details && { refund_details: input.refund_details }),
@@ -299,7 +293,7 @@ export interface CreateRefundInput {
 
 export async function createRefund(input: CreateRefundInput) {
   const payload: Record<string, unknown> = {
-    mercid:             MERCHANT_ID,
+    mercid:             cfg().MERCHANT_ID,
     transactionid:      input.transactionid,
     orderid:            input.orderid,
     transaction_date:   input.transaction_date,
@@ -353,7 +347,7 @@ export async function retrieveRefund(input: RetrieveRefundInput) {
   }
 
   const payload: Record<string, unknown> = {
-    mercid: MERCHANT_ID,
+    mercid: cfg().MERCHANT_ID,
     ...(input.refundid           && { refundid:           input.refundid }),
     ...(input.merc_refund_ref_no && { merc_refund_ref_no: input.merc_refund_ref_no }),
   };

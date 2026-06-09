@@ -509,18 +509,44 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
 
         if (!data.success) throw new Error(data.error || "Failed to create order");
 
-        const { orderid, payment_link } = data;
+        const { orderid, mercid, bdorderid, payment_link, rdata } = data;
 
-        if (!payment_link) throw new Error("No payment link returned from BillDesk");
+        if (!payment_link || !bdorderid || !rdata) {
+          throw new Error("Incomplete payment data returned from server");
+        }
 
-        console.log("✅ BillDesk order created:", { orderid, payment_link });
+        console.log("✅ BillDesk order created:", { orderid, bdorderid, payment_link });
 
-        // Open BillDesk payment gateway in new window
-        const paymentWindow = window.open(payment_link, "BillDeskPayment", "width=950,height=700,scrollbars=yes");
+        // BillDesk Neo Full Redirect requires a form POST (not a GET) with
+        // merchantid, bdorderid, rdata submitted to the payment_link URL.
+        const paymentWindow = window.open("", "BillDeskPayment", "width=950,height=700,scrollbars=yes");
         if (!paymentWindow) {
           alert("Popup blocked. Please allow popups for this site and try again.");
           return;
         }
+
+        // Build and submit a form targeting the already-open named window
+        const form = document.createElement("form");
+        form.method = "POST";
+        form.action = payment_link;
+        form.target = "BillDeskPayment";
+
+        const formFields: Record<string, string> = {
+          merchantid: mercid,
+          bdorderid:  bdorderid,
+          rdata:      rdata,
+        };
+        Object.entries(formFields).forEach(([name, value]) => {
+          const input = document.createElement("input");
+          input.type  = "hidden";
+          input.name  = name;
+          input.value = value;
+          form.appendChild(input);
+        });
+
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
 
         // Poll for payment status every 3 seconds (fallback if webhook fires first)
         let pollCount = 0;
