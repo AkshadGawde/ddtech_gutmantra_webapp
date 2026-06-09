@@ -206,9 +206,13 @@ export async function createOrder(input: CreateOrderInput) {
       success:      true,
       bdorderid:    data.bdorderid    as string,
       orderid:      data.orderid      as string,
-      rdata:        redirectLink?.parameters?.rdata  as string | undefined,
-      payment_link: redirectLink?.href               as string | undefined,
-      mercid:       data.mercid       as string,
+      // Exact parameter names from BillDesk response — POST these as form fields
+      mercid:        redirectLink?.parameters?.mercid    as string | undefined,
+      bdorderid_pay: redirectLink?.parameters?.bdorderid as string | undefined,
+      rdata:         redirectLink?.parameters?.rdata     as string | undefined,
+      payment_link:  redirectLink?.href                  as string | undefined,
+      // Authorization token required by embeddedsdk endpoint
+      authorization: redirectLink?.headers?.authorization as string | undefined,
       next_step:    data.next_step    as string,
       trace_id:     data._traceId    as string,
       timestamp:    data._timestamp  as string,

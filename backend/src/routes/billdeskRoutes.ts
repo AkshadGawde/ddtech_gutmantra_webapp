@@ -191,14 +191,16 @@ router.post('/create-order', async (req: Request, res: Response) => {
     console.log(`[BillDesk] Order created: ${orderid} → ${billDeskResponse.bdorderid}`);
 
     return res.json({
-      success: true,
+      success:       true,
       orderid,
-      mercid: process.env.BILLDESK_MERCHANT_ID || 'KANAKV2',
-      bdorderid: billDeskResponse.bdorderid,
       amount,
-      currency: '356',
-      payment_link: billDeskResponse.payment_link,
-      rdata: billDeskResponse.rdata,
+      currency:      '356',
+      // Exact values from BillDesk response — passed straight to the form POST
+      payment_link:  billDeskResponse.payment_link,
+      mercid:        billDeskResponse.mercid,
+      bdorderid:     billDeskResponse.bdorderid_pay ?? billDeskResponse.bdorderid,
+      rdata:         billDeskResponse.rdata,
+      authorization: billDeskResponse.authorization,
     });
   } catch (error: any) {
     console.error('[BillDesk] Create Order error:', error);

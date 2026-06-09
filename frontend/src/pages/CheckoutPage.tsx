@@ -509,32 +509,34 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
 
         if (!data.success) throw new Error(data.error || "Failed to create order");
 
-        const { orderid, mercid, bdorderid, payment_link, rdata } = data;
+        const { orderid, mercid, bdorderid, payment_link, rdata, authorization } = data;
 
         if (!payment_link || !bdorderid || !rdata) {
           throw new Error("Incomplete payment data returned from server");
         }
 
         console.log("✅ BillDesk order created:", { orderid, bdorderid, payment_link });
+        console.log("   mercid:", mercid, " authorization:", authorization ? authorization.slice(0, 30) + "…" : "none");
 
-        // BillDesk Neo Full Redirect requires a form POST (not a GET) with
-        // merchantid, bdorderid, rdata submitted to the payment_link URL.
         const paymentWindow = window.open("", "BillDeskPayment", "width=950,height=700,scrollbars=yes");
         if (!paymentWindow) {
           alert("Popup blocked. Please allow popups for this site and try again.");
           return;
         }
 
-        // Build and submit a form targeting the already-open named window
+        // BillDesk embeddedsdk requires a form POST with exact field names
+        // from the response parameters object: mercid, bdorderid, rdata
+        // Plus the authorization token from the response headers object.
         const form = document.createElement("form");
         form.method = "POST";
         form.action = payment_link;
         form.target = "BillDeskPayment";
 
         const formFields: Record<string, string> = {
-          merchantid: mercid,
-          bdorderid:  bdorderid,
-          rdata:      rdata,
+          mercid:        mercid,
+          bdorderid:     bdorderid,
+          rdata:         rdata,
+          ...(authorization ? { authorization } : {}),
         };
         Object.entries(formFields).forEach(([name, value]) => {
           const input = document.createElement("input");
