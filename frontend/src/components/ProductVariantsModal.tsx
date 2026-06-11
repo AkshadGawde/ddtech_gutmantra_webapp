@@ -156,12 +156,15 @@ export default function ProductVariantsModal({ product, isOpen, onClose }: Produ
             {/* Image */}
             <div className="w-full md:w-[45%] shrink-0 bg-gray-50 flex items-center justify-center p-6 min-h-64 md:min-h-full">
               <img
-                src={product.image || "/placeholder.png"}
+                src={product.image || "/placeholder.svg"}
                 alt={product.name}
                 className="w-full h-full max-h-96 object-contain"
                 referrerPolicy="no-referrer"
                 onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = "/placeholder.png";
+                  const img = e.currentTarget as HTMLImageElement;
+                  if (!img.src.endsWith("/placeholder.svg")) {
+                    img.src = "/placeholder.svg";
+                  }
                 }}
               />
             </div>

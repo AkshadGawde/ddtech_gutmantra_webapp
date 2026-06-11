@@ -272,12 +272,15 @@ export default function ProductPage() {
                 key={selectedImageIndex}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                src={images[selectedImageIndex] || "/placeholder.png"}
+                src={images[selectedImageIndex] || "/placeholder.svg"}
                 alt={product.name}
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"
                 onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = "/placeholder.png";
+                  const img = e.currentTarget as HTMLImageElement;
+                  if (!img.src.endsWith("/placeholder.svg")) {
+                    img.src = "/placeholder.svg";
+                  }
                 }}
               />
 
@@ -329,12 +332,15 @@ export default function ProductPage() {
                     }`}
                   >
                     <img
-                      src={img || "/placeholder.png"}
+                      src={img || "/placeholder.svg"}
                       alt={`${product.name} ${idx + 1}`}
                       className="w-full h-full object-cover"
                       referrerPolicy="no-referrer"
                       onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src = "/placeholder.png";
+                        const img = e.currentTarget as HTMLImageElement;
+                        if (!img.src.endsWith("/placeholder.svg")) {
+                          img.src = "/placeholder.svg";
+                        }
                       }}
                     />
                   </button>

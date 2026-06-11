@@ -109,12 +109,15 @@ export default function SearchBar() {
                         >
                           <div className="w-12 h-12 rounded-xl bg-black/5 overflow-hidden shrink-0">
                             <img 
-                              src={product.image || "/placeholder.png"}
+                              src={product.image || "/placeholder.svg"}
                               alt={product.name}
                               className="w-full h-full object-cover"
                               referrerPolicy="no-referrer"
                               onError={(e) => {
-                                (e.currentTarget as HTMLImageElement).src = "/placeholder.png";
+                                const img = e.currentTarget as HTMLImageElement;
+                                if (!img.src.endsWith("/placeholder.svg")) {
+                                  img.src = "/placeholder.svg";
+                                }
                               }}
                             />
                           </div>

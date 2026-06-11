@@ -70,12 +70,15 @@ export default function CartDrawer({ isOpen, onClose, onCheckout }: CartDrawerPr
                     {/* IMAGE */}
                     <div className="w-20 h-20 rounded-lg overflow-hidden bg-black/5 flex-shrink-0">
                       <img
-                        src={item.image || "/placeholder.png"}
+                        src={item.image || "/placeholder.svg"}
                         alt={item.name}
                         className="w-full h-full object-cover"
                         referrerPolicy="no-referrer"
                         onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).src = "/placeholder.png";
+                          const img = e.currentTarget as HTMLImageElement;
+                          if (!img.src.endsWith("/placeholder.svg")) {
+                            img.src = "/placeholder.svg";
+                          }
                         }}
                       />
                     </div>

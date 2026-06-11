@@ -221,7 +221,7 @@ export default function AdminPanel() {
               <tr key={product.id} className="hover:bg-bg-warm/50 transition-colors">
                 <td className="p-6">
                   <div className="flex items-center gap-4">
-                    <img src={product.image || "/placeholder.png"} className="w-12 h-12 rounded-lg object-cover" />
+                    <img src={product.image || "/placeholder.svg"} className="w-12 h-12 rounded-lg object-cover" onError={(e) => { const img = e.currentTarget as HTMLImageElement; if (!img.src.endsWith("/placeholder.svg")) img.src = "/placeholder.svg"; }} />
                     <span className="font-bold">{product.name}</span>
                   </div>
                 </td>

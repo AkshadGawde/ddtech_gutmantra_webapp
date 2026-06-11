@@ -117,12 +117,15 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
         {/* IMAGE */}
         <div className="relative aspect-square rounded-[2rem] overflow-hidden mb-6">
           <img
-            src={product.image || "/placeholder.png"}
+            src={product.image || "/placeholder.svg"}
             alt={product.name}
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
             referrerPolicy="no-referrer"
             onError={(e) => {
-              (e.currentTarget as HTMLImageElement).src = "/placeholder.png";
+              const img = e.currentTarget as HTMLImageElement;
+              if (!img.src.endsWith("/placeholder.svg")) {
+                img.src = "/placeholder.svg";
+              }
             }}
           />
 
