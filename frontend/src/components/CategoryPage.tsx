@@ -79,28 +79,28 @@ export default function CategoryPage() {
 
   /* ================= UI ================= */
   return (
-    <div className="pt-32 pb-24">
-      <div className="max-w-7xl mx-auto px-6">
+    <div className="pt-24 sm:pt-32 pb-24">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
 
         {/* HEADER */}
-        <div className="mb-16">
-          <motion.div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full mb-6">
+        <div className="mb-8 sm:mb-16">
+          <motion.div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full mb-4 sm:mb-6">
             <span className="text-[10px] font-bold uppercase tracking-widest text-primary">
               {category?.name} {subcategory ? `/ ${subcategory}` : ""}
             </span>
           </motion.div>
 
-          <motion.h1 className="text-5xl md:text-7xl font-bold tracking-tighter mb-6">
+          <motion.h1 className="text-3xl sm:text-5xl md:text-7xl font-bold tracking-tighter mb-3 sm:mb-6">
             {subcategory || category?.name}
           </motion.h1>
 
-          <p className="text-lg text-accent/60 max-w-2xl">
+          <p className="text-sm sm:text-lg text-accent/60 max-w-2xl">
             {category?.description}
           </p>
         </div>
 
         {/* PRODUCTS GRID */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="product-grid">
 
           {loading ? (
             <div className="col-span-full text-center py-20 opacity-50">

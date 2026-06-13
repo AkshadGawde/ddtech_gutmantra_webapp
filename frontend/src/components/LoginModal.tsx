@@ -3,8 +3,6 @@ import { X, ArrowLeft, Phone, Lock, User, Eye, EyeOff } from "lucide-react";
 import { useState, useEffect } from "react";
 import { signInWithCustomToken } from "firebase/auth";
 import { auth } from "../lib/firebase";
-import EC2LoadingScreen from "./EC2LoadingScreen";
-
 // Auth calls → Lambda (always available, wakes EC2 on login/signup)
 // All other EC2 calls (cart, orders, payments) use VITE_API_URL
 const LAMBDA_BASE = import.meta.env.VITE_LAMBDA_API_URL || "https://api.gutmantra.in";
@@ -71,9 +69,6 @@ export default function LoginModal({
   const [otpTimer, setOtpTimer] = useState(300);
   const [resendTimer, setResendTimer] = useState(0);
   const [attemptsLeft, setAttemptsLeft] = useState(3);
-  // EC2 boot screen: set to wait_seconds when Lambda triggers EC2 start
-  const [ec2BootSeconds, setEc2BootSeconds] = useState<number | null>(null);
-
   // Reset state when modal opens/closes
   useEffect(() => {
     if (isOpen) {
@@ -272,13 +267,9 @@ export default function LoginModal({
       }
       // Sign into Firebase with the custom token
       await signInWithCustomToken(auth, data.customToken);
-      if (data.wait_seconds > 0) {
-        // EC2 is booting — show countdown before closing modal
-        setEc2BootSeconds(data.wait_seconds);
-      } else {
-        setSuccess("Logged in successfully!");
-        setTimeout(onClose, 700);
-      }
+      // EC2 wakes in background via Lambda — close immediately
+      setSuccess("Logged in successfully!");
+      setTimeout(onClose, 700);
     } catch {
       setError("Network error. Please check your connection.");
     } finally {
@@ -314,13 +305,9 @@ export default function LoginModal({
     setError(""); setSuccess("");
     const waitSeconds = await savePassword(password, confirmPassword, name.trim());
     if (waitSeconds >= 0) {
-      if (waitSeconds > 0) {
-        // EC2 is booting — show countdown screen
-        setEc2BootSeconds(waitSeconds);
-      } else {
-        setSuccess("Account created! Welcome to GutMantra!");
-        setTimeout(onClose, 900);
-      }
+      // EC2 wakes in background via Lambda — close immediately
+      setSuccess("Account created! Welcome to GutMantra!");
+      setTimeout(onClose, 900);
     }
   };
 
@@ -405,19 +392,6 @@ export default function LoginModal({
   };
 
   const isOtpMode = mode === "signup-otp" || mode === "forgot-otp";
-
-  // EC2 boot screen — shown after successful auth when EC2 is starting
-  if (ec2BootSeconds !== null) {
-    return (
-      <EC2LoadingScreen
-        seconds={ec2BootSeconds}
-        onComplete={() => {
-          setEc2BootSeconds(null);
-          onClose();
-        }}
-      />
-    );
-  }
 
   return (
     <AnimatePresence>

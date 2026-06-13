@@ -112,10 +112,10 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
         viewport={{ once: true }}
         transition={{ delay: index * 0.1 }}
         onClick={() => navigate(`/product/${product.id}`)}
-        className="group bg-white rounded-[2.5rem] p-5 shadow-sm hover:shadow-xl transition-all duration-500 border border-black/5 cursor-pointer"
+        className="group bg-white rounded-2xl sm:rounded-[2.5rem] p-2.5 sm:p-5 shadow-sm hover:shadow-xl transition-all duration-500 border border-black/5 cursor-pointer"
       >
         {/* IMAGE */}
-        <div className="relative aspect-square rounded-[2rem] overflow-hidden mb-6">
+        <div className="relative aspect-square rounded-xl sm:rounded-[2rem] overflow-hidden mb-2.5 sm:mb-6">
           <img
             src={product.image || "/placeholder.svg"}
             alt={product.name}
@@ -129,16 +129,16 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
             }}
           />
 
-          {/* WISHLIST */}
-          <button 
+          {/* WISHLIST — desktop only */}
+          <button
             onClick={(e) => e.stopPropagation()}
-            className="absolute top-4 right-4 w-10 h-10 glass rounded-full flex items-center justify-center text-accent opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-primary hover:text-white"
+            className="hidden sm:flex absolute top-4 right-4 w-10 h-10 glass rounded-full items-center justify-center text-accent opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-primary hover:text-white"
           >
             <Heart size={18} />
           </button>
 
-          {/* QUICK ACTIONS */}
-          <div className="absolute bottom-4 left-4 right-4 translate-y-12 group-hover:translate-y-0 transition-transform duration-500 opacity-0 group-hover:opacity-100 flex gap-2">
+          {/* QUICK ACTIONS — desktop hover only */}
+          <div className="hidden sm:flex absolute bottom-4 left-4 right-4 translate-y-12 group-hover:translate-y-0 transition-transform duration-500 opacity-0 group-hover:opacity-100 gap-2">
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -165,43 +165,50 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
         </div>
 
         {/* DETAILS */}
-        <div className="flex justify-between items-start gap-4 mb-4">
-          <div>
-            <h3 className="text-xl font-bold tracking-tight mb-1 line-clamp-1">
+        <div className="flex justify-between items-start gap-1.5 sm:gap-4 mb-1.5 sm:mb-4">
+          <div className="min-w-0">
+            <h3 className="text-[13px] sm:text-xl font-bold tracking-tight mb-0.5 sm:mb-1 line-clamp-2 leading-tight">
               {product.name}
             </h3>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-secondary">
+            <p className="hidden sm:block text-[10px] font-bold uppercase tracking-widest text-secondary">
               {product.category}
             </p>
           </div>
 
-          <div className="text-right">
-            <p className="text-xl font-bold text-primary">
+          <div className="text-right shrink-0">
+            <p className="text-[13px] sm:text-xl font-bold text-primary">
               {displayPrice > 0
                 ? showRange
-                  ? `₹${minPrice} – ₹${maxPrice}`
+                  ? `₹${minPrice}–₹${maxPrice}`
                   : `₹${displayPrice}`
                 : "—"}
             </p>
             {pricedVariants.length > 0 && (
-              <p className="text-[8px] font-bold opacity-30 uppercase tracking-widest">
+              <p className="hidden sm:block text-[8px] font-bold opacity-30 uppercase tracking-widest">
                 {showRange ? "Price range" : "Starting at"}
-              </p>
-            )}
-            {displayPrice === 0 && (
-              <p className="text-[8px] font-bold opacity-30 uppercase tracking-widest">
-                Select variant
               </p>
             )}
           </div>
         </div>
 
-        <p className="text-xs text-accent/50 line-clamp-2 mb-6 font-medium leading-relaxed h-8">
+        {/* DESCRIPTION — desktop only */}
+        <p className="hidden sm:block text-xs text-accent/50 line-clamp-2 mb-6 font-medium leading-relaxed h-8">
           {product.description || "Premium quality product from GutMantra."}
         </p>
 
-        {/* FOOTER */}
-        <div className="flex items-center justify-between pt-6 border-t border-black/5">
+        {/* MOBILE ADD BUTTON — always visible on mobile, hidden on desktop */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsModalOpen(true);
+          }}
+          className="sm:hidden w-full mt-1.5 py-2 bg-primary text-white rounded-xl text-[11px] font-bold uppercase tracking-wider"
+        >
+          Add
+        </button>
+
+        {/* FOOTER — desktop only */}
+        <div className="hidden sm:flex items-center justify-between pt-6 border-t border-black/5">
           <div className="flex -space-x-2">
             {[1, 2, 3].map((i) => (
               <div
