@@ -7,6 +7,52 @@ type PetPoojaCategory = {
   active?: string;
 };
 
+// Keywords used to identify "grind type" variation groups or attribute titles
+// coming from PetPooja. Match against lowercased strings.
+const GRIND_GROUP_KEYWORDS = [
+  "grind", "grinding", "chakki", "pees", "pisi", "mill", "milling",
+];
+
+// ---------- HELPERS ----------
+
+/**
+ * Detects grind options for an item by scanning two sources from PetPooja:
+ *  1. Global variations whose groupname contains a grind keyword
+ *  2. item_attribute_title / item_attributes on the item itself
+ *
+ * Returns an array of grind option strings, or [] if PetPooja has no grind data.
+ * An empty result means the Firestore merge will preserve whatever the admin set.
+ */
+function extractGrindOptions(
+  item: any,
+  rawVariants: any[],
+  variationNamesMap: Record<string, string>,
+  grindVidSet: Set<string>
+): string[] {
+  const found = new Set<string>();
+
+  // Source 1: Variation groups tagged with grind keywords
+  rawVariants.forEach((v: any) => {
+    const vid = String(v.variationid || "");
+    if (vid && grindVidSet.has(vid)) {
+      const name = variationNamesMap[vid] || v.name;
+      if (name) found.add(name);
+    }
+  });
+
+  // Source 2: item_attribute_title / item_attributes  (PetPooja attribute system)
+  const attrTitle = String(item.item_attribute_title || item.attribute_title || "").toLowerCase();
+  if (GRIND_GROUP_KEYWORDS.some((k) => attrTitle.includes(k))) {
+    const attrs: any[] = item.item_attributes || item.attributes || [];
+    attrs.forEach((a: any) => {
+      const name = a.attribute || a.name || a.attribute_name || a.value || "";
+      if (name) found.add(String(name));
+    });
+  }
+
+  return [...found];
+}
+
 // ---------- MAIN FUNCTION ----------
 export async function syncMenuToFirestore(
   db: FirebaseFirestore.Firestore,
@@ -25,48 +71,64 @@ export async function syncMenuToFirestore(
   console.log(`📦 [menuSync] variations: ${(payload.variations || []).length}`);
   console.log(`📦 [menuSync] itemvariations: ${(payload.itemvariations || payload.item_variations || []).length}`);
 
-  // ── Build: variationid → name (from global variations list) ─────────────────
-  // PetPooja stores variation names in a global "variations" array.
-  // Per-item variations only carry the variationid; name must be looked up here.
+  // ── Build: variationid → name  AND  variationid → groupname ─────────────────
   const variationNamesMap: Record<string, string> = {};
+  const variationGroupMap: Record<string, string> = {};
+
+  // Collect variation IDs that belong to grind-type groups
+  const grindVidSet = new Set<string>();
+
   (payload.variations || []).forEach((v: any) => {
     const vid = String(v.variationid || v.id || "");
-    if (vid) variationNamesMap[vid] = v.name || v.variationname || "";
+    if (!vid) return;
+    const name = v.name || v.variationname || "";
+    const group = String(v.groupname || v.group_name || "").toLowerCase();
+    variationNamesMap[vid] = name;
+    variationGroupMap[vid] = group;
+    if (GRIND_GROUP_KEYWORDS.some((k) => group.includes(k))) {
+      grindVidSet.add(vid);
+    }
   });
 
+  if (grindVidSet.size > 0) {
+    console.log(`🌀 [menuSync] Detected grind variation IDs from PetPooja:`, [...grindVidSet]);
+  } else {
+    console.log(`ℹ️  [menuSync] No grind variation groups found in payload.variations — grind must be set via item_attributes or admin panel`);
+  }
+
   // ── Build: itemid → variationid → price (from top-level itemvariations) ─────
-  // PetPooja sends variant prices in a flat "itemvariations" array, not inline
-  // on each item's variation entry. This is why spice/multigrain prices are 0
-  // when read from item.variation[x].price — those fields are often empty.
   const ivPriceMap: Record<string, Record<string, number>> = {};
-  const itemVariationsArr: any[] =
-    payload.itemvariations || payload.item_variations || [];
+  const itemVariationsArr: any[] = payload.itemvariations || payload.item_variations || [];
 
   itemVariationsArr.forEach((iv: any) => {
     const itemid = String(iv.itemid || "");
     const variationid = String(iv.variationid || "");
-    // PetPooja can use "price", "variationprice", or "item_price" for the value
-    const price = parseFloat(
-      iv.price ?? iv.variationprice ?? iv.item_price ?? "0"
-    );
+    const price = parseFloat(iv.price ?? iv.variationprice ?? iv.item_price ?? "0");
     if (itemid && variationid) {
       if (!ivPriceMap[itemid]) ivPriceMap[itemid] = {};
       ivPriceMap[itemid][variationid] = price;
     }
   });
 
-  // Log every item with base price=0 so we can see which have variations and which don't
+  // Log items with base price=0 — lets us debug missing prices and see full field list
   const zeroPriceItems = items.filter((it: any) => parseFloat(it.price || "0") === 0);
   console.log(`🔍 [menuSync] ${zeroPriceItems.length} items with base price=0:`);
   zeroPriceItems.forEach((it: any) => {
     const varCount = (it.variation || []).length;
     if (varCount > 0) {
       const fv = it.variation[0];
-      console.log(`   ✅ "${it.itemname}" → ${varCount} variants, first: name="${fv.name}" price="${fv.price}"`);
+      // Log all field keys on first zero-price item with variations so we can spot new PetPooja fields
+      if (zeroPriceItems.indexOf(it) === 0) {
+        console.log(`   📋 "${it.itemname}" — ALL item keys: ${Object.keys(it).join(", ")}`);
+        if (it.item_attribute_title) console.log(`      item_attribute_title: ${it.item_attribute_title}`);
+        if (it.item_attributes) console.log(`      item_attributes: ${JSON.stringify(it.item_attributes)}`);
+      }
+      console.log(`   ✅ "${it.itemname}" → ${varCount} variants, first: name="${fv.name}" groupname="${fv.groupname || ""}" price="${fv.price}"`);
     } else {
-      // These are the broken ones — dump ALL top-level fields so we can find hidden price data
       console.log(`   ❌ "${it.itemname}" (${it.itemid}) → NO variations. All keys: ${Object.keys(it).join(", ")}`);
       if (it.item_info) console.log(`      item_info: ${JSON.stringify(it.item_info)}`);
+      if (it.item_attribute_title) console.log(`      item_attribute_title: ${it.item_attribute_title}`);
+      if (it.item_attributes) console.log(`      item_attributes: ${JSON.stringify(it.item_attributes)}`);
     }
   });
 
@@ -123,11 +185,7 @@ export async function syncMenuToFirestore(
 
       const ref = db.collection("products").doc(item.itemid);
 
-      // Build variant list from best available source:
-      //  1. item.variation — populated for simple products (oils, basic atta)
-      //  2. itemvariations map — populated for spices / multi-size products
-      //     (PetPooja stores variant prices here, not inline on item.variation)
-      //  3. Default fallback — single-price item with no variants at all
+      // Build raw variant list from best available source
       const ivIds = Object.keys(ivPriceMap[item.itemid] || {});
       const rawVariants: any[] =
         item.variation && item.variation.length > 0
@@ -136,13 +194,16 @@ export async function syncMenuToFirestore(
           ? ivIds.map((vid) => ({ variationid: vid }))
           : [{ price: item.price, name: "Default", _isDefault: true }];
 
-      const mappedVariants = rawVariants.map((v: any) => {
+      // ── Separate grind variants from size variants ────────────────────────
+      // Grind-type variation IDs were collected globally from groupname detection.
+      const sizeVariants = rawVariants.filter(
+        (v: any) => !grindVidSet.has(String(v.variationid || ""))
+      );
+
+      const mappedVariants = sizeVariants.map((v: any) => {
         const vid = String(v.variationid || "");
 
-        // ── Price resolution (in priority order) ─────────────────────────────
-        // 1. Inline price on the variant (works for simple products)
-        // 2. itemvariations map (required for spices / multi-variant products)
-        // 3. Item base price (fallback for Default variants)
+        // Price resolution: inline → itemvariations map → item base price
         let price = parseFloat(v.price ?? "0");
         if (price === 0 && vid && ivPriceMap[item.itemid]?.[vid] != null) {
           price = ivPriceMap[item.itemid][vid];
@@ -151,22 +212,19 @@ export async function syncMenuToFirestore(
           price = parseFloat(item.price ?? "0");
         }
 
-        // ── Name resolution ───────────────────────────────────────────────────
-        // Inline name → global variationNamesMap → "Standard"
+        // Name resolution: inline → global map → fallback
         const name =
           (v.name && v.name !== "Default" ? v.name : null) ||
           (vid ? variationNamesMap[vid] : null) ||
           (v._isDefault ? "Default" : "Standard");
 
-        // ── SKU / IDs ─────────────────────────────────────────────────────────
         const sku = String(v.eid || v.EID || vid || item.itemid || "");
         const petpoojaId = vid ? `V${vid}` : `V${item.itemid}`;
 
-        return { price, quantity: name, grind: null, sku, petpoojaId };
+        return { price, quantity: name, sku, petpoojaId };
       });
 
       // ── Product-level price ───────────────────────────────────────────────
-      // Use direct item price if present; otherwise lowest non-zero variant price.
       const itemBasePrice = parseFloat(item.price ?? "0");
       const lowestVariantPrice = mappedVariants.reduce((min: number, v: any) => {
         const p = Number(v.price);
@@ -174,23 +232,40 @@ export async function syncMenuToFirestore(
       }, 0);
       const productPrice = itemBasePrice > 0 ? itemBasePrice : lowestVariantPrice;
 
-      // Log variant pricing for the first item of each chunk so we can verify
+      // ── Grind options — read from PetPooja, never hardcoded ──────────────
+      // Sources: (1) grind variation groups, (2) item_attribute_title/item_attributes
+      // If PetPooja has no grind data, grindOptions is omitted from the payload so
+      // merge:true preserves whatever the admin set manually.
+      const grindOptions = extractGrindOptions(
+        item,
+        rawVariants,
+        variationNamesMap,
+        grindVidSet
+      );
+
+      const categoryName = categoryMap[item.item_categoryid || ""] || "";
+
       if (chunk.indexOf(item) === 0) {
-        console.log(`🧾 [menuSync] "${item.itemname}" → price:${productPrice} variants:[${
-          mappedVariants.map((v: any) => `${v.quantity}=₹${v.price}`).join(", ")
-        }]`);
+        console.log(
+          `🧾 [menuSync] "${item.itemname}" → price:${productPrice}` +
+          ` grinds:[${grindOptions.join(", ") || "none from PetPooja"}]` +
+          ` sizes:[${mappedVariants.map((v: any) => `${v.quantity}=₹${v.price}`).join(", ")}]`
+        );
       }
 
       batch.set(
         ref,
         {
           name: item.itemname || "",
-          category: categoryMap[item.item_categoryid || ""] || "Uncategorized",
+          category: categoryName || "Uncategorized",
           description: item.itemdescription || "",
           images: item.item_image_url ? [item.item_image_url] : [],
           sku: item.itemid,
           price: productPrice,
           variants: mappedVariants,
+          // Only write grindOptions when PetPooja actually sent grind data.
+          // When empty, merge:true silently preserves any admin-configured value.
+          ...(grindOptions.length > 0 ? { grindOptions } : {}),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         },
         { merge: true }

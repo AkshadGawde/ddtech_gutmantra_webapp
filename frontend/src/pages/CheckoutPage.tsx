@@ -1042,7 +1042,8 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
               <div className="mt-6 space-y-2">
                 <p className="font-medium text-sm">Payment Mode</p>
                 <div className="flex gap-3">
-                  {(["COD", "ONLINE"] as const).map((mode) => (
+                  {/* "ONLINE" commented out until BillDesk prod credentials are ready */}
+                  {(["COD" /*, "ONLINE"*/] as const).map((mode) => (
                     <button
                       key={mode}
                       onClick={() => setPaymentMode(mode)}

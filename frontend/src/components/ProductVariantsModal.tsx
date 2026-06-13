@@ -47,28 +47,25 @@ export default function ProductVariantsModal({ product, isOpen, onClose }: Produ
     return priced.reduce((max, v) => (Number(v.price) > Number(max.price) ? v : max), priced[0]);
   }
 
+  // ---------- grind options (product-level, set by admin) ----------
+  const grindOptions: string[] = product.grindOptions || [];
+  const hasGrind = grindOptions.length > 0;
+
   const [selectedVariant, setSelectedVariant] = useState<any>(() => pickDefault(selectorVariants));
+  const [selectedGrind, setSelectedGrind] = useState<string>(grindOptions[0] || "");
   const [quantity, setQuantity] = useState(1);
 
   // Re-initialise when the modal opens or the product changes
   useEffect(() => {
     if (isOpen) {
       setSelectedVariant(pickDefault(selectorVariants));
+      setSelectedGrind(grindOptions[0] || "");
       setQuantity(1);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, product.id]);
 
-  // ---------- grind sub-selector (atta products) ----------
-  const uniqueGrinds = [...new Set(selectorVariants.map((v) => v.grind).filter(Boolean))] as string[];
-  const hasMultipleGrinds = uniqueGrinds.length > 1;
-
-  // Variants matching the currently selected grind
-  const variantsForGrind = hasMultipleGrinds && selectedVariant?.grind
-    ? selectorVariants.filter((v) => v.grind === selectedVariant.grind)
-    : selectorVariants;
-
-  const uniqueSizes = [...new Set(variantsForGrind.map((v) => v.quantity).filter(Boolean))] as string[];
+  const uniqueSizes = [...new Set(selectorVariants.map((v) => v.quantity).filter(Boolean))] as string[];
 
   // ---------- add to cart ----------
   const handleAddToCart = (e: React.MouseEvent) => {
@@ -110,7 +107,7 @@ export default function ProductVariantsModal({ product, isOpen, onClose }: Produ
       petpoojaId: selectedVariant?.petpoojaId,
       sku: baseId,
       category: product.category,
-      grind: selectedVariant?.grind,
+      grind: selectedGrind || undefined,
       selectedQuantity: selectedVariant?.quantity,
     });
 
@@ -178,22 +175,19 @@ export default function ProductVariantsModal({ product, isOpen, onClose }: Produ
                 <h2 className="text-2xl font-bold tracking-tight">{product.name}</h2>
               </div>
 
-              {/* ── Grind selector (atta only) ── */}
-              {hasMultipleGrinds && (
+              {/* ── Grind selector (atta products with grindOptions set) ── */}
+              {hasGrind && (
                 <div className="mb-4">
                   <label className="text-xs font-bold uppercase tracking-widest opacity-60 mb-3 block">
                     Grind Type
                   </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {uniqueGrinds.map((grind) => (
+                  <div className="grid grid-cols-3 gap-2">
+                    {grindOptions.map((grind) => (
                       <button
                         key={grind}
-                        onClick={() => {
-                          const next = selectorVariants.find((v) => v.grind === grind);
-                          if (next) setSelectedVariant(next);
-                        }}
+                        onClick={() => setSelectedGrind(grind)}
                         className={`py-2 px-3 rounded-lg border-2 text-sm font-bold transition-all ${
-                          selectedVariant?.grind === grind
+                          selectedGrind === grind
                             ? "border-primary bg-primary/5 text-primary"
                             : "border-gray-200 text-gray-700 hover:border-gray-300"
                         }`}
@@ -213,10 +207,9 @@ export default function ProductVariantsModal({ product, isOpen, onClose }: Produ
                   </label>
                   <div className="grid grid-cols-2 gap-2">
                     {uniqueSizes.map((size) => {
-                      const v = variantsForGrind.find((vv) => vv.quantity === size);
+                      const v = selectorVariants.find((vv) => vv.quantity === size);
                       const vPrice = v ? Number(v.price) : 0;
-                      const isSelected = selectedVariant?.quantity === size &&
-                        (!hasMultipleGrinds || selectedVariant?.grind === v?.grind);
+                      const isSelected = selectedVariant?.quantity === size;
                       return (
                         <button
                           key={size}

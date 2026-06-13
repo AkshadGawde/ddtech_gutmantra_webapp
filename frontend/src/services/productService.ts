@@ -4,6 +4,7 @@ import {
   getDoc,
   doc,
   addDoc,
+  updateDoc,
   serverTimestamp,
 } from "firebase/firestore";
 
@@ -26,6 +27,7 @@ export interface Product {
   images?: string[];
 
   variants?: any[];
+  grindOptions?: string[];
 
   createdAt?: any;
 }
@@ -74,6 +76,13 @@ export const addProduct = async (product: Omit<Product, "id">) => {
     ...product,
     createdAt: serverTimestamp(),
   });
+};
+
+/* ================= UPDATE GRIND OPTIONS ================= */
+
+export const updateProductGrindOptions = async (id: string, grindOptions: string[]) => {
+  const ref = doc(db, PRODUCTS_COLLECTION, id);
+  await updateDoc(ref, { grindOptions });
 };
 
 /* ================= IMAGE UPLOAD ================= */
@@ -184,6 +193,7 @@ export function normalizeProduct(p: any): Product {
     rawCategory: p.category || p.categoryname || "",
     description: p.description || p.itemdescription || "",
     variants: enrichedVariants,
+    grindOptions: Array.isArray(p.grindOptions) ? p.grindOptions : [],
     createdAt: p.createdAt || null,
   };
 }

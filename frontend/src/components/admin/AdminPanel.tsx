@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { Plus, Trash2, Edit, Upload, X, Save } from "lucide-react";
-import { addProduct, getProducts, uploadProductImage, Product } from "../../services/productService";
+import { Plus, Trash2, Edit, Upload, X, Save, Settings2 } from "lucide-react";
+import { addProduct, getProducts, uploadProductImage, updateProductGrindOptions, Product } from "../../services/productService";
 import { useAuth } from "../../context/AuthContext";
 
 export default function AdminPanel() {
@@ -20,6 +20,12 @@ export default function AdminPanel() {
     isBestSeller: false
   });
   const [uploading, setUploading] = useState(false);
+
+  // Grind editor state
+  const [grindEditProduct, setGrindEditProduct] = useState<Product | null>(null);
+  const [grindList, setGrindList] = useState<string[]>([]);
+  const [grindInput, setGrindInput] = useState("");
+  const [savingGrind, setSavingGrind] = useState(false);
 
   useEffect(() => {
     if (isAdmin) {
@@ -77,6 +83,37 @@ export default function AdminPanel() {
       console.error("Save failed:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openGrindEditor = (product: Product) => {
+    setGrindEditProduct(product);
+    setGrindList(product.grindOptions || []);
+    setGrindInput("");
+  };
+
+  const addGrind = () => {
+    const val = grindInput.trim();
+    if (!val || grindList.includes(val)) return;
+    setGrindList((prev) => [...prev, val]);
+    setGrindInput("");
+  };
+
+  const removeGrind = (g: string) => setGrindList((prev) => prev.filter((x) => x !== g));
+
+  const saveGrindOptions = async () => {
+    if (!grindEditProduct) return;
+    setSavingGrind(true);
+    try {
+      await updateProductGrindOptions(grindEditProduct.id, grindList);
+      setProducts((prev) =>
+        prev.map((p) => p.id === grindEditProduct.id ? { ...p, grindOptions: grindList } : p)
+      );
+      setGrindEditProduct(null);
+    } catch (err) {
+      console.error("Failed to save grind options:", err);
+    } finally {
+      setSavingGrind(false);
     }
   };
 
@@ -232,7 +269,21 @@ export default function AdminPanel() {
                 </td>
                 <td className="p-6 font-bold">₹{product.price}</td>
                 <td className="p-6">
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
+                    {product.category === "atta" && (
+                      <button
+                        onClick={() => openGrindEditor(product)}
+                        title="Edit grind options"
+                        className="flex items-center gap-1 px-3 py-1.5 bg-secondary/10 text-secondary rounded-lg text-xs font-bold hover:bg-secondary/20 transition-colors"
+                      >
+                        <Settings2 size={13} /> Grinds
+                        {(product.grindOptions || []).length > 0 && (
+                          <span className="ml-1 bg-secondary text-white rounded-full px-1.5 text-[10px]">
+                            {product.grindOptions!.length}
+                          </span>
+                        )}
+                      </button>
+                    )}
                     <button className="p-2 hover:bg-blue-50 text-blue-600 rounded-lg transition-colors"><Edit size={16} /></button>
                     <button className="p-2 hover:bg-red-50 text-red-600 rounded-lg transition-colors"><Trash2 size={16} /></button>
                   </div>
@@ -244,6 +295,86 @@ export default function AdminPanel() {
         {loading && <div className="p-20 text-center opacity-50">Loading products...</div>}
         {!loading && products.length === 0 && <div className="p-20 text-center opacity-50">No products found.</div>}
       </div>
+
+      {/* ── Grind Options Editor Modal ── */}
+      {grindEditProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl"
+          >
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3 className="text-xl font-bold">Grind Options</h3>
+                <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{grindEditProduct.name}</p>
+              </div>
+              <button onClick={() => setGrindEditProduct(null)} className="p-2 hover:bg-black/5 rounded-full">
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Current grinds */}
+            <div className="flex flex-wrap gap-2 mb-5 min-h-10">
+              {grindList.length === 0 && (
+                <p className="text-sm text-gray-400">No grinds set yet.</p>
+              )}
+              {grindList.map((g) => (
+                <span key={g} className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary/10 text-secondary rounded-full text-sm font-bold">
+                  {g}
+                  <button onClick={() => removeGrind(g)} className="hover:text-red-500 transition-colors">
+                    <X size={12} />
+                  </button>
+                </span>
+              ))}
+            </div>
+
+            {/* Add grind input */}
+            <div className="flex gap-2 mb-6">
+              <input
+                type="text"
+                value={grindInput}
+                onChange={(e) => setGrindInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addGrind()}
+                placeholder="e.g. Fine (Breek)"
+                className="flex-1 px-4 py-2.5 bg-bg-warm rounded-xl border border-black/5 focus:outline-none focus:border-secondary text-sm"
+              />
+              <button
+                onClick={addGrind}
+                className="px-4 py-2.5 bg-secondary text-white rounded-xl text-sm font-bold hover:bg-secondary/90 transition-colors"
+              >
+                Add
+              </button>
+            </div>
+
+            {/* Quick presets */}
+            <div className="mb-6">
+              <p className="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-2">Quick Presets</p>
+              <div className="flex flex-wrap gap-2">
+                {["Normal", "Fine (Breek)", "Coarse (Mota)"].map((g) => (
+                  <button
+                    key={g}
+                    onClick={() => !grindList.includes(g) && setGrindList((prev) => [...prev, g])}
+                    disabled={grindList.includes(g)}
+                    className="px-3 py-1 rounded-full border border-black/10 text-xs font-bold disabled:opacity-30 hover:bg-black/5 transition-all"
+                  >
+                    + {g}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={saveGrindOptions}
+              disabled={savingGrind}
+              className="w-full py-3 bg-primary text-white rounded-2xl font-bold uppercase tracking-widest text-sm flex items-center justify-center gap-2 hover:bg-primary/90 transition-all disabled:opacity-50"
+            >
+              <Save size={16} />
+              {savingGrind ? "Saving..." : "Save Grind Options"}
+            </button>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
