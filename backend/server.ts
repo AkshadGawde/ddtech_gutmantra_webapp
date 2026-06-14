@@ -18,6 +18,7 @@ import billDeskOrderRoutes from "./src/routes/billdeskRoutes.js";
 import billDeskWebhookRoutes from "./src/routes/billdesk-webhook.routes.js";
 import otpRoutes from "./src/routes/otpRoutes.js";
 import cartRoutes from "./src/routes/cartRoutes.js";
+import adminRoutes from "./src/routes/adminRoutes.js";
 import { initializeSmsClient } from "./src/services/smsService.js";
 import { trackActivity } from "./src/middleware/activityTracker.js";
 
@@ -116,7 +117,7 @@ async function startServer() {
 
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "x-admin-password"],
 
   })
 
@@ -153,6 +154,7 @@ async function startServer() {
   app.use("/api/auth", authRoutes);
   app.use("/api/auth", otpRoutes);
   app.use("/api/cart", cartRoutes);
+  app.use("/api/admin", adminRoutes);
   app.use("/api", couponRoutes);
   app.use("/api", deliveryRoutes);
   app.use("/api", paymentRoutes);

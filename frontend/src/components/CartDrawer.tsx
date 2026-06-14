@@ -87,7 +87,14 @@ export default function CartDrawer({ isOpen, onClose, onCheckout }: CartDrawerPr
                     <div className="flex-1 flex flex-col justify-between">
                       <div>
                         <p className="font-bold text-sm line-clamp-1">{item.name}</p>
-                        <p className="text-primary font-bold text-sm">₹{item.price}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-primary font-bold text-sm">₹{item.price}</p>
+                          {item.grind && (
+                            <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full">
+                              {item.grind}
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       {/* QUANTITY CONTROLS */}

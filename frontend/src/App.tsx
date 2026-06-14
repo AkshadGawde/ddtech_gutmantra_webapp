@@ -18,6 +18,7 @@ import PaymentProcessing from "./pages/PaymentProcessing";
 import SuccessPage from "./pages/SuccessPage";
 import ProductPage from "./pages/ProductPage";
 import LoginPage from "./pages/LoginPage";
+import AdminPage from "./pages/AdminPage";
 import Footer from "./pages/Footer";
 
 import CategorySection from "./components/CategorySection";
@@ -201,6 +202,8 @@ export default function App() {
   }
 
 />
+
+          <Route path="/admin" element={<AdminPage />} />
 
           {/* ================= 404 ================= */}
           <Route

@@ -78,21 +78,28 @@ async function syncOrderToPetpooja(orderid: string): Promise<{ success: boolean;
           },
         },
         OrderItem: {
-          details: (o.items || []).map((item: any) => ({
-            itemid: item.base_id || item.variation_id || item.id,
-            variation_id: item.variation_id || '',
-            name: item.name,
-            quantity: String(parseInt(item.quantity) || 1),
-            price: String(parseFloat(item.price) || 0),
-            tax_inclusive: true,
-            gst_liability: 'restaurant',
-            item_tax: [],
-            item_discount: '0',
-            final_price: String(parseFloat(item.price) || 0),
-            description: '',
-            variation_name: item.variation_name || '',
-            AddonItem: { details: [] },
-          })),
+          details: (o.items || []).map((item: any) => {
+            const sizeLabel = item.selectedQuantity || item.variant || '';
+            const grindLabel = item.grind || '';
+            // Combine size + grind into variation_name so PetPooja shows both
+            const variationName = [sizeLabel, grindLabel].filter(Boolean).join(' · ');
+
+            return {
+              itemid: item.base_id || item.variation_id || item.id,
+              variation_id: item.variation_id || '',
+              name: item.name,
+              quantity: String(parseInt(item.quantity) || 1),
+              price: String(parseFloat(item.price) || 0),
+              tax_inclusive: true,
+              gst_liability: 'restaurant',
+              item_tax: [],
+              item_discount: '0',
+              final_price: String(parseFloat(item.price) || 0),
+              description: grindLabel ? `Grind: ${grindLabel}` : '',
+              variation_name: variationName,
+              AddonItem: { details: [] },
+            };
+          }),
         },
         Tax: { details: [] },
         Discount: { details: [] },

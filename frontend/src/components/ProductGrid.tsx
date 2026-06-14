@@ -1,15 +1,24 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
+import { useNavigate } from "react-router-dom";
 import { CATEGORIES } from "@/constants";
 import { useCart } from "@/context/CartContext";
 import { getProducts, Product } from "../services/productService";
 import ProductCard from "./ProductCard";
+
+const ATTA_SUBCATEGORIES = [
+  { name: "Multigrain Atta", slug: "multigrain", image: "https://res.cloudinary.com/dk7ynv44a/image/upload/v1781423900/multigrain.jpg" },
+  { name: "Wheat Atta",      slug: "wheat",       image: "https://res.cloudinary.com/dk7ynv44a/image/upload/v1781423900/wheat.jpg" },
+  { name: "Millets Atta",    slug: "millets",     image: "https://res.cloudinary.com/dk7ynv44a/image/upload/v1781423901/millets.jpg" },
+  { name: "Healthy Atta",    slug: "healthy",     image: "https://res.cloudinary.com/dk7ynv44a/image/upload/v1781423954/healty.jpg" },
+];
 
 interface ProductGridProps {
   onNavigate: (view: any, params?: any) => void;
 }
 
 export default function ProductGrid({ onNavigate }: ProductGridProps) {
+  const navigate = useNavigate();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -110,14 +119,12 @@ export default function ProductGrid({ onNavigate }: ProductGridProps) {
             </h3>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {CATEGORIES.map((cat) => (
               <motion.div
                 key={cat.id}
                 whileHover={{ y: -5 }}
-                onClick={() =>
-                  onNavigate("category", { category: cat.slug })
-                }
+                onClick={() => onNavigate("category", { category: cat.slug })}
                 className="overflow-hidden bg-white rounded-3xl border border-black/5 flex flex-col items-center text-center hover:shadow-lg transition-all cursor-pointer"
               >
                 <div className="w-full h-36 md:h-60 overflow-hidden">
@@ -128,12 +135,33 @@ export default function ProductGrid({ onNavigate }: ProductGridProps) {
                   />
                 </div>
                 <div className="p-4">
-                  <h4 className="font-bold text-sm uppercase tracking-widest">
-                    {cat.name}
-                  </h4>
-                  <p className="text-[10px] font-bold opacity-30 mt-1">
-                    View All Products
-                  </p>
+                  <h4 className="font-bold text-sm uppercase tracking-widest">{cat.name}</h4>
+                  <p className="text-[10px] font-bold opacity-30 mt-1">View All Products</p>
+                </div>
+              </motion.div>
+            ))}
+
+            {ATTA_SUBCATEGORIES.map((sub) => (
+              <motion.div
+                key={sub.slug}
+                whileHover={{ y: -5 }}
+                onClick={() => navigate(`/atta/${sub.slug}`)}
+                className="overflow-hidden bg-white rounded-3xl border border-black/5 flex flex-col items-center text-center hover:shadow-lg transition-all cursor-pointer"
+              >
+                <div className="w-full h-36 md:h-60 overflow-hidden bg-orange-50">
+                  {sub.image ? (
+                    <img
+                      src={sub.image}
+                      alt={sub.name}
+                      className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-4xl opacity-40">🌾</div>
+                  )}
+                </div>
+                <div className="p-4">
+                  <h4 className="font-bold text-sm uppercase tracking-widest">{sub.name}</h4>
+                  <p className="text-[10px] font-bold opacity-30 mt-1">View All Products</p>
                 </div>
               </motion.div>
             ))}

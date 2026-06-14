@@ -789,15 +789,17 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
               </div>
 
               <div className="grid md:grid-cols-2 gap-6 mt-6">
-                <input
-                  type="text"
-                  placeholder="Phone *"
-                  value={shippingAddress.phone}
-                  onChange={(e) =>
-                    setShippingAddress((prev) => ({ ...prev, phone: e.target.value }))
-                  }
-                  className="w-full px-4 py-3 border rounded-xl"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={shippingAddress.phone}
+                    readOnly
+                    className="w-full px-4 py-3 border rounded-xl bg-gray-50 text-gray-700 cursor-not-allowed select-none pr-10"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" title="Linked to your account">
+                    🔒
+                  </span>
+                </div>
                 <input
                   type="email"
                   placeholder="Email *"
