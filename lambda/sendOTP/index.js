@@ -1,12 +1,11 @@
 'use strict';
 
 const admin = require('firebase-admin');
-const { SdkManager } = require('@zavudev/sdk');
 const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
 
 const secretsClient = new SecretsManagerClient({ region: process.env.AWS_REGION });
 
-// ── Firebase singleton (credentials from Secrets Manager) ─────────────────────
+// ── Firebase singleton ────────────────────────────────────────────────────────
 
 let cachedSecret = null;
 async function getFirebaseCredentials() {
@@ -33,12 +32,14 @@ async function getFirebase() {
 }
 
 // ── Zavu SMS singleton ────────────────────────────────────────────────────────
+// @zavudev/sdk is ESM-only — use dynamic import() instead of require()
 
 let smsClient;
 async function getSmsClient() {
   if (!smsClient) {
-    const manager = new SdkManager({ apiKey: process.env.ZAVUDEV_API_KEY });
-    smsClient = await manager.initialize();
+    const zavuModule = await import('@zavudev/sdk');
+    const Zavudev = zavuModule.default;
+    smsClient = new Zavudev({ apiKey: process.env.ZAVUDEV_API_KEY });
   }
   return smsClient;
 }
@@ -66,16 +67,12 @@ function corsHeaders() {
   };
 }
 
-// Handles both REST API v1 (event.httpMethod) and HTTP API v2 (event.requestContext.http.method)
-// Also normalises body (string → object) and lowercases header lookup
 function parseEvent(event) {
   const method = event.httpMethod || event.requestContext?.http?.method || 'POST';
   const body = typeof event.body === 'string'
     ? JSON.parse(event.body || '{}')
     : (event.body || {});
-  const getHeader = (name) =>
-    event.headers?.[name] || event.headers?.[name.toLowerCase()] || '';
-  return { method, body, getHeader };
+  return { method, body };
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
@@ -103,7 +100,7 @@ exports.handler = async (event) => {
     const app = await getFirebase();
     const db = admin.firestore(app);
 
-    // Check rate limit: max 5 OTPs per phone per hour
+    // Rate limit: max 1 OTP per 30 seconds per phone
     const otpDocId = `otp_${normalizedPhone.replace(/\D/g, '')}`;
     const existing = await db.collection('otp_requests').doc(otpDocId).get();
     if (existing.exists) {
@@ -111,7 +108,11 @@ exports.handler = async (event) => {
       const createdAt = data?.createdAt?.toDate?.() || new Date(0);
       const secondsAgo = (Date.now() - createdAt.getTime()) / 1000;
       if (secondsAgo < 30) {
-        return { statusCode: 429, headers, body: JSON.stringify({ success: false, error: 'Please wait before requesting another OTP.', retryAfter: Math.ceil(30 - secondsAgo) }) };
+        return {
+          statusCode: 429,
+          headers,
+          body: JSON.stringify({ success: false, error: 'Please wait before requesting another OTP.', retryAfter: Math.ceil(30 - secondsAgo) }),
+        };
       }
     }
 
@@ -129,11 +130,25 @@ exports.handler = async (event) => {
 
     // Send SMS via Zavu
     const client = await getSmsClient();
-    const message = `Your GutMantra verification code is: ${otpCode}. Valid for 5 minutes. Do not share with anyone.`;
-    const smsResult = await client.sms.send({ to: normalizedPhone, message });
+    const text = `Your GutMantra verification code is ${otpCode}. Valid for 5 minutes.`;
 
-    if (!smsResult?.success) {
-      await db.collection('otp_requests').doc(otpDocId).delete();
+    console.log(`📱 Sending OTP to ${normalizedPhone}`);
+    const response = await client.messages.send({
+      to: normalizedPhone,
+      channel: 'sms_oneway',
+      text,
+    });
+
+    // Unwrap response — Zavu wraps it as { message: {...} }
+    const resData = response?.message ?? response?.data ?? response;
+    console.log('Zavu response:', JSON.stringify(response));
+
+    const isSuccess = resData && (resData.id || resData.status === 'sent' || resData.status === 'queued' || resData.status === 'pending');
+
+    if (!isSuccess) {
+      // Clean up OTP doc so user can retry
+      await db.collection('otp_requests').doc(otpDocId).delete().catch(() => {});
+      console.error('Zavu SMS failed:', resData);
       return { statusCode: 500, headers, body: JSON.stringify({ success: false, error: 'Failed to send OTP via SMS' }) };
     }
 
