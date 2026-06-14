@@ -135,7 +135,10 @@ export default function LoginModal({
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        if (res.status === 429) {
+        if (res.status === 409 || data.code === "ALREADY_REGISTERED") {
+          setError("This number is already registered. Please use Login instead.");
+          setTimeout(() => setMode("login"), 1800);
+        } else if (res.status === 429) {
           setError(data.error || `Too many requests. Wait ${data.retryAfter ?? 60}s.`);
           if (data.retryAfter) setResendTimer(data.retryAfter);
         } else {

@@ -100,6 +100,29 @@ exports.handler = async (event) => {
     const app = await getFirebase();
     const db = admin.firestore(app);
 
+    // Block signup OTP if phone is already verified with a password
+    const rawDigits = normalizedPhone.replace(/\D/g, '');
+    const tenDigit = rawDigits.length === 12 ? rawDigits.slice(2) : rawDigits;
+    const [exactSnap, tenSnap] = await Promise.all([
+      db.collection('users').where('phone', '==', normalizedPhone).limit(1).get(),
+      db.collection('users').where('phone', '==', tenDigit).limit(1).get(),
+    ]);
+    const userDoc = !exactSnap.empty ? exactSnap.docs[0] : !tenSnap.empty ? tenSnap.docs[0] : null;
+    if (userDoc) {
+      const u = userDoc.data();
+      if (u.phoneVerified && u.passwordHash) {
+        return {
+          statusCode: 409,
+          headers,
+          body: JSON.stringify({
+            success: false,
+            error: 'This number is already registered. Please login instead.',
+            code: 'ALREADY_REGISTERED',
+          }),
+        };
+      }
+    }
+
     // Rate limit: max 1 OTP per 30 seconds per phone
     const otpDocId = `otp_${normalizedPhone.replace(/\D/g, '')}`;
     const existing = await db.collection('otp_requests').doc(otpDocId).get();
