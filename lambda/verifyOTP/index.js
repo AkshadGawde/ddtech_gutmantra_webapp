@@ -1,9 +1,11 @@
 'use strict';
 
 const admin = require('firebase-admin');
+const { EC2Client, StartInstancesCommand, DescribeInstancesCommand } = require('@aws-sdk/client-ec2');
 const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
 
 const secretsClient = new SecretsManagerClient({ region: process.env.AWS_REGION });
+const ec2 = new EC2Client({ region: process.env.EC2_REGION || process.env.AWS_REGION });
 
 // ── Firebase singleton (credentials from Secrets Manager) ─────────────────────
 
@@ -29,6 +31,35 @@ async function getFirebase() {
     firebaseApp = admin.initializeApp({ credential: admin.credential.cert(creds) });
   }
   return firebaseApp;
+}
+
+// ── EC2 helpers ───────────────────────────────────────────────────────────────
+
+async function startEC2IfStopped(db) {
+  try {
+    const cmd = new DescribeInstancesCommand({ InstanceIds: [process.env.EC2_INSTANCE_ID] });
+    const result = await ec2.send(cmd);
+    const state = result.Reservations?.[0]?.Instances?.[0]?.State?.Name || 'unknown';
+    console.log(`EC2 state at OTP verify: ${state}`);
+
+    if (state === 'running') return false; // already up
+
+    if (state === 'stopped') {
+      await ec2.send(new StartInstancesCommand({ InstanceIds: [process.env.EC2_INSTANCE_ID] }));
+      console.log('EC2 start triggered at OTP verification');
+
+      // Stamp activity so checkInactivity doesn't immediately stop it
+      await db.collection('system').doc('ec2_activity').set(
+        { lastActivityAt: admin.firestore.FieldValue.serverTimestamp(), updatedAt: admin.firestore.FieldValue.serverTimestamp() },
+        { merge: true }
+      ).catch(err => console.warn('Activity stamp failed:', err.message));
+
+      return true;
+    }
+  } catch (err) {
+    console.warn('EC2 start at OTP verify failed (non-critical):', err.message);
+  }
+  return false;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -208,6 +239,10 @@ exports.handler = async (event) => {
 
     const customToken = await auth.createCustomToken(userId, { phone: normalizedPhone });
 
+    // Start EC2 now — user is authenticated, they'll need the server for the next step
+    const ec2Started = await startEC2IfStopped(db);
+    const wait_seconds = ec2Started ? 30 : 0;
+
     return {
       statusCode: 200,
       headers,
@@ -218,6 +253,7 @@ exports.handler = async (event) => {
         isNewUser,
         phone: normalizedPhone,
         customToken,
+        wait_seconds,
       }),
     };
   } catch (error) {

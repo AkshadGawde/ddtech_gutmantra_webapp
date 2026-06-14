@@ -4,6 +4,7 @@
   "description": "Lambda function: verify OTP and find/create user (no EC2 wake)",
   "main": "index.js",
   "dependencies": {
+    "@aws-sdk/client-ec2": "^3.0.0",
     "@aws-sdk/client-secrets-manager": "^3.0.0",
     "firebase-admin": "^12.7.0"
   }
