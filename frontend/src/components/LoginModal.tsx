@@ -382,7 +382,6 @@ export default function LoginModal({
 
   const canGoBack =
     mode === "signup-otp" ||
-    mode === "signup-password" ||
     mode === "forgot-phone" ||
     mode === "forgot-otp" ||
     mode === "forgot-reset";
@@ -404,7 +403,7 @@ export default function LoginModal({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={onClose}
+          onClick={mode === "signup-password" || mode === "forgot-reset" ? undefined : onClose}
         >
           <motion.div
             initial={{ scale: 0.95, opacity: 0, y: 20 }}
@@ -413,13 +412,15 @@ export default function LoginModal({
             className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* CLOSE */}
-            <button
-              onClick={onClose}
-              className="absolute top-4 right-4 z-20 p-2 rounded-full hover:bg-black/5 transition"
-            >
-              <X size={20} className="text-gray-400" />
-            </button>
+            {/* CLOSE — hidden while setting password (flow must complete) */}
+            {mode !== "signup-password" && (
+              <button
+                onClick={onClose}
+                className="absolute top-4 right-4 z-20 p-2 rounded-full hover:bg-black/5 transition"
+              >
+                <X size={20} className="text-gray-400" />
+              </button>
+            )}
 
             {/* BACK */}
             {canGoBack && (

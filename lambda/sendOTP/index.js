@@ -155,7 +155,7 @@ exports.handler = async (event) => {
     const client = await getSmsClient();
     const text = `Your GutMantra verification code is ${otpCode}. Valid for 5 minutes.`;
 
-    console.log(`📱 Sending OTP to ${normalizedPhone}`);
+    console.log(`📱 Sending OTP to ${normalizedPhone.slice(0, 6)}****`);
     const response = await client.messages.send({
       to: normalizedPhone,
       channel: 'sms_oneway',
@@ -164,7 +164,7 @@ exports.handler = async (event) => {
 
     // Unwrap response — Zavu wraps it as { message: {...} }
     const resData = response?.message ?? response?.data ?? response;
-    console.log('Zavu response:', JSON.stringify(response));
+    console.log('Zavu response status:', resData?.status, '| id:', resData?.id);
 
     const isSuccess = resData && (resData.id || resData.status === 'sent' || resData.status === 'queued' || resData.status === 'pending');
 
