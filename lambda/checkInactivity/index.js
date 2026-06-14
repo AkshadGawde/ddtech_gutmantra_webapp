@@ -16,7 +16,7 @@ const admin = require('firebase-admin');
 const { EC2Client, StopInstancesCommand, DescribeInstancesCommand } = require('@aws-sdk/client-ec2');
 const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
 
-const INACTIVITY_THRESHOLD_MS = (parseInt(process.env.INACTIVITY_THRESHOLD_MINUTES) || 15) * 60 * 1000;
+const INACTIVITY_THRESHOLD_MS = (parseInt(process.env.INACTIVITY_THRESHOLD_MINUTES) || 10) * 60 * 1000;
 
 // ── AWS singletons ────────────────────────────────────────────────────────────
 

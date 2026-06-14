@@ -32,6 +32,7 @@ export default function ProductPage() {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isVariantModalOpen, setIsVariantModalOpen] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
+  const [selectedGrind, setSelectedGrind] = useState<string>("");
   const [selectedQuantity, setSelectedQuantity] = useState(1);
 
   /* ================= FETCH PRODUCT ================= */
@@ -68,6 +69,7 @@ export default function ProductPage() {
 
         console.log("🎯 [ProductPage] Initial variant selected:", initial);
         setSelectedVariant(initial);
+        setSelectedGrind(data.grindOptions?.[0] || "");
         setLoading(false);
       } catch (err) {
         console.error("❌ [ProductPage] Failed to load product:", err);
@@ -91,31 +93,17 @@ export default function ProductPage() {
   };
 
   /* ================= VARIANT MATCHING ================= */
-  const getUniqueGrinds = () => {
+  const getUniqueQuantities = () => {
     if (!product?.variants) return [];
-    const grinds = product.variants.map((v: any) => v.grind).filter(Boolean);
-    return [...new Set(grinds)];
+    const quantities = product.variants.map((v: any) => v.quantity).filter(Boolean);
+    return [...new Set(quantities)] as string[];
   };
 
-  const getUniqueQuantities = (grind?: string) => {
-    if (!product?.variants) return [];
-    const filtered = grind
-      ? product.variants.filter((v: any) => v.grind === grind)
-      : product.variants;
-    const quantities = filtered.map((v: any) => v.quantity).filter(Boolean);
-    return [...new Set(quantities)];
-  };
-
-  const updateVariant = (grind?: string, quantity?: string) => {
-    const variant = product?.variants?.find(
-      (v: any) =>
-        (!grind || v.grind === grind) && (!quantity || v.quantity === quantity)
-    );
+  const updateVariantByQty = (quantity: string) => {
+    const variant = product?.variants?.find((v: any) => v.quantity === quantity);
     if (variant) {
-      console.log(`🔄 [ProductPage] Variant selected: qty="${variant.quantity}" grind="${variant.grind}" price=₹${variant.price}`);
+      console.log(`🔄 [ProductPage] Variant selected: qty="${variant.quantity}" price=₹${variant.price}`);
       setSelectedVariant(variant);
-    } else {
-      console.warn(`⚠️ [ProductPage] No variant found for grind="${grind}" qty="${quantity}"`);
     }
   };
 
@@ -198,7 +186,7 @@ export default function ProductPage() {
       variation_id: variationId,
       petpoojaId: variant.petpoojaId,
       category: product.category,
-      grind: variant.grind,
+      grind: selectedGrind || undefined,
       selectedQuantity: variant.quantity,
       sku: baseId,
     };
@@ -391,76 +379,68 @@ export default function ProductPage() {
               )}
 
               {/* ================= VARIANT SELECTORS ================= */}
-              {product.variants && product.variants.length > 0 && (
-                <div className="space-y-6 pt-4">
-                  {/* GRIND SELECTOR */}
-                  {getUniqueGrinds().length > 1 && (
+              <div className="space-y-6 pt-4">
+                {/* GRIND SELECTOR — reads from product.grindOptions (set by admin) */}
+                {(product.grindOptions ?? []).length > 0 && (
+                  <div>
+                    <label className="block text-sm font-bold text-gray-900 mb-3">
+                      Grind Type
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(product.grindOptions ?? []).map((grind) => (
+                        <button
+                          key={grind}
+                          onClick={() => setSelectedGrind(grind)}
+                          className={`py-3 px-4 rounded-lg border-2 font-bold transition-all text-sm ${
+                            selectedGrind === grind
+                              ? "border-primary bg-primary/5 text-primary"
+                              : "border-gray-200 text-gray-700 hover:border-gray-300"
+                          }`}
+                        >
+                          {grind}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* SIZE / WEIGHT SELECTOR */}
+                {product.variants && product.variants.length > 0 && (() => {
+                  const qtys = getUniqueQuantities().filter((q) => q !== "Default" && q !== "Standard");
+                  if (qtys.length === 0) return null;
+                  return (
                     <div>
                       <label className="block text-sm font-bold text-gray-900 mb-3">
-                        Grind Type
+                        Size / Quantity
                       </label>
                       <div className="grid grid-cols-2 gap-2">
-                        {getUniqueGrinds().map((grind) => (
-                          <button
-                            key={grind}
-                            onClick={() => updateVariant(grind, selectedVariant?.quantity)}
-                            className={`py-3 px-4 rounded-lg border-2 font-bold transition-all ${
-                              selectedVariant?.grind === grind
-                                ? "border-primary bg-primary/5 text-primary"
-                                : "border-gray-200 text-gray-700 hover:border-gray-300"
-                            }`}
-                          >
-                            {grind}
-                          </button>
-                        ))}
+                        {qtys.map((qty) => {
+                          const v = product.variants?.find((vv: any) => vv.quantity === qty);
+                          const vPrice = v ? Number(v.price) : 0;
+                          return (
+                            <button
+                              key={qty}
+                              onClick={() => updateVariantByQty(qty)}
+                              className={`py-3 px-4 rounded-lg border-2 font-bold transition-all text-left ${
+                                selectedVariant?.quantity === qty
+                                  ? "border-primary bg-primary/5 text-primary"
+                                  : "border-gray-200 text-gray-700 hover:border-gray-300"
+                              }`}
+                            >
+                              <span>{qty}</span>
+                              {vPrice > 0 && (
+                                <span className="block text-xs font-normal mt-0.5">
+                                  ₹{vPrice}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
-                  )}
-
-                  {/* QUANTITY / SIZE SELECTOR */}
-                  {(() => {
-                    const qtys = getUniqueQuantities(selectedVariant?.grind).filter(
-                      (q) => q && q !== "Default"
-                    );
-                    if (qtys.length === 0) return null;
-                    return (
-                      <div>
-                        <label className="block text-sm font-bold text-gray-900 mb-3">
-                          Size / Quantity
-                        </label>
-                        <div className="grid grid-cols-2 gap-2">
-                          {qtys.map((qty) => {
-                            const v = product.variants?.find(
-                              (vv: any) =>
-                                vv.quantity === qty &&
-                                (!selectedVariant?.grind || vv.grind === selectedVariant.grind)
-                            );
-                            const vPrice = v ? Number(v.price) : 0;
-                            return (
-                              <button
-                                key={qty}
-                                onClick={() => updateVariant(selectedVariant?.grind, qty)}
-                                className={`py-3 px-4 rounded-lg border-2 font-bold transition-all text-left ${
-                                  selectedVariant?.quantity === qty
-                                    ? "border-primary bg-primary/5 text-primary"
-                                    : "border-gray-200 text-gray-700 hover:border-gray-300"
-                                }`}
-                              >
-                                <span>{qty}</span>
-                                {vPrice > 0 && (
-                                  <span className="block text-xs font-normal mt-0.5">
-                                    ₹{vPrice}
-                                  </span>
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
+                  );
+                })()}
+              </div>
 
               {/* QUANTITY SELECTOR */}
               <div>

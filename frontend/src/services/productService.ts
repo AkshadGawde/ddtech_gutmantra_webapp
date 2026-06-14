@@ -4,7 +4,6 @@ import {
   getDoc,
   doc,
   addDoc,
-  updateDoc,
   serverTimestamp,
 } from "firebase/firestore";
 
@@ -81,8 +80,22 @@ export const addProduct = async (product: Omit<Product, "id">) => {
 /* ================= UPDATE GRIND OPTIONS ================= */
 
 export const updateProductGrindOptions = async (id: string, grindOptions: string[]) => {
-  const ref = doc(db, PRODUCTS_COLLECTION, id);
-  await updateDoc(ref, { grindOptions });
+  const API_BASE = import.meta.env.DEV ? "http://localhost:5000" : (import.meta.env.VITE_API_URL || "https://api.gutmantra.in");
+  const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD as string;
+
+  const res = await fetch(`${API_BASE}/api/admin/products/${id}/grind-options`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "x-admin-password": adminPassword,
+    },
+    body: JSON.stringify({ grindOptions }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `Failed to update grind options (${res.status})`);
+  }
 };
 
 /* ================= IMAGE UPLOAD ================= */

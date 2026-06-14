@@ -1,176 +1,131 @@
 import { motion } from "motion/react";
-import { Lock, Mail, Loader, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { Lock, Mail, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { useState } from "react";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+
+const ADMIN_EMAIL    = import.meta.env.VITE_ADMIN_EMAIL    as string;
+const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD as string;
 
 interface AdminLoginProps {
   onLoginSuccess: () => void;
 }
 
 export default function AdminLogin({ onLoginSuccess }: AdminLoginProps) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail]               = useState("");
+  const [password, setPassword]         = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [loading, setLoading]           = useState(false);
+  const [error, setError]               = useState("");
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const adminEmail = import.meta.env.VITE_ADMIN_EMAIL;
-
-      if (userCredential.user.email === adminEmail) {
+    setTimeout(() => {
+      if (email.trim().toLowerCase() === ADMIN_EMAIL?.toLowerCase() && password === ADMIN_PASSWORD) {
+        sessionStorage.setItem("gm_admin_auth", "true");
         onLoginSuccess();
       } else {
-        setError("You do not have admin access.");
-        await auth.signOut();
+        setError("Invalid email or password.");
       }
-    } catch (err: any) {
-      setError(err.message || "Login failed. Please try again.");
-    } finally {
       setLoading(false);
-    }
+    }, 400);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center pt-20 pb-12">
+    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-bg-warm to-secondary/10 flex items-center justify-center p-4">
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-md px-4"
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-sm"
       >
-        {/* Card */}
-        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden border border-primary/10">
+        {/* Logo mark */}
+        <div className="flex justify-center mb-8">
+          <div className="w-14 h-14 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/30">
+            <span className="text-white font-bold text-2xl">G</span>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-3xl shadow-xl border border-black/5 overflow-hidden">
           {/* Header */}
-          <div className="bg-gradient-to-r from-primary to-secondary p-8 text-white text-center">
-            <div className="mb-4 flex justify-center">
-              <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center border-2 border-white">
-                <Lock size={32} />
-              </div>
-            </div>
-            <h1 className="text-2xl font-bold mb-2">Admin Dashboard</h1>
-            <p className="text-white/80 text-sm">Secure Access Only</p>
+          <div className="px-8 pt-8 pb-6 border-b border-black/5 text-center">
+            <h1 className="text-xl font-bold tracking-tight">Admin Dashboard</h1>
+            <p className="text-xs text-gray-400 mt-1 font-medium">GutMantra · Restricted Access</p>
           </div>
 
           {/* Form */}
-          <form onSubmit={handleLogin} className="p-8 space-y-6">
-            {/* Error Message */}
+          <form onSubmit={handleLogin} className="px-8 py-7 space-y-5">
             {error && (
               <motion.div
-                initial={{ opacity: 0, y: -10 }}
+                initial={{ opacity: 0, y: -6 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-red-50 border-2 border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start gap-3"
+                className="flex items-center gap-2.5 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm font-semibold"
               >
-                <AlertCircle size={20} className="flex-shrink-0 mt-0.5" />
-                <p className="font-medium text-sm">{error}</p>
+                <AlertCircle size={16} className="shrink-0" />
+                {error}
               </motion.div>
             )}
 
             {/* Email */}
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                <Mail size={16} />
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">
                 Admin Email
               </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-primary focus:outline-none transition-colors font-medium"
-                placeholder="admin@example.com"
-                disabled={loading}
-              />
+              <div className="relative">
+                <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
+                  disabled={loading}
+                  placeholder={ADMIN_EMAIL || "admin@example.com"}
+                  className="w-full pl-10 pr-4 py-3 bg-[#F5F5F0] rounded-xl border border-black/5 focus:outline-none focus:border-primary text-sm font-medium"
+                />
+              </div>
             </div>
 
             {/* Password */}
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                <Lock size={16} />
+              <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">
                 Password
               </label>
               <div className="relative">
+                <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={e => setPassword(e.target.value)}
                   required
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-primary focus:outline-none transition-colors font-medium"
-                  placeholder="••••••••"
                   disabled={loading}
+                  placeholder="••••••••"
+                  className="w-full pl-10 pr-10 py-3 bg-[#F5F5F0] rounded-xl border border-black/5 focus:outline-none focus:border-primary text-sm font-medium"
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                  disabled={loading}
+                  onClick={() => setShowPassword(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </div>
 
-            {/* Remember Me */}
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="remember"
-                className="w-4 h-4 text-primary border-2 border-gray-300 rounded focus:ring-primary"
-                disabled={loading}
-              />
-              <label htmlFor="remember" className="ml-2 text-sm text-gray-600">
-                Remember me
-              </label>
-            </div>
-
-            {/* Submit Button */}
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+            <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-primary to-secondary text-white font-bold py-3 rounded-lg hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3.5 bg-primary text-white rounded-xl font-bold uppercase tracking-widest text-sm flex items-center justify-center gap-2 hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 disabled:opacity-50 mt-2"
             >
-              {loading ? (
-                <>
-                  <Loader size={20} className="animate-spin" />
-                  Signing in...
-                </>
-              ) : (
-                <>
-                  <Lock size={20} />
-                  Sign In
-                </>
-              )}
-            </motion.button>
+              {loading
+                ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Verifying…</>
+                : <><Lock size={15} /> Sign In</>}
+            </button>
           </form>
-
-          {/* Security Notice */}
-          <div className="bg-gray-50 px-8 py-4 border-t border-gray-200">
-            <p className="text-xs text-gray-600 text-center flex items-center justify-center gap-2">
-              <Lock size={14} />
-              Secure connection. Your credentials are encrypted.
-            </p>
-          </div>
         </div>
 
-        {/* Info */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="mt-8 bg-white rounded-xl p-6 border border-primary/20 shadow-lg"
-        >
-          <h3 className="font-bold text-primary mb-3">Admin Access Only</h3>
-          <p className="text-sm text-gray-600 leading-relaxed">
-            This is a restricted area for administrators only. If you believe you should have access to this page, please contact the website administrator.
-          </p>
-        </motion.div>
+        <p className="text-center text-[10px] text-gray-400 mt-6 font-medium uppercase tracking-widest">
+          Secure · Admin Only
+        </p>
       </motion.div>
     </div>
   );
