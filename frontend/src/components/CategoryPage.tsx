@@ -86,12 +86,12 @@ export default function CategoryPage() {
         <div className="mb-8 sm:mb-16">
           <motion.div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full mb-4 sm:mb-6">
             <span className="text-[10px] font-bold uppercase tracking-widest text-primary">
-              {category?.name} {subcategory ? `/ ${subcategory}` : ""}
+              {category?.name} {subcategory ? `/ ${subcategory.charAt(0).toUpperCase() + subcategory.slice(1)}` : ""}
             </span>
           </motion.div>
 
           <motion.h1 className="text-3xl sm:text-5xl md:text-7xl font-bold tracking-tighter mb-3 sm:mb-6">
-            {subcategory || category?.name}
+            {subcategory ? subcategory.charAt(0).toUpperCase() + subcategory.slice(1) : category?.name}
           </motion.h1>
 
           <p className="text-sm sm:text-lg text-accent/60 max-w-2xl">

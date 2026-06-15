@@ -86,7 +86,7 @@ export default function ContactUs() {
                 href="mailto:GutMantra24@gmail.com"
                 className="text-blue-600 font-semibold hover:text-blue-700 transition-colors text-lg"
               >
-                GutMantra24@gmail.com
+                Support@gutmantra.in
               </a>
               <p className="text-sm text-gray-600 mt-2">We'll respond within 24 hours</p>
             </motion.div>
@@ -105,7 +105,10 @@ export default function ContactUs() {
               <a href="tel:+919028107111" className="text-green-600 font-semibold hover:text-green-700 transition-colors text-lg">
                 +91 9028107111
               </a>
-              <p className="text-sm text-gray-600 mt-2">Monday to Saturday, 9 AM - 6 PM</p>
+              <p className="text-sm text-gray-600 mt-2">Monday to Saturday, 9:30 AM - 9:30 PM</p>
+              <p>
+                  <span className="font-semibold">Thursday:</span> Closed
+                </p>
             </motion.div>
 
             {/* Business Hours */}
@@ -243,18 +246,23 @@ export default function ContactUs() {
           </motion.div>
         </div>
 
-        {/* Map Section (Placeholder) */}
+        {/* Map Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="bg-gradient-to-r from-primary/20 to-secondary/20 rounded-2xl overflow-hidden h-96 flex items-center justify-center border-2 border-primary/20"
+          className="rounded-2xl overflow-hidden h-96 border-2 border-primary/20"
         >
-          <div className="text-center">
-            <MapPin size={64} className="text-primary/30 mx-auto mb-4" />
-            <p className="text-gray-600 font-medium">Visit us at our Pune location</p>
-            <p className="text-sm text-gray-500 mt-2">Charoli Budruk, Lohegaon, Pune</p>
-          </div>
+          <iframe
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d59953.85744249372!2d73.87628586953124!3d18.592800212503!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bc2c762d257dfd7%3A0xead8aa3331b27277!2sGutMantra%20Health%20Foods!5e1!3m2!1sen!2sin!4v1781527741224!5m2!1sen!2sin"
+            width="100%"
+            height="100%"
+            style={{ border: 0 }}
+            allowFullScreen
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            title="GutMantra Health Foods location"
+          />
         </motion.div>
 
         {/* Additional Info */}

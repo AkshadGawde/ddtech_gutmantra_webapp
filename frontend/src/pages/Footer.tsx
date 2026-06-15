@@ -11,13 +11,13 @@ export default function Footer() {
           <div className="flex flex-col gap-6 sm:gap-8">
             <div>
               <img
-                src="https://res.cloudinary.com/dk7ynv44a/image/upload/v1779879308/kup9jkswy7abbal9xdov.png"
+                src="https://res.cloudinary.com/dk7ynv44a/image/upload/v1781528506/nhs57yiyhe8axow2bchy.png"
                 alt="GutMantra"
                 className="h-14 w-auto object-contain"
               />
             </div>
             <p className="text-white/50 text-xs sm:text-sm leading-relaxed font-medium max-w-xs">
-              GutMantra is Pune's leading artisanal flour mill, dedicated to reviving traditional stone-grinding and wood-pressing techniques. We believe in food that is as honest as it is healthy.
+              Gut Mantra is Pune's leading artisanal flour mill, dedicated to reviving traditional stone-grinding and wood-pressing techniques. We believe in food that is as honest as it is healthy.
             </p>
             <div className="flex gap-3 sm:gap-4">
               <a

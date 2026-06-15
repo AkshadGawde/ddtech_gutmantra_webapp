@@ -148,7 +148,7 @@ export default function OurStory() {
               className="relative rounded-3xl overflow-hidden shadow-2xl h-[420px]"
             >
               <img
-                src="https://res.cloudinary.com/dk7ynv44a/image/upload/v1779797283/ooogfdudi56zxwlpfx86.jpg"
+                src="https://res.cloudinary.com/dk7ynv44a/image/upload/v1779797272/u9ursrutcvgpeh8wapm4.png"
                 alt="GutMantra — Our Story"
                 className="w-full h-full object-cover"
               />
