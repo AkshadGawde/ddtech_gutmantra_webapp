@@ -116,13 +116,13 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
     if (user) {
       setShippingAddress((prev) => ({
         ...prev,
-        phone: user.phoneNumber || prev.phone,
+        phone: userData?.phone || user.phoneNumber || prev.phone,
         email: user.email || prev.email,
         firstName: user.displayName?.split(" ")[0] || prev.firstName,
         lastName: user.displayName?.split(" ").slice(1).join(" ") || prev.lastName,
       }));
     }
-  }, [user]);
+  }, [user, userData]);
 
   useEffect(() => {
     if (!user || addressHydrated || !userData?.address) {
