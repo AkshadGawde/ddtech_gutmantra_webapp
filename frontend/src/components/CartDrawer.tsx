@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { X, Plus, Minus, ShoppingBag, Trash2, ArrowRight } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
+import { pixelEvents } from "@/utils/fbPixel";
 
 interface CartDrawerProps {
   isOpen: boolean;
