@@ -424,6 +424,11 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
       return;
     }
 
+    if (!/^[0-9]{6}$/.test(shippingAddress.pinCode)) {
+      alert("Please enter a valid 6-digit PIN code");
+      return;
+    }
+
     // ── Step 1: ensure we have a delivery result ──
     let validated = deliveryResult;
 
