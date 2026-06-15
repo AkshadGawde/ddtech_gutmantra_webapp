@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { motion } from "motion/react";
 import { ShoppingBag, Heart, Eye } from "lucide-react";
+import { toast } from "sonner";
 import { Product } from "../services/productService";
 import { useCart } from "../context/CartContext";
 import { useNavigate } from "react-router-dom";
@@ -58,7 +59,7 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
         minVariant,
         product,
       });
-      alert("Product information incomplete. Please try again.");
+      toast.error("Product information incomplete. Please try again.");
       return;
     }
 
@@ -68,7 +69,7 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
         product,
         price,
       });
-      alert("Product price information missing. Please try again.");
+      toast.error("Product price information missing. Please try again.");
       return;
     }
 
