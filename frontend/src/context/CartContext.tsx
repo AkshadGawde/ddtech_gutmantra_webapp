@@ -146,7 +146,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({
       return;
     }
 
-    pixelEvents.addToCart({ name: item.name, id: item.id, price: item.price, quantity: item.quantity });
+    const fbEventId = `atc_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    pixelEvents.addToCart(
+      { name: item.name, id: item.id, price: item.price, quantity: item.quantity },
+      fbEventId,
+    );
 
     // Optimistic update
     setItems((prev) => {
@@ -166,9 +170,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({
     showNotification(`${item.name} added to cart!`);
     console.log("🛒 CART ITEM ADDED:", item);
 
+    // TODO: fbEventId is included so the backend CAPI AddToCart can use the same ID for deduplication
     const synced = await apiFetch("/", {
       method: "POST",
-      body: JSON.stringify(item),
+      body: JSON.stringify({ ...item, fbEventId }),
     });
     if (synced.length > 0) setItems(synced);
   };

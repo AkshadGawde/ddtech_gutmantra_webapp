@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import { getFirestoreDb } from '../services/firebaseAdmin.js';
 import { createOrder } from '../utils/billdesk.js';
+import { sendPurchaseEvent } from '../utils/fbConversions.js';
 
 const router = express.Router();
 
@@ -136,6 +137,19 @@ async function syncOrderToPetpooja(orderid: string): Promise<{ success: boolean;
   });
 
   console.log(`[PetPooja Sync] ✅ Order ${orderid} synced (ID: ${ppData?.clientOrderID || ppData?.order_id})`);
+
+  // Fire FB CAPI Purchase (non-blocking) — eventId matches the pixel Purchase eventID from the frontend
+  sendPurchaseEvent({
+    orderId: orderid,
+    eventId: o.fbEventId || orderid,
+    value: parseFloat(o.amount || '0'),
+    email: o.shippingAddress?.email || o.buyerEmail,
+    phone: o.shippingAddress?.phone || o.buyerPhone,
+    ip: o.clientIp,
+    userAgent: o.clientUserAgent,
+    sourceUrl: 'https://gutmantra.in/checkout',
+  }).catch(() => {});
+
   return { success: true, petpooja_order_id: ppData?.clientOrderID || ppData?.order_id };
 }
 
@@ -143,7 +157,7 @@ async function syncOrderToPetpooja(orderid: string): Promise<{ success: boolean;
 
 router.post('/create-order', async (req: Request, res: Response) => {
   try {
-    const { userid, items, paymentmethod, payment_type, shippingAddress, buyerEmail, buyerPhone, deliveryCharge, discount } = req.body;
+    const { userid, items, paymentmethod, payment_type, shippingAddress, buyerEmail, buyerPhone, deliveryCharge, discount, fbEventId } = req.body;
 
     if (!userid || !items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ success: false, error: 'userid and items (array) are required' });
@@ -193,6 +207,10 @@ router.post('/create-order', async (req: Request, res: Response) => {
       expiresAt: new Date(Date.now() + 6 * 60 * 60 * 1000),
       petpooja_synced: false,
       payment_status: null,
+      // Stored for FB CAPI deduplication — matches the pixel Purchase eventID from the frontend
+      fbEventId: fbEventId || null,
+      clientIp: String(req.headers['x-forwarded-for'] || req.ip || '').split(',')[0].trim() || null,
+      clientUserAgent: req.headers['user-agent'] || null,
     });
 
     console.log(`[BillDesk] Order created: ${orderid} → ${billDeskResponse.bdorderid}`);

@@ -147,7 +147,8 @@ export default function CartDrawer({ isOpen, onClose, onCheckout }: CartDrawerPr
                       onClose();
                       return;
                     }
-                    pixelEvents.initiateCheckout(totalAmount, totalItems);
+                    const fbEventId = `ic_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+                    pixelEvents.initiateCheckout(totalAmount, totalItems, fbEventId);
                     onCheckout();
                   }}
                   className="w-full py-4 bg-primary text-white rounded-full font-bold uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 group"

@@ -13,28 +13,51 @@ export const fbq = (...args: any[]) => {
 export const pixelEvents = {
   pageView: () => fbq("track", "PageView"),
 
-  addToCart: (item: { name: string; id: string; price: number; quantity: number }) =>
-    fbq("track", "AddToCart", {
-      content_name: item.name,
-      content_ids: [item.id],
-      content_type: "product",
-      value: item.price * item.quantity,
-      currency: "INR",
-    }),
+  addToCart: (
+    item: { name: string; id: string; price: number; quantity: number },
+    eventId?: string,
+  ) =>
+    fbq(
+      "track",
+      "AddToCart",
+      {
+        content_name: item.name,
+        content_ids: [item.id],
+        content_type: "product",
+        value: item.price * item.quantity,
+        currency: "INR",
+      },
+      eventId ? { eventID: eventId } : undefined,
+    ),
 
-  initiateCheckout: (total: number, numItems: number) =>
-    fbq("track", "InitiateCheckout", {
-      value: total,
-      currency: "INR",
-      num_items: numItems,
-    }),
+  initiateCheckout: (total: number, numItems: number, eventId?: string) =>
+    fbq(
+      "track",
+      "InitiateCheckout",
+      {
+        value: total,
+        currency: "INR",
+        num_items: numItems,
+      },
+      eventId ? { eventID: eventId } : undefined,
+    ),
 
-  purchase: (orderId: string, total: number, items: { id: string; quantity: number }[]) =>
-    fbq("track", "Purchase", {
-      value: total,
-      currency: "INR",
-      content_ids: items.map((i) => i.id),
-      content_type: "product",
-      order_id: orderId,
-    }),
+  purchase: (
+    orderId: string,
+    total: number,
+    items: { id: string; quantity: number }[],
+    eventId?: string,
+  ) =>
+    fbq(
+      "track",
+      "Purchase",
+      {
+        value: total,
+        currency: "INR",
+        content_ids: items.map((i) => i.id),
+        content_type: "product",
+        order_id: orderId,
+      },
+      eventId ? { eventID: eventId } : undefined,
+    ),
 };

@@ -7,6 +7,7 @@ import {
   removeCartItem,
   clearCart,
 } from '../services/cartService.js';
+import { sendAddToCartEvent } from '../utils/fbConversions.js';
 
 const router = Router();
 
@@ -38,6 +39,17 @@ router.post('/', async (req: Request, res: Response): Promise<any> => {
     }
 
     const items = await addOrUpdateCartItem(userId, item);
+
+    // Fire CAPI AddToCart (non-blocking) — eventId matches the pixel event sent from the frontend
+    sendAddToCartEvent({
+      eventId: item.fbEventId,
+      contentIds: [item.id],
+      value: item.price * item.quantity,
+      ip: (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() || req.ip,
+      userAgent: req.headers['user-agent'],
+      sourceUrl: 'https://gutmantra.in',
+    }).catch(() => {});
+
     return res.json({ success: true, items });
   } catch (error) {
     console.error('❌ Add cart item error:', error);

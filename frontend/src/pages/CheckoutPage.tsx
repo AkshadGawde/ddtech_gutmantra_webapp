@@ -478,6 +478,9 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
 
       // ── ONLINE PAYMENT FLOW (BillDesk) ──────────────────────────────────
       if (paymentMode === "ONLINE") {
+        // TODO: fbEventId is used for deduplication — the same ID goes to the pixel event (below)
+        // and is stored in Firestore so the backend CAPI Purchase can use the matching ID.
+        const fbEventId = `purchase_${Date.now()}_${Math.random().toString(36).slice(2)}`;
         const onlinePayload = {
           userid: user.uid,
           items: formattedItems,
@@ -502,6 +505,7 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
           buyerPhone: shippingAddress.phone,
           deliveryCharge,
           discount,
+          fbEventId,
         };
 
         console.log("📦 Online payload:", JSON.stringify(onlinePayload, null, 2));
@@ -588,7 +592,7 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
                 }
               }
 
-              pixelEvents.purchase(orderid, totalWithDelivery, items.map(i => ({ id: i.id, quantity: i.quantity })));
+              pixelEvents.purchase(orderid, totalWithDelivery, items.map(i => ({ id: i.id, quantity: i.quantity })), fbEventId);
               clearCart();
               navigate(`/success?orderId=${orderid}`);
               return;
@@ -616,6 +620,8 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
 
       // ── COD FLOW (existing endpoint) ─────────────────────────────────────
       const orderID = `${user.uid}_${Date.now()}`;
+      // TODO: fbEventId matches the pixel Purchase event fired below with the CAPI event fired on the backend
+      const fbEventId = `purchase_${Date.now()}_${Math.random().toString(36).slice(2)}`;
       const codPayload = {
         orderID,
         paymentMode,
@@ -636,6 +642,7 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
         },
         items: formattedItems,
         couponCode: couponApplied ? couponCode : undefined,
+        fbEventId,
       };
 
       console.log("📦 COD payload:", JSON.stringify(codPayload, null, 2));
@@ -651,7 +658,7 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
 
       if (!codData.success) throw new Error(codData.message || "Order failed");
 
-      pixelEvents.purchase(codData.orderId || "", totalWithDelivery, items.map(i => ({ id: i.id, quantity: i.quantity })));
+      pixelEvents.purchase(codData.orderId || "", totalWithDelivery, items.map(i => ({ id: i.id, quantity: i.quantity })), fbEventId);
       clearCart();
       onNext ? onNext() : navigate("/success");
     } catch (error: any) {

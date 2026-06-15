@@ -187,8 +187,10 @@ export async function createOrder(req: Request, res: Response) {
       });
 
       // Fire FB Conversions API (non-blocking)
+      // TODO: body.fbEventId matches the pixel Purchase eventID sent from the frontend for deduplication
       sendPurchaseEvent({
         orderId,
+        eventId: body.fbEventId || orderId,
         value: finalAmount,
         phone: shippingAddress.phone,
         email: shippingAddress.email,
