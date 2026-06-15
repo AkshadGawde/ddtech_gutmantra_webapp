@@ -1,4 +1,5 @@
 import { motion } from "motion/react";
+import { toast } from "sonner";
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import {
@@ -116,7 +117,7 @@ export default function ProductPage() {
 
     if (!product) {
       console.error("❌ [ProductPage] product is null");
-      alert("Product not loaded. Please refresh and try again.");
+      toast.error("Product not loaded. Please refresh and try again.");
       return;
     }
 
@@ -134,7 +135,7 @@ export default function ProductPage() {
         setSelectedVariant(variant);
       } else {
         console.error("❌ [ProductPage] No variants available");
-        alert("Please select a variant before adding to cart.");
+        toast.error("Please select a variant before adding to cart.");
         return;
       }
     }
@@ -153,7 +154,7 @@ export default function ProductPage() {
 
     if (!baseId) {
       console.error("❌ [ProductPage] baseId is empty", { variant, product });
-      alert("Product SKU is missing. Please refresh and try again.");
+      toast.error("Product SKU is missing. Please refresh and try again.");
       return;
     }
 
@@ -167,9 +168,9 @@ export default function ProductPage() {
       });
 
       if (pricedVariants.length > 0) {
-        alert(`Please select a size/quantity — available: ${pricedVariants.map((v: any) => `${v.quantity ?? v.name} ₹${v.price}`).join(", ")}`);
+        toast.error(`Please select a size/quantity — available: ${pricedVariants.map((v: any) => `${v.quantity ?? v.name} ₹${v.price}`).join(", ")}`);
       } else {
-        alert("Price information is missing for this product. Please contact support.");
+        toast.error("Price information is missing for this product. Please contact support.");
       }
       return;
     }

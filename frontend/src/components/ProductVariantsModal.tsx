@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Plus, Minus, ShoppingBag } from "lucide-react";
 import { Product } from "../services/productService";
@@ -80,13 +81,13 @@ export default function ProductVariantsModal({ product, isOpen, onClose }: Produ
     console.log("🛒 [Modal] baseId:", baseId, "| price:", price, "| variantName:", variantName);
 
     if (!baseId) {
-      alert("Product SKU is missing. Please refresh and try again.");
+      toast.error("Product SKU is missing. Please refresh and try again.");
       return;
     }
 
     if (price <= 0) {
       const available = pricedNamed.map((v) => `${v.quantity} ₹${v.price}`).join(", ");
-      alert(
+      toast.error(
         available
           ? `Please select a variant — available: ${available}`
           : "Price not available yet. Please check back soon."

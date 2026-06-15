@@ -37,29 +37,24 @@ async function getFirebase() {
 
 async function startEC2IfStopped(db) {
   try {
-    const cmd = new DescribeInstancesCommand({ InstanceIds: [process.env.EC2_INSTANCE_ID] });
-    const result = await ec2.send(cmd);
-    const state = result.Reservations?.[0]?.Instances?.[0]?.State?.Name || 'unknown';
-    console.log(`EC2 state at OTP verify: ${state}`);
+    // Skip DescribeInstances — StartInstances is safe to call even if running
+    const result = await ec2.send(new StartInstancesCommand({ InstanceIds: [process.env.EC2_INSTANCE_ID] }));
+    const prevState = result.StartingInstances?.[0]?.PreviousState?.Name;
+    const wasAlreadyRunning = prevState === 'running';
+    console.log(`EC2 previous state at OTP verify: ${prevState}`);
 
-    if (state === 'running') return false; // already up
-
-    if (state === 'stopped') {
-      await ec2.send(new StartInstancesCommand({ InstanceIds: [process.env.EC2_INSTANCE_ID] }));
-      console.log('EC2 start triggered at OTP verification');
-
-      // Stamp activity so checkInactivity doesn't immediately stop it
-      await db.collection('system').doc('ec2_activity').set(
+    if (!wasAlreadyRunning) {
+      db.collection('system').doc('ec2_activity').set(
         { lastActivityAt: admin.firestore.FieldValue.serverTimestamp(), updatedAt: admin.firestore.FieldValue.serverTimestamp() },
         { merge: true }
       ).catch(err => console.warn('Activity stamp failed:', err.message));
-
-      return true;
     }
+
+    return !wasAlreadyRunning;
   } catch (err) {
     console.warn('EC2 start at OTP verify failed (non-critical):', err.message);
+    return false;
   }
-  return false;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -97,6 +92,12 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 exports.handler = async (event) => {
+  // Warm-up ping — pre-initialize Firebase so real requests are instant
+  if (event.source === 'aws.events' || event['detail-type'] === 'Scheduled Event') {
+    await getFirebase().catch(() => {});
+    return { statusCode: 200, body: 'warm' };
+  }
+
   const headers = corsHeaders();
   const { method, body } = parseEvent(event);
 
@@ -167,18 +168,17 @@ exports.handler = async (event) => {
     const rawDigits = normalizedPhone.replace(/\D/g, '');
     const tenDigit = rawDigits.length === 12 ? rawDigits.slice(2) : rawDigits;
 
-    let authUid = null;
-    try {
-      const authUser = await auth.getUserByPhoneNumber(normalizedPhone);
-      authUid = authUser.uid;
-    } catch (e) {
-      if (e.code !== 'auth/user-not-found') throw e;
-    }
-
-    const [exactSnap, tenDigitSnap] = await Promise.all([
+    // Run Firebase Auth lookup + both Firestore queries in parallel
+    const [authResult, exactSnap, tenDigitSnap] = await Promise.all([
+      auth.getUserByPhoneNumber(normalizedPhone).catch(e => {
+        if (e.code === 'auth/user-not-found') return null;
+        throw e;
+      }),
       usersRef.where('phone', '==', normalizedPhone).limit(1).get(),
       usersRef.where('phone', '==', tenDigit).limit(1).get(),
     ]);
+
+    const authUid = authResult?.uid ?? null;
 
     const firestoreDoc = !exactSnap.empty ? exactSnap.docs[0] : !tenDigitSnap.empty ? tenDigitSnap.docs[0] : null;
 

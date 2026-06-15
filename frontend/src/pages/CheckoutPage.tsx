@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import {
@@ -192,7 +193,7 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
    */
   const handleUseCurrentLocation = () => {
     if (!navigator.geolocation) {
-      alert("Your browser does not support GPS location.");
+      toast.error("Your browser does not support GPS location.");
       return;
     }
 
@@ -230,7 +231,7 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
       (err) => {
         console.error("❌ Geolocation error:", err);
         setGpsLoading(false);
-        alert(
+        toast.error(
           err.code === err.PERMISSION_DENIED
             ? "Location access denied. Please enable it in browser settings."
             : "Could not get your location. Please enter address manually."
@@ -383,10 +384,10 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
       });
 
       await refreshUserData();
-      alert("Verified address saved to your profile.");
+      toast.success("Address saved to your profile.");
     } catch (error) {
       console.error("❌ Save address failed:", error);
-      alert("Could not save address. Please try again.");
+      toast.error("Could not save address. Please try again.");
     } finally {
       setSaveAddressLoading(false);
     }
@@ -406,26 +407,27 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
    */
   const handleCheckout = async () => {
     if (!user) {
-      alert("Please login first");
+      toast.error("Please login first");
       return;
     }
 
-    if (
-      !shippingAddress.firstName ||
-      !shippingAddress.lastName ||
-      !shippingAddress.streetAddress ||
-      !shippingAddress.city ||
-      !shippingAddress.state ||
-      !shippingAddress.pinCode ||
-      !shippingAddress.phone ||
-      !shippingAddress.email
-    ) {
-      alert("Please fill all required fields");
+    const missingFields: string[] = [];
+    if (!shippingAddress.firstName) missingFields.push("First Name");
+    if (!shippingAddress.lastName) missingFields.push("Last Name");
+    if (!shippingAddress.streetAddress) missingFields.push("Street Address");
+    if (!shippingAddress.city) missingFields.push("City");
+    if (!shippingAddress.state) missingFields.push("State");
+    if (!shippingAddress.pinCode) missingFields.push("PIN Code");
+    if (!shippingAddress.phone) missingFields.push("Phone Number");
+    if (!shippingAddress.email) missingFields.push("Email");
+
+    if (missingFields.length > 0) {
+      toast.error(`Missing: ${missingFields.join(", ")}`);
       return;
     }
 
     if (!/^[0-9]{6}$/.test(shippingAddress.pinCode)) {
-      alert("Please enter a valid 6-digit PIN code");
+      toast.error("Please enter a valid 6-digit PIN code");
       return;
     }
 
@@ -437,13 +439,13 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
     }
 
     if (!validated) {
-      alert("Could not validate your address. Please check and retry.");
+      toast.error("Could not validate your address. Please check and retry.");
       return;
     }
 
     // ── Step 2: check deliverability ──
     if (!validated.isDeliverable) {
-      alert(validated.message || "Delivery not available for this address.");
+      toast.error(validated.message || "Delivery not available for this address.");
       return;
     }
 
@@ -469,7 +471,7 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
       }
 
       const fullAddress = buildFullAddress(shippingAddress);
-      if (!fullAddress) { alert("Address missing"); return; }
+      if (!fullAddress) { toast.error("Address missing"); return; }
 
       console.log("💳 PAYMENT MODE:", paymentMode);
 
@@ -525,7 +527,7 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
 
         const paymentWindow = window.open("", "BillDeskPayment", "width=950,height=700,scrollbars=yes");
         if (!paymentWindow) {
-          alert("Popup blocked. Please allow popups for this site and try again.");
+          toast.error("Popup blocked. Please allow popups for this site and try again.");
           return;
         }
 
@@ -593,13 +595,13 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
             if (paymentStatus === "0399" || paymentStatus === "0001") {
               clearInterval(pollInterval);
               paymentWindow?.close();
-              alert("Payment failed or was cancelled. Please try again.");
+              toast.error("Payment failed or was cancelled. Please try again.");
               return;
             }
 
             if (pollCount >= maxPolls) {
               clearInterval(pollInterval);
-              alert("Payment is taking longer than expected. We'll notify you by email once confirmed.");
+              toast("Payment is taking longer than expected. We'll notify you by email once confirmed.");
               navigate("/");
             }
           } catch (pollErr) {
@@ -651,7 +653,7 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
       onNext ? onNext() : navigate("/success");
     } catch (error: any) {
       console.error("❌ Checkout error:", error);
-      alert(error.message || "Something went wrong. Please try again.");
+      toast.error(error.message || "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -797,11 +799,12 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
                 <div className="relative">
                   <input
                     type="text"
+                    placeholder="Phone (linked to account)"
                     value={shippingAddress.phone}
                     readOnly
-                    className="w-full px-4 py-3 border rounded-xl bg-gray-50 text-gray-700 cursor-not-allowed select-none pr-10"
+                    className="w-full px-4 py-3 border rounded-xl bg-gray-50 text-gray-500 cursor-not-allowed select-none pr-10"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" title="Linked to your account">
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" title="Auto-filled from your account">
                     🔒
                   </span>
                 </div>

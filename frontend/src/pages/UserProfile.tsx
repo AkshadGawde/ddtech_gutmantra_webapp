@@ -1,4 +1,5 @@
 import { motion } from "motion/react";
+import { toast } from "sonner";
 
 import {
   LogOut,
@@ -977,10 +978,10 @@ onChange={(e) =>
                           })
                         });
 
-                        alert("Order cancellation requested");
+                        toast.success("Order cancellation requested");
                       } catch (err) {
                         console.error(err);
-                        alert("Failed to cancel order");
+                        toast.error("Failed to cancel order");
                       }
                     }}
                     className="px-4 py-2 text-xs font-bold uppercase bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition"

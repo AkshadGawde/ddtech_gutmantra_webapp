@@ -1,4 +1,5 @@
 import React from "react";
+import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Plus, Minus, ShoppingBag, Trash2, ArrowRight } from "lucide-react";
 import { useCart } from "@/context/CartContext";
@@ -141,7 +142,7 @@ export default function CartDrawer({ isOpen, onClose, onCheckout }: CartDrawerPr
                 <button
                   onClick={() => {
                     if (!user) {
-                      alert("Please login to proceed");
+                      toast.error("Please login to proceed");
                       onClose();
                       return;
                     }

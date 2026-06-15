@@ -82,30 +82,26 @@ async function getEC2State() {
 }
 
 async function startEC2(db) {
-  const state = await getEC2State();
-  console.log(`EC2 current state: ${state}`);
+  try {
+    // Skip DescribeInstances — StartInstances is safe to call even if running
+    const result = await ec2.send(new StartInstancesCommand({ InstanceIds: [process.env.EC2_INSTANCE_ID] }));
+    const prevState = result.StartingInstances?.[0]?.PreviousState?.Name;
+    const wasAlreadyRunning = prevState === 'running';
+    console.log(`EC2 previous state: ${prevState}`);
 
-  if (state === 'running') {
-    console.log('EC2 already running — skipping start');
+    if (!wasAlreadyRunning) {
+      // Stamp activity so checkInactivity doesn't immediately stop it
+      db.collection('system').doc('ec2_activity').set(
+        { lastActivityAt: admin.firestore.FieldValue.serverTimestamp(), updatedAt: admin.firestore.FieldValue.serverTimestamp() },
+        { merge: true }
+      ).catch(err => console.warn('Activity stamp failed:', err.message));
+    }
+
+    return !wasAlreadyRunning;
+  } catch (err) {
+    console.warn('EC2 start failed (non-critical):', err.message);
     return false;
   }
-
-  if (state === 'stopping') {
-    await new Promise(r => setTimeout(r, 15000));
-  }
-
-  const cmd = new StartInstancesCommand({ InstanceIds: [process.env.EC2_INSTANCE_ID] });
-  await ec2.send(cmd);
-  console.log('EC2 start command sent');
-
-  // Stamp activity NOW so checkInactivity doesn't see a stale timestamp
-  // and stop EC2 the moment it finishes booting
-  await db.collection('system').doc('ec2_activity').set(
-    { lastActivityAt: admin.firestore.FieldValue.serverTimestamp(), updatedAt: admin.firestore.FieldValue.serverTimestamp() },
-    { merge: true }
-  ).catch(err => console.warn('Activity stamp failed (non-critical):', err.message));
-
-  return true;
 }
 
 async function publishAuthEvent(detailType, phone) {
@@ -126,6 +122,12 @@ async function publishAuthEvent(detailType, phone) {
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 exports.handler = async (event) => {
+  // Warm-up ping — pre-initialize Firebase so real requests are instant
+  if (event.source === 'aws.events' || event['detail-type'] === 'Scheduled Event') {
+    await getFirebase().catch(() => {});
+    return { statusCode: 200, body: 'warm' };
+  }
+
   const headers = corsHeaders();
   const { method, body } = parseEvent(event);
 

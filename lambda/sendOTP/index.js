@@ -78,6 +78,12 @@ function parseEvent(event) {
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 exports.handler = async (event) => {
+  // Warm-up ping — pre-initialize Firebase so real requests are instant
+  if (event.source === 'aws.events' || event['detail-type'] === 'Scheduled Event') {
+    await getFirebase().catch(() => {});
+    return { statusCode: 200, body: 'warm' };
+  }
+
   const headers = corsHeaders();
   const { method, body } = parseEvent(event);
 
@@ -100,13 +106,17 @@ exports.handler = async (event) => {
     const app = await getFirebase();
     const db = admin.firestore(app);
 
-    // Block signup OTP if phone is already verified with a password
+    // Parallelize: user check + rate limit check in one round trip
     const rawDigits = normalizedPhone.replace(/\D/g, '');
     const tenDigit = rawDigits.length === 12 ? rawDigits.slice(2) : rawDigits;
-    const [exactSnap, tenSnap] = await Promise.all([
+    const otpDocId = `otp_${rawDigits}`;
+
+    const [exactSnap, tenSnap, existing] = await Promise.all([
       db.collection('users').where('phone', '==', normalizedPhone).limit(1).get(),
       db.collection('users').where('phone', '==', tenDigit).limit(1).get(),
+      db.collection('otp_requests').doc(otpDocId).get(),
     ]);
+
     const userDoc = !exactSnap.empty ? exactSnap.docs[0] : !tenSnap.empty ? tenSnap.docs[0] : null;
     if (userDoc) {
       const u = userDoc.data();
@@ -124,8 +134,6 @@ exports.handler = async (event) => {
     }
 
     // Rate limit: max 1 OTP per 30 seconds per phone
-    const otpDocId = `otp_${normalizedPhone.replace(/\D/g, '')}`;
-    const existing = await db.collection('otp_requests').doc(otpDocId).get();
     if (existing.exists) {
       const data = existing.data();
       const createdAt = data?.createdAt?.toDate?.() || new Date(0);
@@ -142,20 +150,22 @@ exports.handler = async (event) => {
     const otpCode = generateOTP();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-    await db.collection('otp_requests').doc(otpDocId).set({
-      phone: normalizedPhone,
-      code: otpCode,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      expiresAt,
-      verified: false,
-      attempts: 0,
-    });
+    // Pre-fetch SMS client while doing Firestore write — saves one round trip
+    const [client] = await Promise.all([
+      getSmsClient(),
+      db.collection('otp_requests').doc(otpDocId).set({
+        phone: normalizedPhone,
+        code: otpCode,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        expiresAt,
+        verified: false,
+        attempts: 0,
+      }),
+    ]);
 
-    // Send SMS via Zavu
-    const client = await getSmsClient();
     const text = `Your GutMantra verification code is ${otpCode}. Valid for 5 minutes.`;
-
     console.log(`📱 Sending OTP to ${normalizedPhone.slice(0, 6)}****`);
+
     const response = await client.messages.send({
       to: normalizedPhone,
       channel: 'sms_oneway',
