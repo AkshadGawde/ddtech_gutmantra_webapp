@@ -49,7 +49,18 @@ export default function App() {
     params?: any
   ) => {
     if (view === "category") {
-      navigate(`/${params.category}`);
+      if (params.category === "all") {
+        if (location.pathname !== "/") {
+          navigate("/");
+          setTimeout(() => {
+            document.getElementById("collections")?.scrollIntoView({ behavior: "smooth" });
+          }, 150);
+        } else {
+          document.getElementById("collections")?.scrollIntoView({ behavior: "smooth" });
+        }
+      } else {
+        navigate(`/${params.category}`);
+      }
     }
   };
 
@@ -85,11 +96,13 @@ export default function App() {
                   }
                 />
 
-                <ProductGrid
-                  onNavigate={
-                    handleNavigate
-                  }
-                />
+                <div id="collections">
+                  <ProductGrid
+                    onNavigate={
+                      handleNavigate
+                    }
+                  />
+                </div>
 
                 <BrandStory />
 

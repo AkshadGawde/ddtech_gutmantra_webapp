@@ -1,6 +1,6 @@
 export const CATEGORY_MAP: any = {
   atta: {
-    match: ["atta"],
+    match: ["atta", "aata"],
     sub: {
       multigrain: ["multigrain"],
       wheat: ["gehun", "wheat", "lokwan", "sehore"],

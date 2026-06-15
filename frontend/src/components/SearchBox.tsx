@@ -4,8 +4,13 @@ import { motion, AnimatePresence } from "motion/react";
 import { getProducts, Product } from "../services/productService";
 import { useNavigate } from "react-router-dom";
 
-export default function SearchBar() {
-  const [isOpen, setIsOpen] = useState(false);
+interface SearchBarProps {
+  isOpen: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+}
+
+export default function SearchBar({ isOpen, onOpen, onClose }: SearchBarProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Product[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
@@ -22,11 +27,11 @@ export default function SearchBar() {
 
   useEffect(() => {
     if (query.trim().length > 1) {
-      const filtered = allProducts.filter(p => 
-        p.name.toLowerCase().includes(query.toLowerCase()) ||
-        p.category.toLowerCase().includes(query.toLowerCase()) ||
-        p.description?.toLowerCase().includes(query.toLowerCase())
-      ).slice(0, 5);
+      const words = query.toLowerCase().trim().split(/\s+/).filter(w => w.length > 1);
+      const filtered = allProducts.filter(p => {
+        const text = [p.name, p.category, p.description ?? ""].join(" ").toLowerCase();
+        return words.some(word => text.includes(word));
+      }).slice(0, 5);
       setResults(filtered);
     } else {
       setResults([]);
@@ -35,23 +40,26 @@ export default function SearchBar() {
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
-      inputRef.current.focus();
+      setTimeout(() => inputRef.current?.focus(), 50);
+    } else {
+      setQuery("");
     }
   }, [isOpen]);
 
   const handleResultClick = (product: Product) => {
-    // Navigate to category since we don't have individual product pages yet
-    // or just show a toast/modal? The user didn't specify product page.
-    // For now, let's just close and maybe navigate to the category
-    navigate(`/${product.id === "oils" ? "oils" : product.category}`);
-    setIsOpen(false);
-    setQuery("");
+    navigate(`/product/${product.id}`);
+    onClose();
+  };
+
+  const handleCategoryClick = (slug: string) => {
+    navigate(`/${slug}`);
+    onClose();
   };
 
   return (
     <div className="relative">
-      <button 
-        onClick={() => setIsOpen(true)}
+      <button
+        onClick={onOpen}
         className="p-2 hover:bg-black/5 rounded-full transition-colors"
         title="Search products"
       >
@@ -66,7 +74,7 @@ export default function SearchBar() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setIsOpen(false)}
+              onClick={onClose}
               className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100]"
             />
 
@@ -87,8 +95,8 @@ export default function SearchBar() {
                   onChange={(e) => setQuery(e.target.value)}
                   className="flex-1 bg-transparent border-none outline-none text-base md:text-lg font-medium"
                 />
-                <button 
-                  onClick={() => setIsOpen(false)}
+                <button
+                  onClick={onClose}
                   className="p-2 hover:bg-black/5 rounded-full flex-shrink-0"
                 >
                   <X size={20} />
@@ -108,7 +116,7 @@ export default function SearchBar() {
                           className="w-full flex items-center gap-3 md:gap-4 p-3 hover:bg-primary/5 rounded-2xl transition-colors text-left group"
                         >
                           <div className="w-12 h-12 rounded-xl bg-black/5 overflow-hidden shrink-0">
-                            <img 
+                            <img
                               src={product.image || "/placeholder.svg"}
                               alt={product.name}
                               className="w-full h-full object-cover"
@@ -142,13 +150,17 @@ export default function SearchBar() {
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-widest opacity-40 px-2 mb-4">Popular Categories</p>
                       <div className="flex flex-wrap gap-2 px-2">
-                        {['Cold Pressed Oils', 'Stone Ground Atta', 'Spices'].map(cat => (
-                          <button 
-                            key={cat}
-                            onClick={() => setQuery(cat)}
+                        {[
+                          { label: "Cold Pressed Oils", slug: "oils" },
+                          { label: "Stone Ground Atta", slug: "atta" },
+                          { label: "Spices", slug: "spices" },
+                        ].map(cat => (
+                          <button
+                            key={cat.slug}
+                            onClick={() => handleCategoryClick(cat.slug)}
                             className="px-4 py-2 bg-black/5 hover:bg-primary/10 hover:text-primary rounded-full text-xs font-bold transition-all"
                           >
-                            {cat}
+                            {cat.label}
                           </button>
                         ))}
                       </div>

@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
-import { CATEGORIES } from "@/constants";
-import { useCart } from "@/context/CartContext";
-import { getProducts, Product } from "../services/productService";
+import { CATEGORIES, Category } from "../constants";
+import { getProducts } from "../services/productService";
 import ProductCard from "./ProductCard";
 
 const ATTA_SUBCATEGORIES = [
@@ -120,7 +119,7 @@ export default function ProductGrid({ onNavigate }: ProductGridProps) {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {CATEGORIES.map((cat) => (
+            {CATEGORIES.map((cat: Category) => (
               <motion.div
                 key={cat.id}
                 whileHover={{ y: -5 }}

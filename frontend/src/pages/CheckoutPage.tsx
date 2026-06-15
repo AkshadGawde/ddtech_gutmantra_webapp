@@ -248,13 +248,23 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
     latitude: number,
     longitude: number
   ): Promise<DeliveryResult> => {
-    const response = await fetch(`${API_BASE}/calculate-delivery`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ latitude, longitude }),
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-    const data = await response.json();
+    let data: any;
+    try {
+      const response = await fetch(`${API_BASE}/calculate-delivery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({ latitude, longitude }),
+      });
+      const ct = response.headers.get("content-type") || "";
+      if (!ct.includes("application/json")) throw new Error(`Server error (${response.status})`);
+      data = await response.json();
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     return {
       success: data.success ?? false,
@@ -286,10 +296,14 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
     setDeliveryLoading(true);
     setDeliveryResult(null);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
+
     try {
       const response = await fetch(`${API_BASE}/geocode-address`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           streetAddress: shippingAddress.streetAddress,
           apartment: shippingAddress.apartment,
@@ -299,6 +313,12 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
           country: shippingAddress.country,
         }),
       });
+
+      // Guard against non-JSON responses (nginx 502/504 returns HTML)
+      const contentType = response.headers.get("content-type") || "";
+      if (!contentType.includes("application/json")) {
+        throw new Error(`Server error (${response.status}). Please retry.`);
+      }
 
       const data = await response.json();
       console.log("✅ Geocode response:", data);
@@ -338,19 +358,25 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
       setDeliveryResult(result);
       setAddressVerified(result.isDeliverable);
       return result;
-    } catch (error) {
+    } catch (error: any) {
       console.error("❌ Geocode error:", error);
+      const isTimeout = error?.name === "AbortError";
       const result: DeliveryResult = {
         success: false,
         distanceKm: 0,
         deliveryCharge: 0,
         isDeliverable: false,
-        message: "Failed to validate address. Check your connection and retry.",
+        message: isTimeout
+          ? "Request timed out. Please check your connection and retry."
+          : error?.message?.startsWith("Server error")
+          ? error.message
+          : "Failed to validate address. Please retry.",
       };
       setDeliveryResult(result);
       setAddressVerified(false);
       return result;
     } finally {
+      clearTimeout(timeoutId);
       setDeliveryLoading(false);
     }
   };
@@ -1062,7 +1088,7 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
               <div className="mt-6 space-y-2">
                 <p className="font-medium text-sm">Payment Mode</p>
                 <div className="flex gap-3">
-                  {(["COD"] as const).map((mode) => (
+                  {(["COD", "ONLINE"] as const).map((mode) => (
                     <button
                       key={mode}
                       onClick={() => setPaymentMode(mode)}
@@ -1075,8 +1101,6 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
                       {mode === "COD" ? "Cash on Delivery" : "Online Payment"}
                     </button>
                   ))}
-                  {/* Online Payment temporarily disabled — BillDesk activation pending */}
-                  {/* <button onClick={() => setPaymentMode("ONLINE")} ...>Online Payment</button> */}
                 </div>
               </div>
 

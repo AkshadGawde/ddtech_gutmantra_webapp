@@ -128,7 +128,7 @@ export default function OurStory() {
                 className="flex gap-8 border-t border-black/8 pt-8"
               >
                 {[
-                  { val: "3000+", label: "Happy Families" },
+                  { val: "5000+", label: "Happy Families" },
                   { val: "100%", label: "Natural" },
                   { val: "Daily", label: "Fresh Ground" },
                 ].map(({ val, label }) => (

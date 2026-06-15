@@ -37,6 +37,7 @@ export default function Navbar({ onOpenCart }: NavbarProps) {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
 
@@ -66,6 +67,7 @@ export default function Navbar({ onOpenCart }: NavbarProps) {
   useEffect(() => {
     setIsMobileMenuOpen(false);
     setIsUserMenuOpen(false);
+    setIsSearchOpen(false);
   }, [location]);
 
   useEffect(() => {
@@ -211,7 +213,11 @@ export default function Navbar({ onOpenCart }: NavbarProps) {
           <div className="flex items-center gap-0.5 sm:gap-1">
 
             {/* Search */}
-            <SearchBar />
+            <SearchBar
+              isOpen={isSearchOpen}
+              onOpen={() => setIsSearchOpen(true)}
+              onClose={() => setIsSearchOpen(false)}
+            />
 
             {/* Cart */}
             <button
@@ -351,10 +357,13 @@ export default function Navbar({ onOpenCart }: NavbarProps) {
 
               {/* Search bar */}
               <div className="px-4 pt-4 pb-2">
-                <div className="flex items-center gap-3 bg-white px-4 py-3 rounded-2xl border border-black/8 shadow-sm">
+                <button
+                  onClick={() => { setIsMobileMenuOpen(false); setIsSearchOpen(true); }}
+                  className="w-full flex items-center gap-3 bg-white px-4 py-3 rounded-2xl border border-black/8 shadow-sm text-left"
+                >
                   <Search size={16} className="text-primary flex-shrink-0" />
                   <span className="text-sm text-accent/40 font-medium">Search products...</span>
-                </div>
+                </button>
               </div>
 
               {/* Nav links */}

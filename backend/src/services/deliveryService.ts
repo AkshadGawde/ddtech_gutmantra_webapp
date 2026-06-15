@@ -85,7 +85,7 @@ export async function geocodeAddress(streetAddress: string, apartment: string, c
   const components = `country:${country || "IN"}|postal_code:${pinCode}|locality:${city}|administrative_area:${state}`;
   const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodedAddress}&components=${encodeURIComponent(components)}&key=${apiKey}`;
 
-  const response = await fetch(url);
+  const response = await fetch(url, { signal: AbortSignal.timeout(12000) });
   const data = await response.json();
 
   if (data.status !== "OK" || !data.results || data.results.length === 0) {

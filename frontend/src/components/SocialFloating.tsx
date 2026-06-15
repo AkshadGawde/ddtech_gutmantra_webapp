@@ -29,7 +29,7 @@ export default function SocialFloating() {
       icon: WA_ICON,
       color: "bg-green-500",
       label: "WhatsApp",
-      href: "https://wa.me/919028107111",
+      href: "https://wa.me/919028107111?text=Hello%20GutMantra!%20I%27d%20like%20to%20know%20more%20about%20your%20products.",
     },
   ];
 

@@ -6,8 +6,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ShoppingBag,
-  Heart,
-  Share2,
   Loader,
 } from "lucide-react";
 import { fetchProductWithVariants, Product } from "../services/productService";
@@ -483,17 +481,6 @@ export default function ProductPage() {
               </button>
             </div>
 
-            {/* WISHLIST / SHARE */}
-            <div className="flex gap-2 pt-4">
-              <button className="flex-1 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-bold uppercase text-sm flex items-center justify-center gap-2">
-                <Heart size={18} />
-                Wishlist
-              </button>
-              <button className="flex-1 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-bold uppercase text-sm flex items-center justify-center gap-2">
-                <Share2 size={18} />
-                Share
-              </button>
-            </div>
           </motion.div>
         </div>
 

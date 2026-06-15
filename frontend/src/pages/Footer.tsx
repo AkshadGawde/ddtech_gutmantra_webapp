@@ -41,7 +41,7 @@ export default function Footer() {
                 <Instagram size={18} className="hidden sm:block" />
               </a>
               <a
-                href="https://wa.me/919028107111"
+                href="https://wa.me/919028107111?text=Hello%20GutMantra!%20I%27d%20like%20to%20know%20more%20about%20your%20products."
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-primary hover:border-primary transition-all"

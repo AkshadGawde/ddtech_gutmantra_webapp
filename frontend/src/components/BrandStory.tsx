@@ -21,7 +21,7 @@ export default function BrandStory() {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
               <div className="absolute bottom-12 left-12 right-12 text-white">
-                <p className="text-sm font-bold uppercase tracking-[0.3em] mb-4 opacity-80">Est. 2018</p>
+                <p className="text-sm font-bold uppercase tracking-[0.3em] mb-4 opacity-80">Est. 2022</p>
                 <h3 className="text-4xl font-bold tracking-tighter leading-tight">
                   Rooted in Tradition, <br />
                   <span className="italic font-serif font-normal">Crafted for Health</span>.
