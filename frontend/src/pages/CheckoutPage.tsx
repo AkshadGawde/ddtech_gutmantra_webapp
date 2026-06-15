@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
+import { pixelEvents } from "../utils/fbPixel";
 import { useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import {
@@ -587,6 +588,7 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
                 }
               }
 
+              pixelEvents.purchase(orderid, totalWithDelivery, items.map(i => ({ id: i.id, quantity: i.quantity })));
               clearCart();
               navigate(`/success?orderId=${orderid}`);
               return;
@@ -649,6 +651,7 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
 
       if (!codData.success) throw new Error(codData.message || "Order failed");
 
+      pixelEvents.purchase(codData.orderId || "", totalWithDelivery, items.map(i => ({ id: i.id, quantity: i.quantity })));
       clearCart();
       onNext ? onNext() : navigate("/success");
     } catch (error: any) {

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { pixelEvents } from "../utils/fbPixel";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../lib/firebase";
 
@@ -144,6 +145,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({
       window.dispatchEvent(new CustomEvent("require-login"));
       return;
     }
+
+    pixelEvents.addToCart({ name: item.name, id: item.id, price: item.price, quantity: item.quantity });
 
     // Optimistic update
     setItems((prev) => {

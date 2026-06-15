@@ -11,6 +11,7 @@ import {
 } from "../services/orderService.js";
 import { BillDeskRequest } from "../middleware/verifyBilldesk.js";
 import { Money } from "../utils/money.js";
+import { sendPurchaseEvent } from "../utils/fbConversions.js";
 
 function getUserId(orderId: string, providedUserId?: unknown) {
   if (typeof providedUserId === "string" && orderId.startsWith(providedUserId)) {
@@ -184,6 +185,17 @@ export async function createOrder(req: Request, res: Response) {
         petpoojaID: petpoojaResult.clientOrderID,
         petpoojaResponse: petpoojaResult.data,
       });
+
+      // Fire FB Conversions API (non-blocking)
+      sendPurchaseEvent({
+        orderId,
+        value: finalAmount,
+        phone: shippingAddress.phone,
+        email: shippingAddress.email,
+        ip: req.headers['x-forwarded-for'] as string || req.ip,
+        userAgent: req.headers['user-agent'],
+        sourceUrl: 'https://gutmantra.in/checkout',
+      }).catch(() => {});
 
       return res.json({
         success: true,

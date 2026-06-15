@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Routes, Route, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { pixelEvents } from "./utils/fbPixel";
 
 import Navbar from "./components/Navbar";
 import CartDrawer from "./components/CartDrawer";
@@ -35,8 +36,12 @@ import { Toaster } from "sonner";
 
 export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
-
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    pixelEvents.pageView();
+  }, [location.pathname]);
 
   /* ================= NAVIGATION HANDLER ================= */
   const handleNavigate = (
