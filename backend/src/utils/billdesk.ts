@@ -221,7 +221,17 @@ export async function createOrder(input: CreateOrderInput) {
     const status = error.response?.status;
     const body   = error.response?.data;
     console.error('\n❌ createOrder failed  HTTP', status);
-    console.error('   Response:', JSON.stringify(body, null, 2));
+    const bodyStr = typeof body === 'string' ? body
+      : Buffer.isBuffer(body) ? body.toString('utf8')
+      : null;
+    if (bodyStr?.trimStart().startsWith('ey')) {
+      try {
+        const decoded = await decryptResponse(bodyStr);
+        console.error('   BillDesk error (decrypted):', JSON.stringify(decoded, null, 2));
+      } catch (e) { console.error('   Raw response (decrypt failed):', bodyStr, e); }
+    } else {
+      console.error('   Response:', JSON.stringify(body, null, 2));
+    }
     throw { success: false, error: body?.error ?? error.message, status };
   }
 }
