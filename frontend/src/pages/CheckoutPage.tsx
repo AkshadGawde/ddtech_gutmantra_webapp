@@ -109,7 +109,7 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
   // ─── Derived totals (declared at component scope, above all handlers) ──────
 
   const FREE_DELIVERY_THRESHOLD = 799;
-  const MIN_ORDER = 400;
+  const MIN_ORDER = 500;
 
   const rawDeliveryCharge = deliveryResult?.deliveryCharge ?? 0;
   const subtotal = totalAmount;

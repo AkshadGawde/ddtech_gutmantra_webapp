@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
+import { Truck } from "lucide-react";
 import { useParams, useLocation } from "react-router-dom";
 import { CATEGORIES } from "../constants";
 import { useCart } from "../context/CartContext";
@@ -80,6 +81,25 @@ export default function CategoryPage() {
   /* ================= UI ================= */
   return (
     <div className="pt-24 sm:pt-32 pb-24">
+      {/* Fixed free-delivery pill — stays visible while scrolling on all screen sizes */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.6, duration: 0.4 }}
+        className="fixed bottom-6 left-4 z-50 pointer-events-none"
+      >
+        <motion.div
+          animate={{ y: [0, -5, 0] }}
+          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+          className="flex items-center gap-2 bg-green-600 text-white rounded-2xl px-3 py-2 shadow-lg shadow-green-600/30"
+        >
+          <Truck size={15} className="flex-shrink-0" />
+          <div>
+            <p className="text-[9px] font-bold uppercase tracking-widest opacity-80 leading-none mb-0.5">Free delivery</p>
+            <p className="text-xs font-bold leading-none">Orders above ₹799</p>
+          </div>
+        </motion.div>
+      </motion.div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
 
         {/* HEADER */}

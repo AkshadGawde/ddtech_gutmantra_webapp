@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { pixelEvents } from "@/utils/fbPixel";
 
 const FREE_DELIVERY_THRESHOLD = 799;
-const MIN_ORDER = 400;
+const MIN_ORDER = 500;
 
 interface CartDrawerProps {
   isOpen: boolean;

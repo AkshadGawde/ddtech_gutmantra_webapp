@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useState } from "react";
 import { motion } from "motion/react";
-import { ArrowRight, Leaf, ShieldCheck, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
+import { toast } from "sonner";
+import { ArrowRight, Leaf, ShieldCheck, Sparkles, Truck, ChevronLeft, ChevronRight } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
@@ -74,6 +75,20 @@ export default function Hero({ onNavigate }: HeroProps) {
     emblaApi.on("select", onSelect);
     return () => { emblaApi.off("select", onSelect); };
   }, [emblaApi]);
+
+  // Show free delivery promo toast once per session
+  useEffect(() => {
+    if (!sessionStorage.getItem("fd_toast_shown")) {
+      const t = setTimeout(() => {
+        toast("🚚 Free delivery on orders above ₹799!", {
+          description: "Shop for ₹799 or more and get delivery free.",
+          duration: 5000,
+        });
+        sessionStorage.setItem("fd_toast_shown", "1");
+      }, 2000);
+      return () => clearTimeout(t);
+    }
+  }, []);
 
   return (
     /* ── Unified full-bleed carousel — works on all screen sizes ── */
@@ -265,6 +280,28 @@ export default function Hero({ onNavigate }: HeroProps) {
           <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">Quality</p>
           <p className="text-sm font-bold text-white">Certified Pure</p>
         </div>
+      </motion.div>
+
+      {/* Free delivery promo pill — visible on all screen sizes including mobile */}
+      <motion.div
+        initial={{ opacity: 0, x: -30 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 1, duration: 0.5 }}
+        className="absolute bottom-16 left-4 md:bottom-10 md:left-10 z-20"
+      >
+        <motion.div
+          animate={{ y: [0, -6, 0] }}
+          transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+          className="flex items-center gap-2.5 bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl px-3 py-2.5 md:px-4 md:py-3 shadow-xl"
+        >
+          <div className="w-8 h-8 bg-green-500/30 rounded-full flex items-center justify-center text-green-300 flex-shrink-0">
+            <Truck size={16} />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-white/60">Free delivery</p>
+            <p className="text-xs md:text-sm font-bold text-white leading-tight">Orders above ₹799</p>
+          </div>
+        </motion.div>
       </motion.div>
     </section>
   );

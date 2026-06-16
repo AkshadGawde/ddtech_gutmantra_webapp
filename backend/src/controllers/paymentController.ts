@@ -136,10 +136,10 @@ export async function createOrder(req: Request, res: Response) {
       0
     );
 
-    if (subtotal < 400) {
+    if (subtotal < 500) {
       return res.status(400).json({
         success: false,
-        message: "Minimum order value is ₹400. Please add more items to your cart.",
+        message: "Minimum order value is ₹500. Please add more items to your cart.",
       });
     }
 
