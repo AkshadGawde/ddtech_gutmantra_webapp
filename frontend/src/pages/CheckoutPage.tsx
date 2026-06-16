@@ -108,9 +108,15 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
 
   // ─── Derived totals (declared at component scope, above all handlers) ──────
 
-  const deliveryCharge = deliveryResult?.deliveryCharge ?? 0;
+  const FREE_DELIVERY_THRESHOLD = 799;
+  const MIN_ORDER = 400;
+
+  const rawDeliveryCharge = deliveryResult?.deliveryCharge ?? 0;
   const subtotal = totalAmount;
+  // Free delivery when cart value hits ₹799+
+  const deliveryCharge = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : rawDeliveryCharge;
   const totalWithDelivery = subtotal - discount + deliveryCharge;
+  const amountToFreeDelivery = Math.max(0, FREE_DELIVERY_THRESHOLD - subtotal);
 
   // ─── Pre-fill from Firebase auth ───────────────────────────────────────────
 
@@ -450,6 +456,11 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
 
     if (missingFields.length > 0) {
       toast.error(`Missing: ${missingFields.join(", ")}`);
+      return;
+    }
+
+    if (subtotal < MIN_ORDER) {
+      toast.error(`Minimum order is ₹${MIN_ORDER}. Add ₹${(MIN_ORDER - subtotal).toFixed(0)} more.`);
       return;
     }
 
@@ -1072,11 +1083,23 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
                   <span>
                     {deliveryResult?.isDeliverable
                       ? deliveryCharge === 0
-                        ? "Free"
+                        ? "Free 🚚"
                         : `₹${deliveryCharge.toFixed(2)}`
                       : "—"}
                   </span>
                 </div>
+
+                {/* Free delivery nudge */}
+                {amountToFreeDelivery > 0 && deliveryResult?.isDeliverable && (
+                  <p className="text-xs text-green-700 font-medium bg-green-50 rounded-lg px-3 py-2">
+                    Add ₹{amountToFreeDelivery.toFixed(0)} more for free delivery!
+                  </p>
+                )}
+                {subtotal >= FREE_DELIVERY_THRESHOLD && (
+                  <p className="text-xs text-green-700 font-medium bg-green-50 rounded-lg px-3 py-2">
+                    🎉 Free delivery applied on your order!
+                  </p>
+                )}
 
                 <div className="border-t pt-3 flex justify-between text-xl font-bold">
                   <span>Total</span>

@@ -1,10 +1,13 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Plus, Minus, ShoppingBag, Trash2, ArrowRight } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { pixelEvents } from "@/utils/fbPixel";
+
+const FREE_DELIVERY_THRESHOLD = 799;
+const MIN_ORDER = 400;
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -15,6 +18,20 @@ interface CartDrawerProps {
 export default function CartDrawer({ isOpen, onClose, onCheckout }: CartDrawerProps) {
   const { items, removeFromCart, updateQuantity, totalAmount, totalItems } = useCart();
   const { user } = useAuth();
+
+  const prevTotalRef = useRef(0);
+  useEffect(() => {
+    const prev = prevTotalRef.current;
+    if (prev < FREE_DELIVERY_THRESHOLD && totalAmount >= FREE_DELIVERY_THRESHOLD) {
+      toast.success("🎉 Free delivery unlocked!", {
+        description: "Your order qualifies for free delivery!",
+      });
+    }
+    prevTotalRef.current = totalAmount;
+  }, [totalAmount]);
+
+  const amountToFreeDelivery = Math.max(0, FREE_DELIVERY_THRESHOLD - totalAmount);
+  const freeDeliveryProgress = Math.min(100, (totalAmount / FREE_DELIVERY_THRESHOLD) * 100);
 
   return (
     <AnimatePresence>
@@ -133,6 +150,34 @@ export default function CartDrawer({ isOpen, onClose, onCheckout }: CartDrawerPr
             {/* FOOTER */}
             {items.length > 0 && (
               <div className="border-t border-black/5 p-6 space-y-4">
+                {/* FREE DELIVERY PROGRESS */}
+                <div className="space-y-1.5">
+                  {amountToFreeDelivery > 0 ? (
+                    <p className="text-xs font-semibold text-gray-600">
+                      Add <span className="text-primary">₹{amountToFreeDelivery.toFixed(0)}</span> more for free delivery 🚚
+                    </p>
+                  ) : (
+                    <p className="text-xs font-semibold text-green-600">
+                      🎉 Free delivery unlocked!
+                    </p>
+                  )}
+                  <div className="h-1.5 bg-black/10 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-primary rounded-full"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${freeDeliveryProgress}%` }}
+                      transition={{ duration: 0.4 }}
+                    />
+                  </div>
+                </div>
+
+                {/* MIN ORDER WARNING */}
+                {totalAmount < MIN_ORDER && (
+                  <p className="text-xs text-amber-700 font-medium bg-amber-50 rounded-lg px-3 py-2">
+                    Minimum order is ₹{MIN_ORDER}. Add ₹{(MIN_ORDER - totalAmount).toFixed(0)} more.
+                  </p>
+                )}
+
                 {/* TOTAL */}
                 <div className="flex justify-between items-center">
                   <span className="text-lg font-bold text-accent/50">Total</span>
@@ -145,6 +190,10 @@ export default function CartDrawer({ isOpen, onClose, onCheckout }: CartDrawerPr
                     if (!user) {
                       toast.error("Please login to proceed");
                       onClose();
+                      return;
+                    }
+                    if (totalAmount < MIN_ORDER) {
+                      toast.error(`Minimum order is ₹${MIN_ORDER}. Add ₹${(MIN_ORDER - totalAmount).toFixed(0)} more.`);
                       return;
                     }
                     const fbEventId = `ic_${Date.now()}_${Math.random().toString(36).slice(2)}`;

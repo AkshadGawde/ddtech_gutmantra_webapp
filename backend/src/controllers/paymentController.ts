@@ -136,6 +136,13 @@ export async function createOrder(req: Request, res: Response) {
       0
     );
 
+    if (subtotal < 400) {
+      return res.status(400).json({
+        success: false,
+        message: "Minimum order value is ₹400. Please add more items to your cart.",
+      });
+    }
+
     let discount = 0;
     const couponCode = body.couponCode;
     if (couponCode) {
@@ -143,7 +150,9 @@ export async function createOrder(req: Request, res: Response) {
       discount = validation.discount;
     }
 
-    const finalAmount = Math.max(0, subtotal - discount + deliveryCharge);
+    // Free delivery for orders ≥₹799 (based on pre-discount subtotal)
+    const effectiveDeliveryCharge = subtotal >= 799 ? 0 : deliveryCharge;
+    const finalAmount = Math.max(0, subtotal - discount + effectiveDeliveryCharge);
 
     const orderPayload: OrderCreatePayload = {
       orderId,
@@ -153,7 +162,7 @@ export async function createOrder(req: Request, res: Response) {
       items,
       subtotal,
       discount,
-      deliveryCharge,
+      deliveryCharge: effectiveDeliveryCharge,
       finalAmount,
       deliveryDistanceKm,
       couponCode: couponCode || null,
@@ -169,7 +178,7 @@ export async function createOrder(req: Request, res: Response) {
         items,
         subtotal,
         discount,
-        deliveryCharge,
+        deliveryCharge: effectiveDeliveryCharge,
         finalAmount,
         deliveryDistanceKm,
         couponCode: couponCode || null,

@@ -428,11 +428,10 @@ async function startServer() {
         });
       }
 
-      // 3. Try Petpooja's online orders list to find the latest status.
-      //    pponlineordercb.petpooja.com is the online ordering domain (same as save_order/update_order_status).
+      // 3. Query Petpooja's get_order_status endpoint for this specific order.
       let ppStatus: string | null = null;
       try {
-        const ppRes = await fetch("https://pponlineordercb.petpooja.com/get_orders", {
+        const ppRes = await fetch("https://pponlineordercb.petpooja.com/get_order_status", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -440,30 +439,27 @@ async function startServer() {
             app_secret: PP_APP_SECRET,
             access_token: PP_ACCESS_TOKEN,
             restID: PP_REST_ID,
+            clientorderID: orderId,
           }),
         });
         const ppData = await ppRes.json();
-        console.log(`🔍 Petpooja get_orders response (for poll):`, JSON.stringify(ppData).slice(0, 500));
+        console.log(`🔍 Petpooja get_order_status (${orderId.slice(-12)}):`, JSON.stringify(ppData).slice(0, 500));
 
-        // Find our order — Petpooja returns clientOrderID or client_order_id
-        const orders: any[] = ppData?.orders || ppData?.data || [];
-        const match = orders.find((o: any) => {
-          const cid = String(o.clientOrderID || o.clientorderID || o.client_order_id || "");
-          return cid === orderId;
-        });
-
-        if (match) {
-          ppStatus = String(match.status || match.order_status || "");
-          console.log(`✅ Found Petpooja order for ${orderId}: status=${ppStatus}`);
-        } else {
-          console.log(`⚠️ Order ${orderId} not found in Petpooja get_orders response`);
+        // Petpooja may return status at top level or inside an order object
+        const rawStatus = ppData?.status || ppData?.order_status
+          || ppData?.data?.status || ppData?.data?.order_status
+          || ppData?.order?.status || ppData?.order?.order_status;
+        if (rawStatus !== undefined && rawStatus !== null) {
+          ppStatus = String(rawStatus);
         }
       } catch (ppErr) {
-        console.warn("⚠️ Petpooja get_orders failed (non-fatal):", ppErr);
+        console.warn("⚠️ Petpooja get_order_status failed (non-fatal):", ppErr);
       }
 
-      // 4. If Petpooja returned a different status, update Firestore so webhook catches up
-      if (ppStatus && ppStatus !== currentStatus) {
+      // 4. If Petpooja returned a known valid status code that differs from current, update Firestore.
+      //    Guard against non-numeric error strings (e.g. "Missing Authentication Token") being stored as status.
+      const KNOWN_PP_STATUSES = new Set(["1", "2", "4", "5", "10", "-1"]);
+      if (ppStatus && KNOWN_PP_STATUSES.has(ppStatus) && ppStatus !== currentStatus) {
         const label = STATUS_LABELS[ppStatus] || ppStatus;
         await db.collection("orders").doc(orderId).update({
           status: ppStatus,

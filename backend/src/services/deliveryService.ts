@@ -39,8 +39,8 @@ export function calculateDistanceKm(
 
 export function calculateDeliveryCharge(distanceKm: number): number {
   if (distanceKm <= 5) return 0;
-  if (distanceKm <= 10) return 30;
-  if (distanceKm <= 15) return 40;
+  if (distanceKm <= 10) return 50;
+  if (distanceKm <= 15) return 80;
   return Number.POSITIVE_INFINITY;
 }
 
