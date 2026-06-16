@@ -398,6 +398,97 @@ async function startServer() {
     }
   });
 
+  // ── Order status poll (frontend fallback when webhook is not triggered) ─────
+  // Petpooja's callback_url is only called for the initial save confirmation;
+  // POS-side acceptance/rejection may not trigger a callback in all configurations.
+  // This endpoint lets the frontend poll for the latest status.
+
+  app.get("/api/orders/poll-status/:orderId", async (req: Request, res: Response) => {
+    try {
+      const { orderId } = req.params;
+      if (!orderId) {
+        return res.status(400).json({ success: false, error: "orderId required" });
+      }
+
+      // 1. Read current Firestore state
+      const orderSnap = await db.collection("orders").doc(orderId).get();
+      if (!orderSnap.exists) {
+        return res.status(404).json({ success: false, error: "Order not found" });
+      }
+      const orderData = orderSnap.data()!;
+
+      // 2. If already in a final state, just return it — no need to poll Petpooja
+      const currentStatus = String(orderData.status || "");
+      if (currentStatus === "-1" || currentStatus === "10") {
+        return res.json({
+          success: true,
+          status: currentStatus,
+          statusLabel: orderData.statusLabel || STATUS_LABELS[currentStatus] || currentStatus,
+          source: "firestore",
+        });
+      }
+
+      // 3. Try Petpooja's online orders list to find the latest status.
+      //    pponlineordercb.petpooja.com is the online ordering domain (same as save_order/update_order_status).
+      let ppStatus: string | null = null;
+      try {
+        const ppRes = await fetch("https://pponlineordercb.petpooja.com/get_orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            app_key: PP_APP_KEY,
+            app_secret: PP_APP_SECRET,
+            access_token: PP_ACCESS_TOKEN,
+            restID: PP_REST_ID,
+          }),
+        });
+        const ppData = await ppRes.json();
+        console.log(`🔍 Petpooja get_orders response (for poll):`, JSON.stringify(ppData).slice(0, 500));
+
+        // Find our order — Petpooja returns clientOrderID or client_order_id
+        const orders: any[] = ppData?.orders || ppData?.data || [];
+        const match = orders.find((o: any) => {
+          const cid = String(o.clientOrderID || o.clientorderID || o.client_order_id || "");
+          return cid === orderId;
+        });
+
+        if (match) {
+          ppStatus = String(match.status || match.order_status || "");
+          console.log(`✅ Found Petpooja order for ${orderId}: status=${ppStatus}`);
+        } else {
+          console.log(`⚠️ Order ${orderId} not found in Petpooja get_orders response`);
+        }
+      } catch (ppErr) {
+        console.warn("⚠️ Petpooja get_orders failed (non-fatal):", ppErr);
+      }
+
+      // 4. If Petpooja returned a different status, update Firestore so webhook catches up
+      if (ppStatus && ppStatus !== currentStatus) {
+        const label = STATUS_LABELS[ppStatus] || ppStatus;
+        await db.collection("orders").doc(orderId).update({
+          status: ppStatus,
+          statusLabel: label,
+          orderStatus: ppStatus === "-1" ? "CANCELLED" : ppStatus === "10" ? "DELIVERED" : "ACTIVE",
+          updatedAt: FieldValue.serverTimestamp(),
+          lastPolledAt: FieldValue.serverTimestamp(),
+        });
+        console.log(`✅ Poll updated order ${orderId}: ${currentStatus} → ${ppStatus} (${label})`);
+        return res.json({ success: true, status: ppStatus, statusLabel: label, source: "petpooja_poll" });
+      }
+
+      // 5. Return current Firestore status (no change or Petpooja unavailable)
+      return res.json({
+        success: true,
+        status: currentStatus,
+        statusLabel: orderData.statusLabel || STATUS_LABELS[currentStatus] || currentStatus,
+        source: "firestore",
+      });
+    } catch (err) {
+      console.error("❌ poll-status error:", err);
+      return res.status(500).json({ success: false, error: String(err) });
+    }
+  });
+
   // ── Webhook data ────────────────────────────────────────────────────────────
 
   app.get("/api/webhook-data", async (_req: Request, res: Response) => {

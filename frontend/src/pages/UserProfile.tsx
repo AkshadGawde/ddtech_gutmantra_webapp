@@ -203,6 +203,38 @@ export default function UserProfile({ onNavigate }: UserProfileProps) {
 
   }, [user?.uid]);
 
+  /* ================= STATUS POLLING FALLBACK ================= */
+  // Petpooja doesn't always push webhook callbacks when the POS accepts/rejects.
+  // Poll every 30 seconds for any order that is not yet in a final state.
+  useEffect(() => {
+    if (!user?.uid || orders.length === 0) return;
+
+    const FINAL_STATUSES = new Set(["-1", "10"]);
+    const POLL_INTERVAL = 30_000;
+
+    const pollPendingOrders = async () => {
+      const activeOrders = orders.filter((o) => !FINAL_STATUSES.has(o.status || ""));
+      if (activeOrders.length === 0) return;
+
+      await Promise.all(
+        activeOrders.map(async (o) => {
+          try {
+            await fetch(`${API_BASE}/api/orders/poll-status/${o.id}`);
+            // Firestore onSnapshot above will pick up any status changes automatically.
+          } catch {
+            // Non-critical — silent fail
+          }
+        })
+      );
+    };
+
+    // Run immediately on mount, then every 30 s
+    pollPendingOrders();
+    const timer = setInterval(pollPendingOrders, POLL_INTERVAL);
+    return () => clearInterval(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid, orders.length]);
+
 
   /* ================= STATUS MAPPING ================= */
 
