@@ -79,6 +79,7 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
 
     const cartItem = {
       id: `${product.id}${variantName ? `-${variantName}` : ""}`,
+      productId: product.id,
       name: `${product.name}${variantName ? ` (${variantName})` : ""}`,
       price: price,
       quantity: 1,

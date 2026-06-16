@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 
 import {
@@ -14,6 +14,8 @@ import {
   Lock,
   Eye,
   EyeOff,
+  X,
+  AlertTriangle,
 } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";
@@ -46,26 +48,27 @@ import {
 import { db } from "@/lib/firebase";
 
 interface Order {
-
   id: string;
-
   orderID: string;
-
   status: string;
-
   statusLabel: string;
-
+  orderStatus: string;
+  cancelReason?: string;
   items: Array<{ name: string; price: number; quantity: number }>;
-
   total: number;
-
+  finalAmount?: number;
   paymentMode: string;
-
   createdAt: any;
-
   updatedAt: any;
-
 }
+
+const CANCEL_REASONS = [
+  "Changed my mind",
+  "Ordered by mistake",
+  "Found a better price elsewhere",
+  "Delivery time too long",
+  "Other",
+];
 
 interface UserProfileProps {
 
@@ -82,6 +85,12 @@ export default function UserProfile({ onNavigate }: UserProfileProps) {
   const [loading, setLoading] = useState(true);
 
   const [isEditing, setIsEditing] = useState(false);
+
+  // Cancel order dialog state
+  const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
+  const [cancelReason, setCancelReason] = useState(CANCEL_REASONS[0]);
+  const [cancelCustomReason, setCancelCustomReason] = useState("");
+  const [cancelLoading, setCancelLoading] = useState(false);
 
   // Change-password form state
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -311,6 +320,36 @@ export default function UserProfile({ onNavigate }: UserProfileProps) {
   };
 
   const API_BASE = import.meta.env.VITE_API_URL || "https://api.gutmantra.in";
+
+  const handleCancelOrder = async () => {
+    if (!cancellingOrderId) return;
+    const reason = cancelReason === "Other" ? cancelCustomReason.trim() : cancelReason;
+    if (!reason) {
+      toast.error("Please enter a cancellation reason.");
+      return;
+    }
+    try {
+      setCancelLoading(true);
+      const res = await fetch(`${API_BASE}/api/cancel-order`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderID: cancellingOrderId, reason }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        toast.error(data.error || "Failed to cancel order. Please try again.");
+        return;
+      }
+      toast.success("Order cancelled successfully.");
+      setCancellingOrderId(null);
+      setCancelReason(CANCEL_REASONS[0]);
+      setCancelCustomReason("");
+    } catch {
+      toast.error("Network error. Please try again.");
+    } finally {
+      setCancelLoading(false);
+    }
+  };
 
   const validatePassword = (pw: string): string | null => {
     if (pw.length < 8) return "At least 8 characters required.";
@@ -844,7 +883,6 @@ onChange={(e) =>
         </motion.div>
 
         {/* Order History */}
-        {/* Order History */}
 <motion.div
   initial={{ opacity: 0, y: 20 }}
   animate={{ opacity: 1, y: 0 }}
@@ -866,9 +904,7 @@ onChange={(e) =>
         <Package size={40} className="text-primary/30" />
       </div>
       <p className="text-gray-600 font-bold mb-4 text-lg">No orders yet</p>
-      <p className="text-gray-500 text-sm mb-6">
-        Start shopping to see your orders here
-      </p>
+      <p className="text-gray-500 text-sm mb-6">Start shopping to see your orders here</p>
       <button
         onClick={() => onNavigate("category", { category: "atta" })}
         className="px-8 py-3 bg-primary text-white rounded-xl hover:bg-primary/90 transition-all font-bold uppercase text-sm tracking-wider inline-block"
@@ -879,7 +915,33 @@ onChange={(e) =>
   ) : (
     <div className="space-y-4">
       {orders.map((order, index) => {
-        const normalizedStatus = mapStatus(order.status || "");
+        const s = order.status || "";
+        const isCancelled = s === "-1";
+        const isDelivered = s === "10";
+        const isAccepted = s === "1" || s === "2";
+        const isOutForDelivery = s === "4" || s === "5";
+        const isPending = !s || s === "pending" || s === "PLACED" || s === "PAYMENT_PENDING";
+        const canCancel = !isCancelled && !isDelivered;
+
+        const statusLabel = order.statusLabel
+          || (isPending ? "Waiting for Acceptance"
+            : isCancelled ? "Cancelled"
+            : isDelivered ? "Delivered"
+            : isAccepted ? "Accepted by Kitchen"
+            : isOutForDelivery ? (s === "4" ? "Out for Delivery" : "Ready for Pickup")
+            : s);
+
+        const badgeClass = isCancelled
+          ? "bg-red-100 text-red-700"
+          : isDelivered
+          ? "bg-green-100 text-green-700"
+          : isAccepted
+          ? "bg-blue-100 text-blue-700"
+          : isOutForDelivery
+          ? "bg-amber-100 text-amber-700"
+          : "bg-yellow-100 text-yellow-700";
+
+        const orderTotal = order.finalAmount ?? order.total;
 
         return (
           <motion.div
@@ -890,99 +952,47 @@ onChange={(e) =>
             className="border-2 border-gray-100 rounded-xl p-5 hover:border-primary/30 transition-all"
           >
             <div className="flex items-start justify-between gap-4 flex-wrap">
-
               {/* LEFT */}
               <div className="flex-1 min-w-[250px]">
                 <div className="flex items-center gap-2 mb-3 flex-wrap">
                   <p className="text-sm font-bold text-primary">
                     Order #{order.id.slice(0, 8).toUpperCase()}
                   </p>
-
-                  {(() => {
-                    const statusLabel = order.statusLabel || normalizedStatus;
-                    const badgeClass = (() => {
-                      switch (order.status) {
-                        case "10":   return "bg-green-100 text-green-700";
-                        case "1":
-                        case "2":    return "bg-blue-100 text-blue-700";
-                        case "4":
-                        case "5":    return "bg-amber-100 text-amber-700";
-                        case "-1":   return "bg-red-100 text-red-700";
-                        default:     return "bg-yellow-100 text-yellow-700";
-                      }
-                    })();
-                    return (
-                      <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${badgeClass}`}>
-                        {statusLabel}
-                      </span>
-                    );
-                  })()}
+                  <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${badgeClass}`}>
+                    {statusLabel}
+                  </span>
                 </div>
 
                 <p className="text-xs text-gray-500 mb-3 font-medium">
+                  {order.updatedAt?.seconds
+                    ? new Date(order.updatedAt.seconds * 1000).toLocaleDateString("en-IN", {
+                        year: "numeric", month: "short", day: "numeric",
+                        hour: "2-digit", minute: "2-digit",
+                      })
+                    : "Just now"}
+                </p>
 
-  {order.updatedAt?.seconds
-
-    ? new Date(
-
-        order.updatedAt.seconds * 1000
-
-      ).toLocaleDateString("en-IN", {
-
-        year: "numeric",
-
-        month: "short",
-
-        day: "numeric",
-
-        hour: "2-digit",
-
-        minute: "2-digit",
-
-      })
-
-    : "Just now"}
-
-</p>
-                <div className="text-xs text-gray-600 space-y-1 font-medium">
-                  <p>
-                    <span className="font-bold">Items:</span>{" "}
-                    {order.items?.length || 0}
+                {isCancelled && order.cancelReason && (
+                  <p className="text-xs text-red-500 font-medium">
+                    Reason: {order.cancelReason}
                   </p>
-                </div>
+                )}
               </div>
 
               {/* RIGHT */}
               <div className="text-right flex flex-col items-end gap-3">
-                <p className="text-xs text-gray-500 font-semibold uppercase">
-                  Order Total
-                </p>
+                <p className="text-xs text-gray-500 font-semibold uppercase">Order Total</p>
                 <p className="text-3xl font-bold text-primary">
-                  ₹{order.total?.toFixed(2)}
+                  ₹{orderTotal?.toFixed(2) ?? "—"}
                 </p>
                 <p className="text-xs text-gray-400 font-medium">{order.paymentMode || "COD"}</p>
 
-                {/* CANCEL BUTTON */}
-                {normalizedStatus === "pending" && (
+                {canCancel && (
                   <button
-                    onClick={async () => {
-                      try {
-                        await fetch("https://api.gutmantra.in/api/cancel-order", {
-                          method: "POST",
-                          headers: {
-                            "Content-Type": "application/json"
-                          },
-                          body: JSON.stringify({
-                            orderID: order.id,
-                            reason: "User cancelled from app"
-                          })
-                        });
-
-                        toast.success("Order cancellation requested");
-                      } catch (err) {
-                        console.error(err);
-                        toast.error("Failed to cancel order");
-                      }
+                    onClick={() => {
+                      setCancellingOrderId(order.id);
+                      setCancelReason(CANCEL_REASONS[0]);
+                      setCancelCustomReason("");
                     }}
                     className="px-4 py-2 text-xs font-bold uppercase bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition"
                   >
@@ -990,7 +1000,6 @@ onChange={(e) =>
                   </button>
                 )}
               </div>
-
             </div>
 
             {/* ITEMS */}
@@ -1005,7 +1014,8 @@ onChange={(e) =>
                       key={idx}
                       className="text-xs bg-primary/10 text-primary px-3 py-1.5 rounded-lg font-semibold"
                     >
-                      {item.name} × {item.quantity}  —  ₹{(item.price * item.quantity).toFixed(0)}
+                      {item.name} × {item.quantity}
+                      {item.price > 0 && ` — ₹${(item.price * item.quantity).toFixed(0)}`}
                     </span>
                   ))}
                 </div>
@@ -1017,6 +1027,90 @@ onChange={(e) =>
     </div>
   )}
 </motion.div>
+
+        {/* Cancellation Reason Dialog */}
+        <AnimatePresence>
+          {cancellingOrderId && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+              onClick={(e) => { if (e.target === e.currentTarget) setCancellingOrderId(null); }}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6"
+              >
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle size={20} className="text-red-500" />
+                    <h3 className="text-lg font-bold text-gray-900">Cancel Order</h3>
+                  </div>
+                  <button
+                    onClick={() => setCancellingOrderId(null)}
+                    className="text-gray-400 hover:text-gray-600 transition"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <p className="text-sm text-gray-500 mb-5">
+                  Please select a reason for cancelling this order. This will be shared with the kitchen.
+                </p>
+
+                <div className="space-y-2 mb-4">
+                  {CANCEL_REASONS.map((r) => (
+                    <label key={r} className="flex items-center gap-3 cursor-pointer group">
+                      <input
+                        type="radio"
+                        name="cancelReason"
+                        value={r}
+                        checked={cancelReason === r}
+                        onChange={() => setCancelReason(r)}
+                        className="accent-red-500 w-4 h-4"
+                      />
+                      <span className={`text-sm font-medium transition ${cancelReason === r ? "text-gray-900" : "text-gray-600"}`}>
+                        {r}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+
+                {cancelReason === "Other" && (
+                  <textarea
+                    value={cancelCustomReason}
+                    onChange={(e) => setCancelCustomReason(e.target.value)}
+                    placeholder="Please describe your reason..."
+                    rows={3}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-red-400 resize-none mb-4"
+                  />
+                )}
+
+                <div className="flex gap-3 mt-2">
+                  <button
+                    onClick={() => setCancellingOrderId(null)}
+                    disabled={cancelLoading}
+                    className="flex-1 py-3 border-2 border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition disabled:opacity-50"
+                  >
+                    Keep Order
+                  </button>
+                  <button
+                    onClick={handleCancelOrder}
+                    disabled={cancelLoading || (cancelReason === "Other" && !cancelCustomReason.trim())}
+                    className="flex-1 py-3 bg-red-500 text-white rounded-xl text-sm font-bold hover:bg-red-600 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {cancelLoading
+                      ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Cancelling…</>
+                      : "Confirm Cancel"}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

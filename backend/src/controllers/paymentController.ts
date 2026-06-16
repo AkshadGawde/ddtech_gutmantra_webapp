@@ -97,17 +97,26 @@ export async function createOrder(req: Request, res: Response) {
     }
 
     const items = body.items.map((item: any) => {
-      const baseId =
-        item.base_id || item.sku || (item.petpoojaId ? String(item.petpoojaId).replace(/^V/, "") : "");
-      const variationId = item.variation_id && item.variation_id !== item.base_id ? item.variation_id : "";
+      // item.productId = parent Petpooja itemid (Firestore doc ID = Petpooja itemid)
+      // item.base_id   = variant's sku (may be variationid when item has variations)
+      const parentItemId = item.productId
+        ? String(item.productId)
+        : item.base_id || item.sku || (item.petpoojaId ? String(item.petpoojaId).replace(/^V/, "") : "");
 
-      if (!baseId) {
+      const variantId = item.base_id || item.sku || "";
+
+      // Only store a variation_id when it is distinct from the parent item ID.
+      // petpoojaService will then use variationid as the itemid (Petpooja expects
+      // variationid for variable items, parent itemid for simple items).
+      const variationId = variantId && variantId !== parentItemId ? variantId : "";
+
+      if (!parentItemId) {
         throw new Error(`Missing base_id or sku for item ${item.name || "unknown"}`);
       }
 
       return {
-        id: String(baseId),
-        variation_id: variationId || "",
+        id: String(parentItemId),
+        variation_id: variationId,
         name: item.name,
         price: String(item.price),
         quantity: String(item.quantity),
