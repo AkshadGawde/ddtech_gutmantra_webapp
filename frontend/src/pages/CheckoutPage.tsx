@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { pixelEvents } from "../utils/fbPixel";
 import { useNavigate } from "react-router-dom";
@@ -117,6 +117,19 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
   const deliveryCharge = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : rawDeliveryCharge;
   const totalWithDelivery = subtotal - discount + deliveryCharge;
   const amountToFreeDelivery = Math.max(0, FREE_DELIVERY_THRESHOLD - subtotal);
+  const freeDeliveryProgress = Math.min(100, (subtotal / FREE_DELIVERY_THRESHOLD) * 100);
+
+  // Toast when cart crosses the free-delivery threshold
+  const prevTotalRef = useRef(0);
+  useEffect(() => {
+    const prev = prevTotalRef.current;
+    if (prev < FREE_DELIVERY_THRESHOLD && subtotal >= FREE_DELIVERY_THRESHOLD) {
+      toast.success("🎉 Free delivery unlocked!", {
+        description: "Your order qualifies for free delivery!",
+      });
+    }
+    prevTotalRef.current = subtotal;
+  }, [subtotal]);
 
   // ─── Pre-fill from Firebase auth ───────────────────────────────────────────
 
@@ -1089,15 +1102,31 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
                   </span>
                 </div>
 
-                {/* Free delivery nudge */}
-                {amountToFreeDelivery > 0 && deliveryResult?.isDeliverable && (
-                  <p className="text-xs text-green-700 font-medium bg-green-50 rounded-lg px-3 py-2">
-                    Add ₹{amountToFreeDelivery.toFixed(0)} more for free delivery!
-                  </p>
-                )}
-                {subtotal >= FREE_DELIVERY_THRESHOLD && (
-                  <p className="text-xs text-green-700 font-medium bg-green-50 rounded-lg px-3 py-2">
-                    🎉 Free delivery applied on your order!
+                {/* Free delivery progress */}
+                <div className="space-y-1.5 py-1">
+                  {amountToFreeDelivery > 0 ? (
+                    <p className="text-xs font-semibold text-gray-600">
+                      Add <span className="text-green-700">₹{amountToFreeDelivery.toFixed(0)}</span> more for free delivery 🚚
+                    </p>
+                  ) : (
+                    <p className="text-xs font-semibold text-green-600">
+                      🎉 Free delivery unlocked!
+                    </p>
+                  )}
+                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-green-500 rounded-full"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${freeDeliveryProgress}%` }}
+                      transition={{ duration: 0.4 }}
+                    />
+                  </div>
+                </div>
+
+                {/* Min order warning */}
+                {subtotal < MIN_ORDER && (
+                  <p className="text-xs text-amber-700 font-medium bg-amber-50 rounded-lg px-3 py-2">
+                    Minimum order is ₹{MIN_ORDER}. Add ₹{(MIN_ORDER - subtotal).toFixed(0)} more.
                   </p>
                 )}
 
