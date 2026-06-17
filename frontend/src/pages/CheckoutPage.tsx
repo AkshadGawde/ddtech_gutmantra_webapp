@@ -578,27 +578,19 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
         }
 
         console.log("✅ BillDesk order created:", { orderid, bdorderid, payment_link });
-        console.log("   mercid:", mercid, " authorization:", authorization ? authorization.slice(0, 30) + "…" : "none");
 
-        const paymentWindow = window.open("", "BillDeskPayment", "width=950,height=700,scrollbars=yes");
-        if (!paymentWindow) {
-          toast.error("Popup blocked. Please allow popups for this site and try again.");
-          return;
-        }
-
-        // BillDesk embeddedsdk requires a form POST with exact field names
-        // from the response parameters object: mercid, bdorderid, rdata
-        // Plus the authorization token from the response headers object.
+        // BillDesk Neo – Full Redirect: POST form to payment page (full-page navigation).
+        // Field names per BillDesk official sample form: merchantid, bdorderid, rdata.
+        // authorization is an API header only — do NOT include it as a form field.
         const form = document.createElement("form");
         form.method = "POST";
         form.action = payment_link;
-        form.target = "BillDeskPayment";
+        form.target = "_self";
 
         const formFields: Record<string, string> = {
-          mercid:        mercid,
-          bdorderid:     bdorderid,
-          rdata:         rdata,
-          ...(authorization ? { authorization } : {}),
+          merchantid: mercid,
+          bdorderid:  bdorderid,
+          rdata:      rdata,
         };
         Object.entries(formFields).forEach(([name, value]) => {
           const input = document.createElement("input");
@@ -610,61 +602,6 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
 
         document.body.appendChild(form);
         form.submit();
-        document.body.removeChild(form);
-
-        // Poll for payment status every 3 seconds (fallback if webhook fires first)
-        let pollCount = 0;
-        const maxPolls = 100; // 5 minutes
-
-        const pollInterval = setInterval(async () => {
-          pollCount++;
-          try {
-            const statusRes = await fetch(`${API_BASE}/orders/status/${orderid}`);
-            const statusData = await statusRes.json();
-            const paymentStatus = statusData.order?.payment_status;
-
-            console.log(`[Poll ${pollCount}/${maxPolls}] status: ${paymentStatus}, petpooja_synced: ${statusData.order?.petpooja_synced}`);
-
-            if (paymentStatus === "0300") {
-              clearInterval(pollInterval);
-              paymentWindow?.close();
-
-              // Trigger PetPooja sync as fallback (webhook may have already done it)
-              if (!statusData.order?.petpooja_synced) {
-                try {
-                  await fetch(`${API_BASE}/orders/sync-to-petpooja/${orderid}`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                  });
-                  console.log("✅ PetPooja sync triggered from frontend");
-                } catch (syncErr) {
-                  console.warn("PetPooja sync fallback error:", syncErr);
-                }
-              }
-
-              pixelEvents.purchase(orderid, totalWithDelivery, items.map(i => ({ id: i.id, quantity: i.quantity })), fbEventId);
-              clearCart();
-              navigate(`/success?orderId=${orderid}`);
-              return;
-            }
-
-            if (paymentStatus === "0399" || paymentStatus === "0001") {
-              clearInterval(pollInterval);
-              paymentWindow?.close();
-              toast.error("Payment failed or was cancelled. Please try again.");
-              return;
-            }
-
-            if (pollCount >= maxPolls) {
-              clearInterval(pollInterval);
-              toast("Payment is taking longer than expected. We'll notify you by email once confirmed.");
-              navigate("/");
-            }
-          } catch (pollErr) {
-            console.warn("Poll error:", pollErr);
-          }
-        }, 3000);
-
         return;
       }
 
