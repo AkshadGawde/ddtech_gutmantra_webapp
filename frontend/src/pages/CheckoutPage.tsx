@@ -508,6 +508,7 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
         const variantSuffix =
           item.variant && !item.name.includes(item.variant) ? ` (${item.variant})` : "";
         return {
+          productId: item.productId || item.id,
           base_id: item.base_id || item.sku || (item.petpoojaId ? String(item.petpoojaId).replace(/^V/, "") : ""),
           variation_id: item.variation_id || (item.petpoojaId ? String(item.petpoojaId).replace(/^V/, "") : ""),
           name: `${item.name}${variantSuffix}`,
@@ -520,6 +521,10 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
       if (nullBaseIds.length > 0) {
         throw new Error(`Items missing SKU: ${nullBaseIds.map((i: any) => i.name).join(", ")}`);
       }
+
+      console.log("🛒 formattedItems:", formattedItems.map((i: any) => ({
+        name: i.name, productId: i.productId, base_id: i.base_id, variation_id: i.variation_id
+      })));
 
       const fullAddress = buildFullAddress(shippingAddress);
       if (!fullAddress) { toast.error("Address missing"); return; }

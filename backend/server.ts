@@ -200,18 +200,21 @@ async function startServer() {
 
       console.log("🚫 Cancelling order:", orderId, "reason:", reason);
 
-      const ppRes = await fetch(PP_CANCEL_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      // Notify Petpooja POS — best-effort, never blocks the Firestore update
+      let ppData: any = null;
+      try {
+        const ppRes = await fetch(PP_CANCEL_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        ppData = await ppRes.json();
+        console.log("🚫 Petpooja cancel response:", ppData);
+      } catch (ppErr) {
+        console.warn("⚠️ Petpooja cancel notify failed (non-fatal):", ppErr);
+      }
 
-      const ppData = await ppRes.json();
-      console.log("🚫 Petpooja cancel response:", ppData);
-
-      // Update Firestore regardless of Petpooja response
-      // (the cancel may still succeed even if Petpooja returns an error for orders
-      //  already accepted — we reflect the user's intent)
+      // Always update Firestore so the user sees the cancellation immediately
       await db.collection("orders").doc(orderId).update({
         status: "-1",
         statusLabel: "Cancelled",
