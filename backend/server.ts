@@ -40,7 +40,8 @@ const SKIP_STATUSES = ["5", "4"];
 const STATUS_LABELS: Record<string, string> = {
   pending: "Order Placed",
   "1": "Accepted by Kitchen",
-  "2": "Preparing",
+  "2": "Accepted by Kitchen",
+  "3": "Accepted by Kitchen",
   "4": "Out for Delivery",
   "5": "Ready for Pickup",
   "10": "Delivered",
@@ -215,6 +216,7 @@ async function startServer() {
         status: "-1",
         statusLabel: "Cancelled",
         orderStatus: "CANCELLED",
+        cancelledBy: "user",
         cancelReason: reason,
         cancelledAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
@@ -257,26 +259,23 @@ async function startServer() {
       }
 
       // ── Order status callback ──────────────────────────────────────────────
-      // Petpooja sends clientOrderID (our internal ID) in order callbacks.
-      // Try all known field names Petpooja may use.
+      // Per Petpooja docs: in the callback payload, 'orderID' is our client
+      // order ID (despite the name). Try all known field variants.
       const clientOrderId = String(
-        data.clientOrderID || data.clientorderID || data.client_order_id || ""
+        data.clientOrderID || data.clientorderID || data.client_order_id ||
+        data.orderID || data.orderId || ""
       ).trim();
-      const petpoojaOrderId = String(data.orderID || data.orderId || "").trim();
       const status = String(data.status || "").trim();
-      const label = STATUS_LABELS[status] || status;
       const cancelReason = String(data.cancelReason || data.cancel_reason || "").trim();
 
-      console.log(`🔔 Order callback → clientOrderId=${clientOrderId} petpoojaOrderId=${petpoojaOrderId} status=${status} (${label})`);
+      console.log(`🔔 Order callback → clientOrderId=${clientOrderId} status=${status}`);
 
       if (!status) {
         console.warn("⚠️ Webhook received with no status — ignoring");
         return res.json({ success: true, message: "No status to process" });
       }
 
-      // Find the Firestore order:
-      // 1) Direct match by clientOrderID (website orders use internal ID as clientorderID)
-      // 2) Fallback: query by petpoojaID field (Petpooja's own order ID)
+      // Look up the Firestore order by document ID (our order ID)
       let firestoreOrderId: string | null = null;
       let orderData: any = null;
 
@@ -288,19 +287,21 @@ async function startServer() {
         }
       }
 
-      if (!firestoreOrderId && petpoojaOrderId) {
-        const snap = await db
-          .collection("orders")
-          .where("petpoojaID", "==", petpoojaOrderId)
-          .limit(1)
-          .get();
-        if (!snap.empty) {
-          firestoreOrderId = snap.docs[0].id;
-          orderData = snap.docs[0].data();
-        }
-      }
-
       if (firestoreOrderId && orderData) {
+        // Determine if this is a kitchen rejection vs a user-initiated cancel.
+        // If the user already cancelled (cancelledBy: "user"), don't overwrite with
+        // a Petpooja echo of the same -1.
+        const alreadyCancelledByUser = orderData.cancelledBy === "user";
+        if (status === "-1" && alreadyCancelledByUser) {
+          console.log(`ℹ️ Order ${firestoreOrderId} was already cancelled by user — skipping Petpooja -1 echo`);
+          return res.json({ success: true, message: "Already cancelled by user" });
+        }
+
+        const isKitchenRejection = status === "-1" && !alreadyCancelledByUser;
+        const label = isKitchenRejection
+          ? "Rejected by Kitchen"
+          : (STATUS_LABELS[status] || status);
+
         // Update only status fields — never overwrite original cart items or totals
         const updatePayload: Record<string, any> = {
           status,
@@ -310,8 +311,9 @@ async function startServer() {
           lastWebhookAt: FieldValue.serverTimestamp(),
         };
 
-        if (cancelReason) {
-          updatePayload.cancelReason = cancelReason;
+        if (isKitchenRejection) {
+          updatePayload.cancelledBy = "kitchen";
+          if (cancelReason) updatePayload.rejectionReason = cancelReason;
         }
 
         await db.collection("orders").doc(firestoreOrderId).update(updatePayload);
@@ -325,8 +327,7 @@ async function startServer() {
           }
         }
       } else {
-        // No matching app order — could be a Petpooja-native order, just log
-        console.warn(`⚠️ No Firestore order found for clientOrderId=${clientOrderId} petpoojaOrderId=${petpoojaOrderId}`);
+        console.warn(`⚠️ No Firestore order found for clientOrderId=${clientOrderId}`);
       }
 
       return res.json({ success: true, message: "Webhook processed" });
@@ -417,66 +418,16 @@ async function startServer() {
       }
       const orderData = orderSnap.data()!;
 
-      // 2. If already in a final state, just return it — no need to poll Petpooja
+      // Status is kept up-to-date by Petpooja's callback webhook.
+      // Just return current Firestore state — no external Petpooja polling.
       const currentStatus = String(orderData.status || "");
-      if (currentStatus === "-1" || currentStatus === "10") {
-        return res.json({
-          success: true,
-          status: currentStatus,
-          statusLabel: orderData.statusLabel || STATUS_LABELS[currentStatus] || currentStatus,
-          source: "firestore",
-        });
-      }
-
-      // 3. Query Petpooja's get_order_status endpoint for this specific order.
-      let ppStatus: string | null = null;
-      try {
-        const ppRes = await fetch("https://pponlineordercb.petpooja.com/get_order_status", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            app_key: PP_APP_KEY,
-            app_secret: PP_APP_SECRET,
-            access_token: PP_ACCESS_TOKEN,
-            restID: PP_REST_ID,
-            clientorderID: orderId,
-          }),
-        });
-        const ppData = await ppRes.json();
-        console.log(`🔍 Petpooja get_order_status (${orderId.slice(-12)}):`, JSON.stringify(ppData).slice(0, 500));
-
-        // Petpooja may return status at top level or inside an order object
-        const rawStatus = ppData?.status || ppData?.order_status
-          || ppData?.data?.status || ppData?.data?.order_status
-          || ppData?.order?.status || ppData?.order?.order_status;
-        if (rawStatus !== undefined && rawStatus !== null) {
-          ppStatus = String(rawStatus);
-        }
-      } catch (ppErr) {
-        console.warn("⚠️ Petpooja get_order_status failed (non-fatal):", ppErr);
-      }
-
-      // 4. If Petpooja returned a known valid status code that differs from current, update Firestore.
-      //    Guard against non-numeric error strings (e.g. "Missing Authentication Token") being stored as status.
-      const KNOWN_PP_STATUSES = new Set(["1", "2", "4", "5", "10", "-1"]);
-      if (ppStatus && KNOWN_PP_STATUSES.has(ppStatus) && ppStatus !== currentStatus) {
-        const label = STATUS_LABELS[ppStatus] || ppStatus;
-        await db.collection("orders").doc(orderId).update({
-          status: ppStatus,
-          statusLabel: label,
-          orderStatus: ppStatus === "-1" ? "CANCELLED" : ppStatus === "10" ? "DELIVERED" : "ACTIVE",
-          updatedAt: FieldValue.serverTimestamp(),
-          lastPolledAt: FieldValue.serverTimestamp(),
-        });
-        console.log(`✅ Poll updated order ${orderId}: ${currentStatus} → ${ppStatus} (${label})`);
-        return res.json({ success: true, status: ppStatus, statusLabel: label, source: "petpooja_poll" });
-      }
-
-      // 5. Return current Firestore status (no change or Petpooja unavailable)
       return res.json({
         success: true,
         status: currentStatus,
         statusLabel: orderData.statusLabel || STATUS_LABELS[currentStatus] || currentStatus,
+        cancelledBy: orderData.cancelledBy || null,
+        cancelReason: orderData.cancelReason || null,
+        rejectionReason: orderData.rejectionReason || null,
         source: "firestore",
       });
     } catch (err) {

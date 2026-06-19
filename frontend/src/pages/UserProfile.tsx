@@ -53,7 +53,9 @@ interface Order {
   status: string;
   statusLabel: string;
   orderStatus: string;
+  cancelledBy?: string;
   cancelReason?: string;
+  rejectionReason?: string;
   items: Array<{ name: string; price: number; quantity: number }>;
   total: number;
   finalAmount?: number;
@@ -948,22 +950,29 @@ onChange={(e) =>
     <div className="space-y-4">
       {orders.map((order, index) => {
         const s = order.status || "";
+        const isRejectedByKitchen = s === "-1" && order.cancelledBy === "kitchen";
+        const isCancelledByUser = s === "-1" && order.cancelledBy !== "kitchen";
         const isCancelled = s === "-1";
         const isDelivered = s === "10";
-        const isAccepted = s === "1" || s === "2";
+        const isAccepted = s === "1" || s === "2" || s === "3";
         const isOutForDelivery = s === "4" || s === "5";
         const isPending = !s || s === "pending" || s === "PLACED" || s === "PAYMENT_PENDING";
         const canCancel = !isCancelled && !isDelivered;
 
         const statusLabel = order.statusLabel
-          || (isPending ? "Waiting for Acceptance"
+          || (isRejectedByKitchen ? "Rejected by Kitchen"
+            : isPending ? "Waiting for Acceptance"
             : isCancelled ? "Cancelled"
             : isDelivered ? "Delivered"
             : isAccepted ? "Accepted by Kitchen"
             : isOutForDelivery ? (s === "4" ? "Out for Delivery" : "Ready for Pickup")
             : s);
 
-        const badgeClass = isCancelled
+        const badgeClass = isRejectedByKitchen
+          ? "bg-orange-100 text-orange-700"
+          : isCancelledByUser
+          ? "bg-red-100 text-red-700"
+          : isCancelled
           ? "bg-red-100 text-red-700"
           : isDelivered
           ? "bg-green-100 text-green-700"
@@ -1004,8 +1013,13 @@ onChange={(e) =>
                     : "Just now"}
                 </p>
 
-                {isCancelled && order.cancelReason && (
-                  <p className="text-xs text-red-500 font-medium">
+                {isRejectedByKitchen && order.rejectionReason && (
+                  <p className="text-xs text-orange-600 font-medium mt-1">
+                    Kitchen note: {order.rejectionReason}
+                  </p>
+                )}
+                {isCancelledByUser && order.cancelReason && (
+                  <p className="text-xs text-red-500 font-medium mt-1">
                     Reason: {order.cancelReason}
                   </p>
                 )}

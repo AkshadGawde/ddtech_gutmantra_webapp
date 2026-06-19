@@ -24,6 +24,11 @@ export async function createPetpoojaOrder(order: PetpoojaOrderPayload) {
     console.warn("⚠️ Petpooja credentials missing — order will fail");
   }
 
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const preorder_date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const preorder_time = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+
   const payload = {
     app_key: PP_APP_KEY,
     app_secret: PP_APP_SECRET,
@@ -50,8 +55,8 @@ export async function createPetpoojaOrder(order: PetpoojaOrderPayload) {
         Order: {
           details: {
             orderID: order.orderId,
-            preorder_date: "",
-            preorder_time: "",
+            preorder_date,
+            preorder_time,
             service_charge: "0",
             sc_tax_amount: "0",
             delivery_charges: String(order.deliveryCharge.toFixed(2)),
