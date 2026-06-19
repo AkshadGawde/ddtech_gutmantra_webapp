@@ -102,9 +102,7 @@ export async function createPetpoojaOrder(order: PetpoojaOrderPayload) {
         OrderItem: {
           details: order.items.map((item: any) => {
             const parentId = String(item.id || "");
-            const varId = item.variation_id && item.variation_id !== item.id
-              ? String(item.variation_id)
-              : "";
+            const varId = String(item.variation_id || "").trim();
 
             // Send parent itemid always; include variationid as a separate field
             // when the item has a variant. The POS auto-accept needs the parent

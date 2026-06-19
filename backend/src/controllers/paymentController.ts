@@ -105,8 +105,10 @@ export async function createOrder(req: Request, res: Response) {
       // item.variation_id is set from petpoojaId.replace(/^V/,"") in the frontend —
       // this is the true Petpooja variationid. Prefer it over base_id/sku which may
       // hold an internal EID that does not match Petpooja's variationid.
-      const petpoojaVid = String(item.variation_id || "").trim();
-      const variationId = petpoojaVid && petpoojaVid !== parentItemId ? petpoojaVid : "";
+      // For _isDefault items (no real Petpooja variation), variation_id === parentItemId.
+      // We still send it — Petpooja may use the parent itemid as the internal variationid.
+      const petpoojaVid = String(item.variation_id || item.base_id || "").trim();
+      const variationId = petpoojaVid || "";
 
       if (!parentItemId) {
         throw new Error(`Missing productId/base_id for item ${item.name || "unknown"}`);
