@@ -96,12 +96,19 @@ export async function createPetpoojaOrder(order: PetpoojaOrderPayload) {
         },
         OrderItem: {
           details: order.items.map((item: any) => {
-            const itemid = item.variation_id && item.variation_id !== item.id
-              ? item.variation_id
-              : item.id;
-            console.log(`🧾 [PP] item "${item.name}" → itemid=${itemid} price=${item.price} qty=${item.quantity}`);
+            const parentId = String(item.id || "");
+            const varId = item.variation_id && item.variation_id !== item.id
+              ? String(item.variation_id)
+              : "";
+
+            // Send parent itemid always; include variationid as a separate field
+            // when the item has a variant. The POS auto-accept needs the parent
+            // itemid to match its menu — sending ONLY the variationid causes the
+            // "invalid item ID(s)" auto-accept error.
+            console.log(`🧾 [PP] "${item.name}" → itemid=${parentId}${varId ? ` variationid=${varId}` : ""} ₹${item.price}×${item.quantity}`);
             return {
-              itemid,
+              itemid: parentId,
+              ...(varId ? { variationid: varId } : {}),
               name: item.name,
               quantity: parseInt(item.quantity, 10),
               item_price: parseFloat(item.price),

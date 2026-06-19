@@ -97,22 +97,22 @@ export async function createOrder(req: Request, res: Response) {
     }
 
     const items = body.items.map((item: any) => {
-      // item.productId = parent Petpooja itemid (Firestore doc ID = Petpooja itemid)
-      // item.base_id   = variant's sku (may be variationid when item has variations)
+      // parentItemId = Firestore doc ID = Petpooja parent itemid
       const parentItemId = item.productId
         ? String(item.productId)
-        : item.base_id || item.sku || (item.petpoojaId ? String(item.petpoojaId).replace(/^V/, "") : "");
+        : (item.petpoojaId ? String(item.petpoojaId).replace(/^V/, "") : "") || item.base_id || item.sku || "";
 
-      const variantId = item.base_id || item.sku || "";
-
-      // Only store a variation_id when it is distinct from the parent item ID.
-      // petpoojaService will then use variationid as the itemid (Petpooja expects
-      // variationid for variable items, parent itemid for simple items).
-      const variationId = variantId && variantId !== parentItemId ? variantId : "";
+      // item.variation_id is set from petpoojaId.replace(/^V/,"") in the frontend —
+      // this is the true Petpooja variationid. Prefer it over base_id/sku which may
+      // hold an internal EID that does not match Petpooja's variationid.
+      const petpoojaVid = String(item.variation_id || "").trim();
+      const variationId = petpoojaVid && petpoojaVid !== parentItemId ? petpoojaVid : "";
 
       if (!parentItemId) {
-        throw new Error(`Missing base_id or sku for item ${item.name || "unknown"}`);
+        throw new Error(`Missing productId/base_id for item ${item.name || "unknown"}`);
       }
+
+      console.log(`🛒 [cart→order] "${item.name}" parentId=${parentItemId} variationId=${variationId || "(none)"}`);
 
       return {
         id: String(parentItemId),
