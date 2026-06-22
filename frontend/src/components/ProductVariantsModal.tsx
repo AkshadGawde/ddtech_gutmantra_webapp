@@ -100,6 +100,7 @@ export default function ProductVariantsModal({ product, isOpen, onClose }: Produ
       productId: product.id,
       base_id: baseId,
       variation_id: variationId,
+      petpoojaVarItemId: selectedVariant?.petpoojaVarItemId || "",
       name: product.name,
       price,
       quantity,

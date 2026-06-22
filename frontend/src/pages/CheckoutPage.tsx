@@ -509,6 +509,7 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
           item.variant && !item.name.includes(item.variant) ? ` (${item.variant})` : "";
         return {
           productId: item.productId || item.id,
+          petpoojaVarItemId: item.petpoojaVarItemId || "",
           base_id: item.base_id || item.sku || (item.petpoojaId ? String(item.petpoojaId).replace(/^V/, "") : ""),
           variation_id: item.variation_id || (item.petpoojaId ? String(item.petpoojaId).replace(/^V/, "") : ""),
           name: `${item.name}${variantSuffix}`,
@@ -523,7 +524,7 @@ export default function CheckoutPage({ onBack, onNext }: CheckoutPageProps) {
       }
 
       console.log("🛒 formattedItems:", formattedItems.map((i: any) => ({
-        name: i.name, productId: i.productId, base_id: i.base_id, variation_id: i.variation_id
+        name: i.name, productId: i.productId, petpoojaVarItemId: i.petpoojaVarItemId, base_id: i.base_id, variation_id: i.variation_id
       })));
 
       const fullAddress = buildFullAddress(shippingAddress);

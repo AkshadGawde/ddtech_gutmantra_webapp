@@ -220,8 +220,11 @@ export async function syncMenuToFirestore(
 
         const sku = String(v.eid || v.EID || vid || item.itemid || "");
         const petpoojaId = vid ? `V${vid}` : `V${item.itemid}`;
+        // v.id = item-variation instance ID (e.g. "1255635661") — used as OrderItem.id in save_order
+        // This is different from variationid (global template like "614857")
+        const petpoojaVarItemId = v._isDefault ? "" : String(v.id || "");
 
-        return { price, quantity: name, sku, petpoojaId };
+        return { price, quantity: name, sku, petpoojaId, petpoojaVarItemId };
       });
 
       // ── Product-level price ───────────────────────────────────────────────

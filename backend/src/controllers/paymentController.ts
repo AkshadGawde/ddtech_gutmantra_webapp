@@ -97,27 +97,27 @@ export async function createOrder(req: Request, res: Response) {
     }
 
     const items = body.items.map((item: any) => {
-      // parentItemId = Firestore doc ID = Petpooja parent itemid
       const parentItemId = item.productId
         ? String(item.productId)
         : (item.petpoojaId ? String(item.petpoojaId).replace(/^V/, "") : "") || item.base_id || item.sku || "";
 
-      // item.variation_id is set from petpoojaId.replace(/^V/,"") in the frontend —
-      // this is the true Petpooja variationid. Prefer it over base_id/sku which may
-      // hold an internal EID that does not match Petpooja's variationid.
-      // For _isDefault items (no real Petpooja variation), variation_id === parentItemId.
-      // We still send it — Petpooja may use the parent itemid as the internal variationid.
       const petpoojaVid = String(item.variation_id || item.base_id || "").trim();
       const variationId = petpoojaVid || "";
+
+      // Petpooja save_order requires the variation instance id (v.id from push menu)
+      // as OrderItem.id — NOT the parent itemid. The parent itemid has base price = 0.
+      // For _isDefault items (no real variation), fall back to parent itemid.
+      const petpoojaVarItemId = item.petpoojaVarItemId ? String(item.petpoojaVarItemId) : "";
+      const petpoojaOrderItemId = petpoojaVarItemId || String(parentItemId);
 
       if (!parentItemId) {
         throw new Error(`Missing productId/base_id for item ${item.name || "unknown"}`);
       }
 
-      console.log(`🛒 [cart→order] "${item.name}" parentId=${parentItemId} variationId=${variationId || "(none)"}`);
+      console.log(`🛒 [cart→order] "${item.name}" orderId=${petpoojaOrderItemId} parentId=${parentItemId} variationId=${variationId || "(none)"}`);
 
       return {
-        id: String(parentItemId),
+        id: petpoojaOrderItemId,
         variation_id: variationId,
         name: item.name,
         price: String(item.price),

@@ -86,6 +86,7 @@ export default function ProductCard({ product, index = 0 }: ProductCardProps) {
       image: product.image || "",
       variant: variantName,
       petpoojaId: minVariant?.petpoojaId,
+      petpoojaVarItemId: minVariant?.petpoojaVarItemId || "",
       base_id: baseId,
       variation_id: variationId,
       sku: baseId,
