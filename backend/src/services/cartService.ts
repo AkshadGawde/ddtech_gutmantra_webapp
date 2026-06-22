@@ -6,6 +6,7 @@ export interface CartItemData {
   productId?: string;
   base_id?: string;
   variation_id?: string;
+  petpoojaVarItemId?: string;
   name: string;
   price: number;
   quantity: number;
@@ -60,6 +61,11 @@ export async function addOrUpdateCartItem(
     await ref.update({
       quantity: FieldValue.increment(item.quantity),
       updatedAt: FieldValue.serverTimestamp(),
+      // Always refresh Petpooja IDs so stale cart items get the latest values
+      ...(item.petpoojaVarItemId !== undefined ? { petpoojaVarItemId: item.petpoojaVarItemId } : {}),
+      ...(item.variation_id !== undefined ? { variation_id: item.variation_id } : {}),
+      ...(item.base_id !== undefined ? { base_id: item.base_id } : {}),
+      ...(item.productId !== undefined ? { productId: item.productId } : {}),
     });
   } else {
     await ref.set({

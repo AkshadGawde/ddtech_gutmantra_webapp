@@ -12,6 +12,7 @@ export interface CartItem {
   // PETPOOJA
   base_id?: string;
   variation_id?: string;
+  petpoojaVarItemId?: string;
 
   name: string;
   price: number;
