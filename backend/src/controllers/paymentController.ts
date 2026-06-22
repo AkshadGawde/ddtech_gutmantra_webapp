@@ -12,6 +12,25 @@ import {
 import { BillDeskRequest } from "../middleware/verifyBilldesk.js";
 import { Money } from "../utils/money.js";
 import { sendPurchaseEvent } from "../utils/fbConversions.js";
+import { getFirestoreDb } from "../services/firebaseAdmin.js";
+
+// Looks up petpoojaVarItemId from the products collection using productId + variationid.
+// This is the authoritative source — avoids relying on the frontend to pass it through cart.
+async function lookupPetpoojaVarItemId(productId: string, variationId: string): Promise<string> {
+  if (!productId) return "";
+  try {
+    const db = getFirestoreDb();
+    const snap = await db.collection("products").doc(productId).get();
+    if (!snap.exists) return "";
+    const variants: any[] = snap.data()?.variants || [];
+    const match = variants.find(
+      (v: any) => String(v.sku) === variationId || String(v.petpoojaId) === `V${variationId}`
+    );
+    return match?.petpoojaVarItemId ? String(match.petpoojaVarItemId) : "";
+  } catch {
+    return "";
+  }
+}
 
 function getUserId(orderId: string, providedUserId?: unknown) {
   if (typeof providedUserId === "string" && orderId.startsWith(providedUserId)) {
@@ -96,7 +115,7 @@ export async function createOrder(req: Request, res: Response) {
       });
     }
 
-    const items = body.items.map((item: any) => {
+    const items = await Promise.all(body.items.map(async (item: any) => {
       const parentItemId = item.productId
         ? String(item.productId)
         : (item.petpoojaId ? String(item.petpoojaId).replace(/^V/, "") : "") || item.base_id || item.sku || "";
@@ -104,17 +123,17 @@ export async function createOrder(req: Request, res: Response) {
       const petpoojaVid = String(item.variation_id || item.base_id || "").trim();
       const variationId = petpoojaVid || "";
 
-      // Petpooja save_order requires the variation instance id (v.id from push menu)
-      // as OrderItem.id — NOT the parent itemid. The parent itemid has base price = 0.
-      // For _isDefault items (no real variation), fall back to parent itemid.
-      const petpoojaVarItemId = item.petpoojaVarItemId ? String(item.petpoojaVarItemId) : "";
-      const petpoojaOrderItemId = petpoojaVarItemId || String(parentItemId);
-
       if (!parentItemId) {
         throw new Error(`Missing productId/base_id for item ${item.name || "unknown"}`);
       }
 
-      console.log(`🛒 [cart→order] "${item.name}" orderId=${petpoojaOrderItemId} parentId=${parentItemId} variationId=${variationId || "(none)"}`);
+      // Look up petpoojaVarItemId from Firestore — backend is authoritative,
+      // avoids relying on frontend to pass it through the cart correctly.
+      const fromFrontend = item.petpoojaVarItemId ? String(item.petpoojaVarItemId) : "";
+      const fromDb = fromFrontend || await lookupPetpoojaVarItemId(parentItemId, variationId);
+      const petpoojaOrderItemId = fromDb || String(parentItemId);
+
+      console.log(`🛒 [cart→order] "${item.name}" orderId=${petpoojaOrderItemId} parentId=${parentItemId} variationId=${variationId || "(none)"} (src=${fromFrontend ? "frontend" : fromDb ? "db" : "fallback"})`);
 
       return {
         id: petpoojaOrderItemId,
@@ -131,7 +150,7 @@ export async function createOrder(req: Request, res: Response) {
         variation_name: "",
         AddonItem: { details: [] },
       };
-    });
+    }));
 
     const subtotal = items.reduce(
       (sum, item) => sum + parseFloat(item.price) * parseInt(item.quantity, 10),
