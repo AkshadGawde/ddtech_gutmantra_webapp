@@ -101,23 +101,25 @@ export async function createPetpoojaOrder(order: PetpoojaOrderPayload) {
         },
         OrderItem: {
           details: order.items.map((item: any) => {
-            const parentId = String(item.id || "");
+            const itemId = String(item.id || "");
             const varId = String(item.variation_id || "").trim();
+            const varName = String(item.variation_name || "").trim();
 
-            // Send parent itemid always; include variationid as a separate field
-            // when the item has a variant. The POS auto-accept needs the parent
-            // itemid to match its menu — sending ONLY the variationid causes the
-            // "invalid item ID(s)" auto-accept error.
-            console.log(`🧾 [PP] "${item.name}" → itemid=${parentId}${varId ? ` variationid=${varId}` : ""} ₹${item.price}×${item.quantity}`);
+            console.log(`🧾 [PP] "${item.name}" → id=${itemId}${varId ? ` variation_id=${varId}` : ""} ₹${item.price}×${item.quantity}`);
             return {
-              itemid: parentId,
-              ...(varId ? { variationid: varId } : {}),
+              id: itemId,
               name: item.name,
-              quantity: parseInt(item.quantity, 10),
-              item_price: parseFloat(item.price),
-              item_tax: [],
-              item_discount: "0",
-              final_price: parseFloat(item.price),
+              price: String(item.price),
+              final_price: String(item.final_price || item.price),
+              quantity: String(item.quantity),
+              item_discount: String(item.item_discount || "0"),
+              item_tax: item.item_tax || [],
+              tax_inclusive: item.tax_inclusive ?? true,
+              gst_liability: item.gst_liability || "restaurant",
+              description: item.description || "",
+              ...(varId ? { variation_id: varId } : {}),
+              ...(varName ? { variation_name: varName } : {}),
+              AddonItem: { details: [] },
             };
           }),
         },
