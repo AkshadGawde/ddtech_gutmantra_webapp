@@ -115,6 +115,9 @@ export async function createPetpoojaOrder(order: PetpoojaOrderPayload) {
               name: item.name,
               quantity: parseInt(item.quantity, 10),
               item_price: parseFloat(item.price),
+              item_tax: [],
+              item_discount: "0",
+              final_price: parseFloat(item.price),
             };
           }),
         },
