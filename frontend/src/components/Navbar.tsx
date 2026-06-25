@@ -131,7 +131,7 @@ export default function Navbar({ onOpenCart }: NavbarProps) {
           {/* ── LOGO ── */}
           <NavLink to="/" className="flex items-center flex-shrink-0 z-10">
             <img
-              src="https://res.cloudinary.com/dk7ynv44a/image/upload/v1779879308/kup9jkswy7abbal9xdov.png"
+              src="https://res.cloudinary.com/dk7ynv44a/image/upload/f_auto,q_auto,w_200/v1779879308/kup9jkswy7abbal9xdov.png"
               alt="GutMantra"
               className="h-10 md:h-12 w-auto object-contain"
             />

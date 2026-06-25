@@ -14,7 +14,7 @@ export default function BrandStory() {
           >
             <div className="relative z-10 rounded-[3rem] overflow-hidden shadow-2xl">
               <img 
-                src="https://res.cloudinary.com/dk7ynv44a/image/upload/v1779984052/htvkyqrq2n3c4oj6o2qr.png" 
+                src="https://res.cloudinary.com/dk7ynv44a/image/upload/f_auto,q_auto,w_900/v1779984052/htvkyqrq2n3c4oj6o2qr.png" 
                 alt="Our Heritage" 
                 className="w-full h-[600px] object-cover"
                 referrerPolicy="no-referrer"

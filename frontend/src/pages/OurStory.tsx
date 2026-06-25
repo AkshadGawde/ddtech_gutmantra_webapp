@@ -51,7 +51,7 @@ const FEATURES = [
     color: "text-primary",
     body1: "When it comes to grain quality, there's simply no comparison. Our flour stands out for its exceptional texture, consistent freshness, and superior nutritional value. Sourced from the finest grains, meticulously milled, and rigorously tested, our products ensure the highest standards of quality in every batch.",
     body2: "Whether you're making Fulka, Chapati, Rotis, or crafting gourmet dishes, trust our flour to deliver unmatched results every time.",
-    img: "https://res.cloudinary.com/dk7ynv44a/image/upload/v1779797272/u9ursrutcvgpeh8wapm4.png",
+    img: "https://res.cloudinary.com/dk7ynv44a/image/upload/f_auto,q_auto,w_900/v1779797272/u9ursrutcvgpeh8wapm4.png",
     imgFirst: true,
   },
   {
@@ -59,7 +59,7 @@ const FEATURES = [
     color: "text-secondary",
     body1: "Traditional stone grinding holds a special place in our flour milling process. By using age-old techniques with natural stones, we ensure that our grains are ground slowly and at low temperatures, preserving the essential nutrients and flavors.",
     body2: "Unlike modern, high-speed mills, stone grinding prevents the loss of vitamins and minerals — providing flour that is not only healthier but richer in taste and texture.",
-    img: "https://res.cloudinary.com/dk7ynv44a/image/upload/v1779797844/mcbjonldlewd0pei18zv.png",
+    img: "https://res.cloudinary.com/dk7ynv44a/image/upload/f_auto,q_auto,w_900/v1779797844/mcbjonldlewd0pei18zv.png",
     imgFirst: false,
   },
   {
@@ -67,7 +67,7 @@ const FEATURES = [
     color: "text-primary",
     body1: "We understand the importance of convenience and quality. Our doorstep delivery service ensures that you receive our premium, health-focused flours directly to your home, saving you time and effort.",
     body2: "With just a few clicks, nutrient-rich flours are delivered right to your doorstep — allowing you to enjoy carefully sourced grains without any hassle.",
-    img: "https://res.cloudinary.com/dk7ynv44a/image/upload/v1779797844/ikpfhvcm14hsx8itfmkt.png",
+    img: "https://res.cloudinary.com/dk7ynv44a/image/upload/f_auto,q_auto,w_900/v1779797844/ikpfhvcm14hsx8itfmkt.png",
     imgFirst: true,
   },
 ];
@@ -148,7 +148,7 @@ export default function OurStory() {
               className="relative rounded-3xl overflow-hidden shadow-2xl h-[420px]"
             >
               <img
-                src="https://res.cloudinary.com/dk7ynv44a/image/upload/v1779797272/u9ursrutcvgpeh8wapm4.png"
+                src="https://res.cloudinary.com/dk7ynv44a/image/upload/f_auto,q_auto,w_900/v1779797272/u9ursrutcvgpeh8wapm4.png"
                 alt="GutMantra — Our Story"
                 className="w-full h-full object-cover"
               />

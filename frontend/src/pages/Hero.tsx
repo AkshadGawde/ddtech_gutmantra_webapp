@@ -12,7 +12,7 @@ interface HeroProps {
 
 const SLIDES = [
   {
-    src: "https://res.cloudinary.com/dk7ynv44a/image/upload/v1779797272/u9ursrutcvgpeh8wapm4.png",
+    src: "https://res.cloudinary.com/dk7ynv44a/image/upload/f_auto,q_auto,w_1920/v1779797272/u9ursrutcvgpeh8wapm4.png",
     headline: "Pure Nutrition,",
     subheadline: "Traditional Taste",
     description: "Stone-ground flours & cold-pressed oils, delivered fresh to your Pune home.",
@@ -22,7 +22,7 @@ const SLIDES = [
     badgeSub: "Stone-ground daily",
   },
   {
-    src: "https://res.cloudinary.com/dk7ynv44a/image/upload/v1779797283/ooogfdudi56zxwlpfx86.jpg",
+    src: "https://res.cloudinary.com/dk7ynv44a/image/upload/f_auto,q_auto,w_1920/v1779797283/ooogfdudi56zxwlpfx86.jpg",
     headline: "Cold-Pressed",
     subheadline: "Pure Oils",
     description: "Extracted slowly without heat to preserve every drop of natural goodness.",
@@ -32,7 +32,7 @@ const SLIDES = [
     badgeSub: "Unrefined & pure",
   },
   {
-    src: "https://res.cloudinary.com/dk7ynv44a/image/upload/v1779797844/mcbjonldlewd0pei18zv.png",
+    src: "https://res.cloudinary.com/dk7ynv44a/image/upload/f_auto,q_auto,w_1920/v1779797844/mcbjonldlewd0pei18zv.png",
     headline: "Farm to",
     subheadline: "Your Kitchen",
     description: "Sourced directly from trusted farms. No middlemen. No compromises.",
@@ -42,7 +42,7 @@ const SLIDES = [
     badgeSub: "Farm fresh always",
   },
   {
-    src: "https://res.cloudinary.com/dk7ynv44a/image/upload/v1779797844/ikpfhvcm14hsx8itfmkt.png",
+    src: "https://res.cloudinary.com/dk7ynv44a/image/upload/f_auto,q_auto,w_1920/v1779797844/ikpfhvcm14hsx8itfmkt.png",
     headline: "Doorstep Delivery",
     subheadline: "Fresh Everyday",
     description: "Freshly ground atta, oils & spices delivered straight to your doorstep with purity, speed and traditional goodness.",

@@ -11,7 +11,7 @@ export default function Footer() {
           <div className="flex flex-col gap-6 sm:gap-8">
             <div>
               <img
-                src="https://res.cloudinary.com/dk7ynv44a/image/upload/v1781528506/nhs57yiyhe8axow2bchy.png"
+                src="https://res.cloudinary.com/dk7ynv44a/image/upload/f_auto,q_auto,w_200/v1781528506/nhs57yiyhe8axow2bchy.png"
                 alt="GutMantra"
                 className="h-14 w-auto object-contain"
               />
