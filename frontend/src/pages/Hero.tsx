@@ -12,16 +12,6 @@ interface HeroProps {
 
 const SLIDES = [
   {
-    src: "https://res.cloudinary.com/dk7ynv44a/image/upload/f_auto,q_auto,w_1920/v1779797272/u9ursrutcvgpeh8wapm4.png",
-    headline: "Pure Nutrition,",
-    subheadline: "Traditional Taste",
-    description: "Stone-ground flours & cold-pressed oils, delivered fresh to your Pune home.",
-    cta: "Shop Atta",
-    ctaCategory: "atta",
-    badge: "Sharbati Atta",
-    badgeSub: "Stone-ground daily",
-  },
-  {
     src: "https://res.cloudinary.com/dk7ynv44a/image/upload/f_auto,q_auto,w_1920/v1779797283/ooogfdudi56zxwlpfx86.jpg",
     headline: "Cold-Pressed",
     subheadline: "Pure Oils",

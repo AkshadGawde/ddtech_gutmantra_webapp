@@ -59,34 +59,34 @@ export default function CategorySection({ onNavigate }: CategorySectionProps) {
             >
               {/* ... video/img content remains same ... */}
               {index === 0 ? (
-                <video 
-                  autoPlay 
-                  muted 
-                  loop 
+                <video
+                  autoPlay
+                  muted
+                  loop
                   playsInline
-                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-80 mix-blend-multiply"
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 >
-                  <source src="https://res.cloudinary.com/dk7ynv44a/video/upload/q_auto,w_1280/v1779798078/oubimsrhhxormiyywzof.mp4" type="video/mp4" />
+                  <source src="https://res.cloudinary.com/g17hnymt/video/upload/v1783585462/4_s8vryf.mp4" type="video/mp4" />
                 </video>
               ) : index === 1 ? (
-                <video 
-                  autoPlay 
-                  muted 
-                  loop 
+                <video
+                  autoPlay
+                  muted
+                  loop
                   playsInline
-                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-80 mix-blend-multiply"
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 >
-                  <source src="https://res.cloudinary.com/dk7ynv44a/video/upload/q_auto,w_1280/v1779975657/ndd4wv5lzjjwpucsvjaq.mp4" type="video/mp4" />
+                  <source src="https://res.cloudinary.com/g17hnymt/video/upload/v1783585463/5_xdmfaa.mp4" type="video/mp4" />
                 </video>
               ) : index === 2 ? (
-                <video 
-                  autoPlay 
-                  muted 
-                  loop 
+                <video
+                  autoPlay
+                  muted
+                  loop
                   playsInline
-                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-80 mix-blend-multiply"
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 >
-                  <source src="https://res.cloudinary.com/dk7ynv44a/video/upload/q_auto,w_1280/v1779975742/bjufcpmb0btaceussr8q.mp4" type="video/mp4" />
+                  <source src="https://res.cloudinary.com/g17hnymt/video/upload/v1783585465/6_c3wbuy.mp4" type="video/mp4" />
                 </video>
               ) : (
                 <img 

@@ -99,6 +99,8 @@ export async function createOrderRecord(payload: OrderCreatePayload) {
     isDeliverable: true,
     paymentStatus,
     orderStatus,
+    status: "pending",
+    statusLabel: "Waiting for Acceptance",
     source: "app",
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),

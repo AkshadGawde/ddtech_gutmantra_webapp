@@ -128,8 +128,8 @@ export default function SocialReel({ onNavigate }: SocialReelProps) {
 
             <div className="grid grid-cols-2 gap-6">
               {[
-                "https://res.cloudinary.com/dk7ynv44a/image/upload/f_auto,q_auto,w_600/v1779983860/vwko9754blf6kk87jlsj.png",
-                "https://res.cloudinary.com/dk7ynv44a/image/upload/f_auto,q_auto,w_600/v1779983931/dk697dzdcv6vl6fpaxc2.png"
+                "https://res.cloudinary.com/g17hnymt/image/upload/v1783585919/Screenshot_2026-07-09_at_2.01.24_PM_fofbbf.png",
+                "https://res.cloudinary.com/g17hnymt/image/upload/v1783585921/Screenshot_2026-07-09_at_2.01.55_PM_gx8bzr.png"
               ].map((img, i) => (
                 <motion.div
                   key={i}

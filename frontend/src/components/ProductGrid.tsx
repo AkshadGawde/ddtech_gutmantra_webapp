@@ -6,10 +6,10 @@ import { getProducts } from "../services/productService";
 import ProductCard from "./ProductCard";
 
 const ATTA_SUBCATEGORIES = [
-  { name: "Multigrain Atta", slug: "multigrain", image: "https://res.cloudinary.com/dk7ynv44a/image/upload/f_auto,q_auto,w_400/v1781423900/multigrain.jpg" },
-  { name: "Wheat Atta",      slug: "wheat",       image: "https://res.cloudinary.com/dk7ynv44a/image/upload/f_auto,q_auto,w_400/v1781423900/wheat.jpg" },
-  { name: "Millets Atta",    slug: "millets",     image: "https://res.cloudinary.com/dk7ynv44a/image/upload/f_auto,q_auto,w_400/v1781423901/millets.jpg" },
-  { name: "Healthy Atta",    slug: "healthy",     image: "https://res.cloudinary.com/dk7ynv44a/image/upload/f_auto,q_auto,w_400/v1781423954/healty.jpg" },
+  { name: "Multigrain Atta", slug: "multigrain", image: "https://res.cloudinary.com/g17hnymt/image/upload/v1783582308/millets_uuvkzw.jpg" },
+  { name: "Wheat Atta",      slug: "wheat",       image: "https://res.cloudinary.com/g17hnymt/image/upload/v1783582303/atta_ko2rj7.jpg" },
+  { name: "Millets Atta",    slug: "millets",     image: "https://res.cloudinary.com/g17hnymt/image/upload/v1783582304/healty_vrkmda.jpg" },
+  { name: "Healthy Atta",    slug: "healthy",     image: "https://res.cloudinary.com/g17hnymt/image/upload/v1783586200/Screenshot_2026-07-09_at_2.06.36_PM_yqwfjb.png" },
 ];
 
 interface ProductGridProps {
