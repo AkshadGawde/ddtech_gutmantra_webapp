@@ -12,7 +12,8 @@ interface HeroProps {
 
 const SLIDES = [
   {
-    src: "https://res.cloudinary.com/dk7ynv44a/image/upload/f_auto,q_auto,w_1920/v1779797283/ooogfdudi56zxwlpfx86.jpg",
+    src: "https://res.cloudinary.com/g17hnymt/image/upload/v1783582329/banner2_uitckz.jpg",
+    
     headline: "Cold-Pressed",
     subheadline: "Pure Oils",
     description: "Extracted slowly without heat to preserve every drop of natural goodness.",
@@ -22,7 +23,7 @@ const SLIDES = [
     badgeSub: "Unrefined & pure",
   },
   {
-    src: "https://res.cloudinary.com/dk7ynv44a/image/upload/f_auto,q_auto,w_1920/v1779797844/mcbjonldlewd0pei18zv.png",
+    src: "https://res.cloudinary.com/g17hnymt/image/upload/v1783582330/banner3_s7q4ja.png",
     headline: "Farm to",
     subheadline: "Your Kitchen",
     description: "Sourced directly from trusted farms. No middlemen. No compromises.",
@@ -32,7 +33,7 @@ const SLIDES = [
     badgeSub: "Farm fresh always",
   },
   {
-    src: "https://res.cloudinary.com/dk7ynv44a/image/upload/f_auto,q_auto,w_1920/v1779797844/ikpfhvcm14hsx8itfmkt.png",
+    src: "https://res.cloudinary.com/g17hnymt/image/upload/v1783582333/banner4_ie7jqe.png",
     headline: "Doorstep Delivery",
     subheadline: "Fresh Everyday",
     description: "Freshly ground atta, oils & spices delivered straight to your doorstep with purity, speed and traditional goodness.",
